@@ -17,7 +17,7 @@ export default function Home() {
                       Organize your thoughts, compose your ideas, and harmonize your life.
                   </h2>
                   <Button asChild size="lg" className="mt-8 font-aldrich">
-                      <Link href="/notes">Get Started</Link>
+                      <Link href="/folders">Get Started</Link>
                   </Button>
               </div>
           </main>
