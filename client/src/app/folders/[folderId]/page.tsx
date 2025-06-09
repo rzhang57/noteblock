@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 
 export default function Page() {
-  const { folderId } = useParams(); // folderId will be the dynamic part of the URL
+  const { folderId } = useParams();
 
   return (
     <div>
