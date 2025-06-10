@@ -19,6 +19,7 @@ func InitDb() *gorm.DB {
 		panic("failed to open DB: " + err.Error())
 	}
 
+	// TODO: fix auto migrations so that tables are dropped if schemas change
 	db.AutoMigrate(&model.Folder{}, &model.Note{})
 	return db
 }

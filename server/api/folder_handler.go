@@ -10,8 +10,8 @@ type FolderHandler struct{ Svc *service.FolderService }
 
 func (h *FolderHandler) Create(c *gin.Context) {
 	var body struct {
-		Name     string `json:"name"`
-		ParentID *uint  `json:"parent_id"`
+		Name     string  `json:"name"`
+		ParentID *string `json:"parent_id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid body"})
@@ -22,5 +22,5 @@ func (h *FolderHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"id": id})
+	c.JSON(http.StatusCreated, gin.H{"id": id, "name": body.Name, "parent_id": body.ParentID})
 }
