@@ -1,6 +1,8 @@
 package service
 
-import "server/storage"
+import (
+	"server/internal/storage"
+)
 
 type FolderService struct{ Repo *storage.FolderRepository }
 

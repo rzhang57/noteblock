@@ -2,7 +2,7 @@ package storage
 
 import (
 	"gorm.io/gorm"
-	"server/model"
+	"server/internal/model"
 )
 
 type FolderRepository struct {

@@ -1,11 +1,12 @@
-package router
+package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"server/api"
+	api2 "server/internal/api"
 )
 
-func Setup(fh *api.FolderHandler, nh *api.NoteHandler) *gin.Engine {
+// have all routes in this file, single file this application's API surface
+func Setup(fh *api2.FolderHandler, nh *api2.NoteHandler) *gin.Engine {
 	r := gin.Default()
 	apiGroup := r.Group("/api")
 	{

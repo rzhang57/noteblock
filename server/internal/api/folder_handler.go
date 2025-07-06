@@ -3,7 +3,7 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"server/service"
+	"server/internal/service"
 )
 
 type FolderHandler struct{ Svc *service.FolderService }

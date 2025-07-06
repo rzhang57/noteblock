@@ -3,11 +3,10 @@ package db
 import (
 	"os"
 	"path/filepath"
+	model2 "server/internal/model"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
-	"server/model"
 )
 
 func InitDb() *gorm.DB {
@@ -20,6 +19,6 @@ func InitDb() *gorm.DB {
 	}
 
 	// TODO: fix auto migrations so that tables are dropped if schemas change
-	db.AutoMigrate(&model.Folder{}, &model.Note{})
+	db.AutoMigrate(&model2.Folder{}, &model2.Note{})
 	return db
 }

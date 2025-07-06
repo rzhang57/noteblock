@@ -5,9 +5,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"server/model"
-
-	"server/storage"
+	"server/internal/model"
+	"server/internal/storage"
 )
 
 type NoteService struct{ Repo *storage.NoteRepository }
