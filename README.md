@@ -1,2 +1,2 @@
 # noteblock
- streamlined note taking
+streamlined minimal note-taking

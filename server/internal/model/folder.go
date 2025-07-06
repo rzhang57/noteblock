@@ -12,11 +12,15 @@ type Folder struct {
 	ParentID  *string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+
+	Parent          *Folder  `gorm:"foreignKey:ParentID"`
+	ChildrenFolders []Folder `gorm:"foreignKey:ParentID"`
+	Notes           []Note   `gorm:"foreignKey:FolderID"`
 }
 
-func (f *Folder) BeforeCreate(tx *gorm.DB) (err error) {
-	f.ID = uuid.New().String()
-	f.CreatedAt = time.Now()
-	f.UpdatedAt = time.Now()
+func (f *Folder) BeforeCreate(*gorm.DB) (err error) {
+	if f.ID == "" {
+		f.ID = uuid.New().String()
+	}
 	return
 }

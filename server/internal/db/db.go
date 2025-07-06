@@ -1,9 +1,10 @@
 package db
 
 import (
+	"log"
 	"os"
 	"path/filepath"
-	model2 "server/internal/model"
+	"server/internal/model"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -17,8 +18,21 @@ func InitDb() *gorm.DB {
 	if err != nil {
 		panic("failed to open DB: " + err.Error())
 	}
+	db.Exec("PRAGMA foreign_keys = ON")
 
-	// TODO: fix auto migrations so that tables are dropped if schemas change
-	db.AutoMigrate(&model2.Folder{}, &model2.Note{})
+	// TODO: remove in production
+	db.Migrator().DropTable(&model.Note{}, &model.Folder{}, &model.Block{}) // order matters
+	db.AutoMigrate(&model.Folder{}, &model.Note{}, &model.Block{})
+
+	var count int64
+	db.Model(&model.Folder{}).Where("id = root", "root").Count(&count)
+	if count == 0 {
+		db.Create(&model.Folder{
+			ID:   "root",
+			Name: "Root",
+		})
+		log.Println("Created root folder with ID 'root'")
+	}
+
 	return db
 }

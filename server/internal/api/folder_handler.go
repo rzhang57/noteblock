@@ -17,6 +17,14 @@ func (h *FolderHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid body"})
 		return
 	}
+	if body.ParentID == nil {
+		root := "root"
+		body.ParentID = &root
+	}
+	if body.Name == "" {
+		body.Name = "New Folder"
+		return
+	}
 	id, err := h.Svc.NewFolder(body.Name, body.ParentID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
