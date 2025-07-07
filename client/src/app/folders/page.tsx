@@ -3,8 +3,9 @@ import { useState, useEffect, FormEvent } from "react";
 import Link from "next/link";
 
 interface Folder {
-    id: number;
+    id: string;
     name: string;
+    parentId: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -36,7 +37,7 @@ export default function FolderPage() {
         if (!newFolderName.trim()) return;
 
         try {
-            const response = await fetch("http://localhost:8080/api/folders", {
+            const response = await fetch("http://localhost:7474/api/folders", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: newFolderName }),
