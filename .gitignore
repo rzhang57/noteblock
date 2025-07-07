@@ -1,1 +1,7 @@
 /server/data/noteblock.sqlite
+
+server.iml
+client.iml
+
+identifier.sqlite
+memory
