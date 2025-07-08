@@ -11,7 +11,10 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler) *gin.Engine {
 	apiGroup := r.Group("/api")
 	{
 		apiGroup.POST("/folders", fh.Create)
+		apiGroup.GET("/folders/:id", fh.Retrieve)
 		apiGroup.PUT("/folders", fh.Update)
+		apiGroup.DELETE("/folders/:id", fh.Delete)
+
 		apiGroup.POST("/notes", nh.Create)
 		apiGroup.GET("/notes/:id", nh.Get)
 	}

@@ -3,6 +3,7 @@ package service
 import (
 	"gorm.io/gorm"
 	"server/internal/model"
+	"server/internal/model/dto"
 )
 
 type FolderService struct {
@@ -50,4 +51,71 @@ func (s *FolderService) ListChildrenByParentId(parentID *string) ([]model.Folder
 	}
 
 	return folders, err
+}
+
+func (s *FolderService) GetFolderDtoById(id string) (*dto.FolderResponse, error) {
+	var folder model.Folder
+
+	err := s.DB.
+		Where("id = ?", id).
+		First(&folder).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var children []model.Folder
+	s.DB.Select("id", "name").Where("parent_id = ?", id).Find(&children)
+
+	var notes []model.Note
+	s.DB.Select("id", "title").Where("folder_id = ?", id).Find(&notes)
+
+	childPreviews := make([]dto.FolderPreview, len(children))
+	for i, c := range children {
+		childPreviews[i] = dto.FolderPreview{ID: c.ID, Name: c.Name}
+	}
+
+	notePreviews := make([]dto.NoteResponse, len(notes))
+	for i, n := range notes {
+		notePreviews[i] = dto.NoteResponse{ID: n.ID, Title: n.Title}
+	}
+
+	return &dto.FolderResponse{
+		ID:       folder.ID,
+		Name:     folder.Name,
+		ParentID: folder.ParentID,
+		Children: childPreviews,
+		Notes:    notePreviews,
+	}, nil
+}
+
+func (s *FolderService) DeleteFolderAndContents(folderID string) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		return deleteFolderRecursive(tx, folderID)
+	})
+}
+
+func deleteFolderRecursive(db *gorm.DB, folderID string) error {
+	var folder model.Folder
+	if err := db.Preload("ChildrenFolders").Preload("Notes").First(&folder, "id = ?", folderID).Error; err != nil {
+		return err
+	}
+
+	// Recursively delete child folders
+	for _, child := range folder.ChildrenFolders {
+		if err := deleteFolderRecursive(db, child.ID); err != nil {
+			return err
+		}
+	}
+
+	// Delete notes in this folder
+	if err := db.Where("folder_id = ?", folder.ID).Delete(&model.Note{}).Error; err != nil {
+		return err
+	}
+
+	// Delete this folder
+	if err := db.Delete(&folder).Error; err != nil {
+		return err
+	}
+
+	return nil
 }

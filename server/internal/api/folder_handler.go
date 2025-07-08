@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"server/internal/model"
+	"server/internal/model/dto"
 	"server/internal/service"
 	"strconv"
 )
@@ -20,7 +21,7 @@ type FolderRequest struct {
 
 func (h *FolderHandler) Create(c *gin.Context) {
 	var body FolderRequest
-	err := validateBody(&body, c)
+	err := ValidateJsonBody(&body, c)
 	if err != nil {
 		return
 	}
@@ -54,12 +55,33 @@ func (h *FolderHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"id": folder.ID, "name": folder.Name, "parent_id": folder.ParentID})
+
+	createOrUpdateFolderToResponse(c, &folder, http.StatusCreated)
+}
+
+func (h *FolderHandler) Retrieve(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" || &id == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing folder ID"})
+		return
+	}
+
+	folder, err := h.Svc.GetFolderDtoById(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve folder"})
+		return
+	}
+	if folder == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Folder not found"})
+		return
+	}
+
+	getFolderToResponse(c, folder, http.StatusOK)
 }
 
 func (h *FolderHandler) Update(c *gin.Context) {
 	var body FolderRequest
-	err := validateBody(&body, c)
+	err := ValidateJsonBody(&body, c)
 	if err != nil {
 		return
 	}
@@ -107,11 +129,33 @@ func (h *FolderHandler) Update(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"id":        updatedFolder.ID,
-		"name":      updatedFolder.Name,
-		"parent_id": updatedFolder.ParentID,
-	})
+	createOrUpdateFolderToResponse(c, updatedFolder, http.StatusOK)
+}
+
+func (h *FolderHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" || &id == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing folder ID from request"})
+		return
+	}
+
+	folder, err := h.Svc.GetFolderByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong when trying to retrieve folder from database"})
+		return
+	}
+	if folder == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Folder was not found or does not exist"})
+		return
+	}
+
+	err = h.Svc.DeleteFolderAndContents(folder.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong in the deletion process of the folder"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"id": folder.ID, "message": "Folder deleted successfully"})
 }
 
 func (h *FolderHandler) listAllFolders(parentID *string) ([]model.Folder, error) {
@@ -152,10 +196,20 @@ func generateUniqueFolderName(folders []model.Folder) string {
 	return fmt.Sprintf("%s %d", base, maxIndex+1)
 }
 
-func validateBody[T any](body *T, c *gin.Context) error {
-	if err := c.ShouldBindJSON(body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON in body"})
-		return err
-	}
-	return nil
+func createOrUpdateFolderToResponse(c *gin.Context, folder *model.Folder, status int) {
+	c.JSON(status, gin.H{
+		"id":        folder.ID,
+		"name":      folder.Name,
+		"parent_id": folder.ParentID,
+	})
+}
+
+func getFolderToResponse(c *gin.Context, folder *dto.FolderResponse, status int) {
+	c.JSON(status, gin.H{
+		"id":        folder.ID,
+		"name":      folder.Name,
+		"parent_id": folder.ParentID,
+		"notes":     folder.Notes,
+		"children":  folder.Children,
+	})
 }
