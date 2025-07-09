@@ -21,7 +21,7 @@ type FolderRequest struct {
 
 func (h *FolderHandler) Create(c *gin.Context) {
 	var body FolderRequest
-	err := ValidateJsonBody(&body, c)
+	err := ValidateAndSetJsonBody(&body, c)
 	if err != nil {
 		return
 	}
@@ -50,13 +50,14 @@ func (h *FolderHandler) Create(c *gin.Context) {
 			}
 		}
 	}
+
 	folder, err := h.Svc.CreateNewFolder(*body.Name, body.ParentID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error() + " - failed to create new folder"})
 		return
 	}
 
-	createOrUpdateFolderToResponse(c, &folder, http.StatusCreated)
+	createOrUpdateFolderToResponse(c, folder, http.StatusCreated)
 }
 
 func (h *FolderHandler) Retrieve(c *gin.Context) {
@@ -81,7 +82,7 @@ func (h *FolderHandler) Retrieve(c *gin.Context) {
 
 func (h *FolderHandler) Update(c *gin.Context) {
 	var body FolderRequest
-	err := ValidateJsonBody(&body, c)
+	err := ValidateAndSetJsonBody(&body, c)
 	if err != nil {
 		return
 	}
@@ -102,7 +103,7 @@ func (h *FolderHandler) Update(c *gin.Context) {
 	}
 
 	targetParentID := currentFolder.ParentID
-	if body.ParentID != nil {
+	if body.ParentID != nil && *body.ParentID != "" {
 		targetParentID = body.ParentID
 	}
 
@@ -137,6 +138,9 @@ func (h *FolderHandler) Delete(c *gin.Context) {
 	if id == "" || &id == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing folder ID from request"})
 		return
+	} else if id == "root" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete root folder"})
+		return
 	}
 
 	folder, err := h.Svc.GetFolderByID(id)
@@ -156,11 +160,6 @@ func (h *FolderHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"id": folder.ID, "message": "Folder deleted successfully"})
-}
-
-func (h *FolderHandler) listAllFolders(parentID *string) ([]model.Folder, error) {
-	folders, err := h.Svc.ListChildrenByParentId(parentID)
-	return folders, err
 }
 
 func (h *FolderHandler) getFolder(parentId *string, c *gin.Context) *model.Folder {

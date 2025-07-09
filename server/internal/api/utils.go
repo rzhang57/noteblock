@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func ValidateJsonBody[T any](body *T, c *gin.Context) error {
+func ValidateAndSetJsonBody[T any](body *T, c *gin.Context) error {
 	if err := c.ShouldBindJSON(body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON in body"})
 		return err

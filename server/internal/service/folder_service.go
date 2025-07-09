@@ -10,9 +10,9 @@ type FolderService struct {
 	DB *gorm.DB
 }
 
-func (s *FolderService) CreateNewFolder(name string, parentID *string) (model.Folder, error) {
+func (s *FolderService) CreateNewFolder(name string, parentID *string) (*model.Folder, error) {
 	f := &model.Folder{Name: name, ParentID: parentID}
-	return *f, s.DB.Create(f).Error
+	return f, s.DB.Create(f).Error
 }
 
 func (s *FolderService) UpdateFolder(id string, name string, parentId *string) (*model.Folder, error) {

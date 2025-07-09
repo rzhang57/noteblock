@@ -17,6 +17,7 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler) *gin.Engine {
 
 		apiGroup.POST("/notes", nh.Create)
 		apiGroup.GET("/notes/:id", nh.Get)
+		apiGroup.PUT("/notes/:id", nh.UpdateMetaData)
 	}
 	return r
 }
