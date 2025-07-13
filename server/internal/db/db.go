@@ -21,7 +21,7 @@ func InitDb() *gorm.DB {
 	db.Exec("PRAGMA foreign_keys = ON")
 
 	// TODO: remove in production
-	// db.Migrator().DropTable(&model.Note{}, &model.Folder{}, &model.Block{}) // order matters
+	db.Migrator().DropTable(&model.Note{}, &model.Folder{}, &model.Block{}, &model.TextBlock{}, &model.CanvasBlock{}, &model.ImageBlock{}) // order matters
 	db.AutoMigrate(&model.Folder{}, &model.Note{}, &model.Block{}, &model.TextBlock{}, &model.CanvasBlock{}, &model.ImageBlock{})
 
 	var count int64

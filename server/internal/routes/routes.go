@@ -19,7 +19,7 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler) *gin.Engine {
 		apiGroup.GET("/notes/:id", nh.Get) // retrieve blocks
 		apiGroup.PUT("/notes/:id", nh.UpdateMetaData)
 
-		apiGroup.POST("/notes/:id/blocks", nh.AddBlock) // add a block to a note
+		// apiGroup.POST("/notes/:id/blocks", nh.AddBlock) // add a block to a note
 	}
 	return r
 }
