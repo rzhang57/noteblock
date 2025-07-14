@@ -6,8 +6,6 @@ client.iml
 identifier.sqlite
 memory
 
-/.idea
-
 *.db
 *.sqlite
 *.sqlite3
