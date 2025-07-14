@@ -10,7 +10,10 @@ import (
 	"strconv"
 )
 
-type NoteHandler struct{ Svc *service.NoteService }
+type NoteHandler struct {
+	Svc      *service.NoteService
+	BlockSvc *service.BlockService
+}
 
 // parent/ associated folder is not required for note creation HOWEVER, should be provided - if nil, it will be set to "root" folder
 func (h *NoteHandler) Create(c *gin.Context) {
