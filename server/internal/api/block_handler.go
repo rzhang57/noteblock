@@ -28,5 +28,5 @@ func (b *BlockHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(201, gin.H{"noteId": block.ID, "note_id": block.NoteID, "type": block.Type, "index": block.Index})
+	c.JSON(201, gin.H{"id": block.ID, "note_id": block.NoteID, "type": block.Type, "index": block.Index})
 }

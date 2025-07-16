@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"gorm.io/gorm"
 	"server/internal/model"
 )
@@ -33,6 +34,8 @@ func (s *BlockService) CreateNewBlock(noteID string, blockType string, index int
 				if err := json.Unmarshal(*content, &textContent); err != nil {
 					return err
 				}
+			} else {
+				return errors.New("Content for text block cannot be nil")
 			}
 			textBlock := &model.TextBlock{
 				ID:   block.ID,
@@ -51,7 +54,14 @@ func (s *BlockService) CreateNewBlock(noteID string, blockType string, index int
 					return err
 				}
 			} else {
-				canvasContent.Data = ""
+				return errors.New("Content for canvas block cannot be nil")
+			}
+			canvasBlock := &model.CanvasBlock{
+				ID:   block.ID,
+				Data: canvasContent.Data,
+			}
+			if err := s.DB.Create(canvasBlock).Error; err != nil {
+				return err
 			}
 
 		case model.BlockTypeImage:
@@ -59,11 +69,28 @@ func (s *BlockService) CreateNewBlock(noteID string, blockType string, index int
 				Path string `json:"path"`
 				Data string `json:"data"`
 			}
+			if content != nil {
+				if err := json.Unmarshal(*content, &imageContent); err != nil {
+					return err
+				}
+			} else {
+				return errors.New("Content for image block cannot be nil")
+			}
+			imageBlock := &model.ImageBlock{
+				ID:   block.ID,
+				Path: imageContent.Path,
+				Data: imageContent.Data,
+			}
+			if err := s.DB.Create(imageBlock).Error; err != nil {
+				return err
+			}
 		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
-})
-
-return block, nil
+	return block, nil
 }
