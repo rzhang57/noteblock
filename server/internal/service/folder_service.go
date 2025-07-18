@@ -17,20 +17,26 @@ func (s *FolderService) CreateNewFolder(name string, parentID *string) (*model.F
 
 func (s *FolderService) UpdateFolder(id string, name string, parentId *string) (*model.Folder, error) {
 	var folder *model.Folder
-	err := s.DB.First(&folder, "id = ?", id).Error
-	if err != nil {
-		return folder, err
+
+	if err := s.DB.Transaction(func(tx *gorm.DB) error {
+		err := tx.First(&folder, "id = ?", id).Error
+		if err != nil {
+			return err
+		}
+
+		folder.Name = name
+		folder.ParentID = parentId
+
+		err = tx.Save(&folder).Error
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
-	folder.Name = name
-	folder.ParentID = parentId
-
-	err = s.DB.Save(&folder).Error
-	if err != nil {
-		return folder, err
-	}
-
-	s.DB.Save(&folder)
 	return folder, nil
 }
 
@@ -64,10 +70,14 @@ func (s *FolderService) GetFolderDtoById(id string) (*dto.FolderResponse, error)
 	}
 
 	var children []model.Folder
-	s.DB.Select("id", "name").Where("parent_id = ?", id).Find(&children)
+	if err := s.DB.Select("id", "name").Where("parent_id = ?", id).Find(&children).Error; err != nil {
+		return nil, err
+	}
 
 	var notes []model.Note
-	s.DB.Select("id", "title").Where("folder_id = ?", id).Find(&notes)
+	if err := s.DB.Select("id", "title").Where("folder_id = ?", id).Find(&notes).Error; err != nil {
+		return nil, err
+	}
 
 	childPreviews := make([]dto.FolderPreview, len(children))
 	for i, c := range children {
@@ -88,6 +98,7 @@ func (s *FolderService) GetFolderDtoById(id string) (*dto.FolderResponse, error)
 	}, nil
 }
 
+// TODO: delete folder, all children folders, notes in folder, and blocks associated with notes
 func (s *FolderService) DeleteFolderAndContents(folderID string) error {
 	return s.DB.Transaction(func(tx *gorm.DB) error {
 		return deleteFolderRecursive(tx, folderID)

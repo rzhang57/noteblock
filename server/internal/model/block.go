@@ -12,6 +12,12 @@ const (
 	BlockTypeImage  = "image"
 )
 
+var BlockTypeToModel = map[string]interface{}{
+	BlockTypeText:   &TextBlock{},
+	BlockTypeCanvas: &CanvasBlock{},
+	BlockTypeImage:  &ImageBlock{},
+}
+
 type Block struct {
 	ID        string `gorm:"type:uuid;primaryKey"`
 	NoteID    string `gorm:"type:uuid;not null;index"`

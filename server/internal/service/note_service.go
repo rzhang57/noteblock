@@ -46,16 +46,17 @@ func (s *NoteService) ListNotesByFolderId(folderId *string) ([]model.Note, error
 
 func (s *NoteService) UpdateNoteMetaData(id string, title string, folderId string) (*model.Note, error) {
 	var note model.Note
-	err := s.DB.First(&note, "id = ?", id).Error
-	if err != nil {
-		return nil, err
-	}
+	if err := s.DB.Transaction(func(tx *gorm.DB) error {
+		err := tx.First(&note, "id = ?", id).Error
+		if err != nil {
+			return err
+		}
 
-	note.Title = title
-	note.FolderID = folderId
+		note.Title = title
+		note.FolderID = folderId
 
-	err = s.DB.Save(&note).Error
-	if err != nil {
+		return tx.Save(&note).Error
+	}); err != nil {
 		return nil, err
 	}
 

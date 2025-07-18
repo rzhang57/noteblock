@@ -77,6 +77,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, note)
 }
 
+// updates the metadata of a note, such as title and folder ID etc.
 func (h *NoteHandler) UpdateMetaData(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" || &id == nil {
@@ -127,6 +128,8 @@ func (h *NoteHandler) UpdateMetaData(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"id": data.ID, "title": data.Title, "folder_id": data.FolderID})
 }
+
+// TODO: at a note level, reorder all blocks in a note (batch update)
 
 func generateUniqueNoteName(folders []model.Note) string {
 	base := "New Note"

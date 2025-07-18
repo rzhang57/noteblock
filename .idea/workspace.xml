@@ -5,10 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e8a2b7e3-4e62-4bce-aa45-89f39c77be53" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/server/internal/service/utils.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/cmd/noteblock/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/cmd/noteblock/main.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/internal/api/block_handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/api/block_handler.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/internal/api/note_handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/api/note_handler.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/internal/api/utils.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/api/utils.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/internal/db/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/db/db.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/internal/model/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/model/block.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/internal/routes/routes.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/routes/routes.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/internal/service/block_service.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/service/block_service.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/internal/service/folder_service.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/service/folder_service.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/internal/service/note_service.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/service/note_service.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -222,6 +230,10 @@
       <workItem from="1752469256738" duration="216000" />
       <workItem from="1752469497751" duration="1220000" />
       <workItem from="1752470922793" duration="4067000" />
+      <workItem from="1752626566230" duration="1216000" />
+      <workItem from="1752711220577" duration="7408000" />
+      <workItem from="1752767961081" duration="6866000" />
+      <workItem from="1752859539998" duration="6808000" />
     </task>
     <servers />
   </component>
