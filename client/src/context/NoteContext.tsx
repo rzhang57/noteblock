@@ -1,0 +1,1 @@
+// TODO: holds context for currently open note - metadata and blocks
