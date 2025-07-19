@@ -5,18 +5,32 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e8a2b7e3-4e62-4bce-aa45-89f39c77be53" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/server/internal/service/utils.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/cmd/noteblock/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/cmd/noteblock/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/api/block_handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/api/block_handler.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/api/note_handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/api/note_handler.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/api/utils.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/api/utils.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/db/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/db/db.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/model/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/model/block.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/routes/routes.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/routes/routes.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/service/block_service.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/service/block_service.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/service/folder_service.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/service/folder_service.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/service/note_service.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/service/note_service.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/components.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/eslint.config.mjs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/next.config.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/package-lock.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/package.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/postcss.config.mjs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/public/file.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/public/globe.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/public/next.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/public/vercel.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/public/window.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/favicon.ico" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/folders/[folderId]/page.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/folders/page.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/globals.css" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/layout.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/app/page.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/GridBackground.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/ui/button.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/lib/utils.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/tailwind.config.ts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/tsconfig.json" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -101,7 +115,7 @@
     &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
     &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
     &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.github.copilot.settings.network.NetworkConfigurable&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
     &quot;ts.external.directory.path&quot;: &quot;C:\\Users\\Ryan\\Documents\\GitHub\\noteblock\\client\\node_modules\\typescript\\lib&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
@@ -233,7 +247,7 @@
       <workItem from="1752626566230" duration="1216000" />
       <workItem from="1752711220577" duration="7408000" />
       <workItem from="1752767961081" duration="6866000" />
-      <workItem from="1752859539998" duration="6808000" />
+      <workItem from="1752859539998" duration="12200000" />
     </task>
     <servers />
   </component>
