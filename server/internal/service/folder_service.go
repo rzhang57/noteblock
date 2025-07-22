@@ -79,14 +79,14 @@ func (s *FolderService) GetFolderDtoById(id string) (*dto.FolderResponse, error)
 		return nil, err
 	}
 
-	childPreviews := make([]dto.FolderPreview, len(children))
-	for i, c := range children {
-		childPreviews[i] = dto.FolderPreview{ID: c.ID, Name: c.Name}
+	childPreviews := make([]dto.FolderResponse, 0, len(children))
+	for _, c := range children {
+		childPreviews = append(childPreviews, dto.FolderResponse{ID: c.ID, Name: c.Name, ParentID: c.ParentID, Children: []dto.FolderResponse{}, Notes: []dto.NoteResponse{}})
 	}
 
-	notePreviews := make([]dto.NoteResponse, len(notes))
-	for i, n := range notes {
-		notePreviews[i] = dto.NoteResponse{ID: n.ID, Title: n.Title}
+	notePreviews := make([]dto.NoteResponse, 0, len(notes))
+	for _, n := range notes {
+		notePreviews = append(notePreviews, dto.NoteResponse{ID: n.ID, Title: n.Title})
 	}
 
 	return &dto.FolderResponse{
