@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"regexp"
+	"server/internal/api/mapper"
 	"server/internal/model"
 	"server/internal/service"
 	"strconv"
@@ -65,6 +66,7 @@ func (h *NoteHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing note ID"})
 		return
 	}
+
 	note, err := h.Svc.GetNote(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -74,10 +76,16 @@ func (h *NoteHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Note not found"})
 		return
 	}
-	c.JSON(http.StatusOK, note)
+
+	dtoNote, err := mapper.ToNoteDTO(note)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to map note to DTO"})
+		return
+	}
+
+	c.JSON(http.StatusOK, dtoNote)
 }
 
-// updates the metadata of a note, such as title and folder ID etc.
 func (h *NoteHandler) UpdateMetaData(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" || &id == nil {
