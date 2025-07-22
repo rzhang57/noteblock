@@ -1,11 +1,9 @@
-// src/components/NotebookSidebar.tsx
 import {useEffect, useState} from "react";
 import {FileText} from "lucide-react";
 import {FolderTreeItem} from "./FolderTreeItem";
 import {folderService} from "@/services/FolderService";
 import type {Folder} from "@/services/FolderService";
 
-// Props for whatever shell owns the sidebar
 interface NotebookSidebarProps {
     selectedNoteId: string | null;
     onNoteSelect: (noteId: string) => void;
@@ -53,15 +51,30 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
             </div>
 
             <div className="flex-1 overflow-auto p-2">
-                <FolderTreeItem
-                    item={root}
-                    depth={0}
-                    expanded={expanded}
-                    onToggle={toggleFolder}
-                    selectedNoteId={selectedNoteId}
-                    onNoteSelect={onNoteSelect}
-                />
+                {root.children?.map(child => (
+                    <FolderTreeItem
+                        key={child.id}
+                        item={child}
+                        depth={0}
+                        expanded={expanded}
+                        onToggle={toggleFolder}
+                        selectedNoteId={selectedNoteId}
+                        onNoteSelect={onNoteSelect}
+                    />
+                ))}
+                {root.notes?.map(note => (
+                    <FolderTreeItem
+                        key={note.id}
+                        item={note}
+                        depth={0}
+                        expanded={expanded}
+                        onToggle={toggleFolder}
+                        selectedNoteId={selectedNoteId}
+                        onNoteSelect={onNoteSelect}
+                    />
+                ))}
             </div>
+
         </aside>
     );
 };

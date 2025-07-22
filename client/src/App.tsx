@@ -15,7 +15,7 @@ export default function App() {
     const navigateForward = {}
 
     return (
-        <div className="h-screen bg-gray-50 flex flex-col">
+        <div className="h-screen w-full bg-gray-50 flex flex-col">
             {/* Navigation Header */}
 
             {/* Main Layout */}
