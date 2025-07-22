@@ -69,32 +69,49 @@ func (s *FolderService) GetFolderDtoById(id string) (*dto.FolderResponse, error)
 		return nil, err
 	}
 
+	return s.buildFolderResponseRecursive(folder.ID)
+}
+
+func (s *FolderService) buildFolderResponseRecursive(folderID string) (*dto.FolderResponse, error) {
+	var folder model.Folder
+	if err := s.DB.Where("id = ?", folderID).First(&folder).Error; err != nil {
+		return nil, err
+	}
+
 	var children []model.Folder
-	if err := s.DB.Select("id", "name").Where("parent_id = ?", id).Find(&children).Error; err != nil {
+	if err := s.DB.Where("parent_id = ?", folderID).Find(&children).Error; err != nil {
 		return nil, err
 	}
 
 	var notes []model.Note
-	if err := s.DB.Select("id", "title").Where("folder_id = ?", id).Find(&notes).Error; err != nil {
+	if err := s.DB.Select("id", "title").Where("folder_id = ?", folderID).Find(&notes).Error; err != nil {
 		return nil, err
 	}
 
-	childPreviews := make([]dto.FolderResponse, 0, len(children))
-	for _, c := range children {
-		childPreviews = append(childPreviews, dto.FolderResponse{ID: c.ID, Name: c.Name, ParentID: c.ParentID, Children: []dto.FolderResponse{}, Notes: []dto.NoteResponse{}})
+	// Recursively build child folder responses
+	childResponses := make([]dto.FolderResponse, 0, len(children))
+	for _, child := range children {
+		childResponse, err := s.buildFolderResponseRecursive(child.ID)
+		if err != nil {
+			return nil, err
+		}
+		childResponses = append(childResponses, *childResponse)
 	}
 
-	notePreviews := make([]dto.NoteResponse, 0, len(notes))
-	for _, n := range notes {
-		notePreviews = append(notePreviews, dto.NoteResponse{ID: n.ID, Title: n.Title})
+	noteResponses := make([]dto.NoteResponse, 0, len(notes))
+	for _, note := range notes {
+		noteResponses = append(noteResponses, dto.NoteResponse{
+			ID:    note.ID,
+			Title: note.Title,
+		})
 	}
 
 	return &dto.FolderResponse{
 		ID:       folder.ID,
 		Name:     folder.Name,
 		ParentID: folder.ParentID,
-		Children: childPreviews,
-		Notes:    notePreviews,
+		Children: childResponses,
+		Notes:    noteResponses,
 	}, nil
 }
 
