@@ -9,10 +9,10 @@ interface NotebookSidebarProps {
     onNoteSelect: (noteId: string) => void;
 }
 
-export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
-                                                                    selectedNoteId,
-                                                                    onNoteSelect,
-                                                                }) => {
+export const Sidebar: React.FC<NotebookSidebarProps> = ({
+                                                            selectedNoteId,
+                                                            onNoteSelect,
+                                                        }) => {
     const [root, setRoot] = useState<Folder | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -32,7 +32,6 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
         });
     }
 
-
     if (!root) {
         return (
             <aside className="flex items-center justify-center h-full w-64 border-r bg-white">
@@ -47,7 +46,7 @@ export const NotebookSidebar: React.FC<NotebookSidebarProps> = ({
                 <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
                     <FileText className="w-4 h-4 text-white"/>
                 </div>
-                <h2 className="font-semibold text-gray-900">Files</h2>
+                <h2 className="font-bold text-gray-900">Noteblock</h2>
             </div>
 
             <div className="flex-1 overflow-auto p-2">

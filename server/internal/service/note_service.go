@@ -18,6 +18,7 @@ func (s *NoteService) NewNote(title string, folderID string) (*model.Note, error
 
 // TODO: NB-31 - implement GetNote to retrieve a note by its ID, preloading blocks and returning them
 func (s *NoteService) GetNote(id string) (*model.Note, error) {
+	//err := s.DB.Preload("Blocks").First(&model.Note{}, "id = ?", id).Error
 	return nil, nil
 }
 

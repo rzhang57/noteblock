@@ -1,6 +1,6 @@
 import {useCallback, useState} from 'react'
 import './App.css'
-import {NotebookSidebar} from "./components/Sidebar";
+import {Sidebar} from "./components/Sidebar";
 
 export default function App() {
 
@@ -21,7 +21,7 @@ export default function App() {
             {/* Main Layout */}
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar */}
-                <NotebookSidebar selectedNoteId={null} onNoteSelect={function (noteId: string): void {
+                <Sidebar selectedNoteId={null} onNoteSelect={function (noteId: string): void {
                     console.log("Selected note ID:", noteId);
                 }}/>
 

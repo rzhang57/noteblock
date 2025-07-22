@@ -1,4 +1,3 @@
-// src/components/FolderTreeItem.tsx
 import {
     Folder as FolderIcon,
     FolderOpen,
@@ -20,9 +19,7 @@ interface TreeProps {
 }
 
 
-// TODO: lazy loading for recursive folders == we cannot render folders like this
-//      we need to fetch children "onToggle" and render dynmically
-//      if children are not undefined, we just render them closed
+// TODO: if performance becomes an issue, consider lazy loading children on expand only
 export const FolderTreeItem: React.FC<TreeProps> = ({
                                                         item,
                                                         depth,
@@ -36,11 +33,9 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
         const open = expanded.has(item.id);
         const hasChildren = item.children.length > 0 || item.notes.length > 0;
 
-
         return (
             <>
                 <div
-                    // TODO: onToggle should also fetch children that are not loaded currently
                     onClick={() => onToggle(item.id)}
                     style={{paddingLeft: depth * 16 + 8}}
                     className="flex items-center gap-1 py-1 px-2 cursor-pointer hover:bg-gray-100 select-none"
@@ -63,10 +58,8 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                     <span className="truncate">{item.name}</span>
                 </div>
 
-                {/* children (only rendered when open) */}
                 {open && (
                     <>
-                        {/* sub-folders first (alpha) */}
                         {item.children
                             .slice()
                             .sort((a, b) => a.name.localeCompare(b.name))
@@ -81,8 +74,6 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                     onNoteSelect={onNoteSelect}
                                 />
                             ))}
-
-                        {/* notes next (alpha) */}
                         {item.notes
                             .slice()
                             .sort((a, b) => a.title.localeCompare(b.title))
