@@ -1,44 +1,53 @@
 import {restClient} from "./RestClient";
-
-export interface Note {
-    id: string;
-    title: string;
-    blocks: Block[];
-}
+import type {Block, Note} from "@/types/Note.ts";
 
 export interface NoteCreateRequest {
     title: string;
-    blocks: Block[];
+    parent: string;
 }
 
-export interface Block {
+export interface NoteUpdateRequest {
     id: string;
-    type: "text" | "canvas" | "image";
-    index: number;
-    content: string;
-    createdAt: Date;
-    updatedAt: Date;
+    title: string;
 }
 
-// note: noteId should be a parameter in request url
 export interface BlockCreateRequest {
     type: "text" | "canvas" | "image";
     index: number;
     content: string;
 }
 
-// note: noteId and blockId should be parameters in request url
 export interface BlockUpdateRequest {
     type: "text" | "canvas" | "image";
     content: string;
 }
 
+export const NoteService = {
+    async getNote(id: string): Promise<Note> {
+        return restClient.get<Note>(`/notes/${id}`);
+    },
 
+    async createNote(request: NoteCreateRequest): Promise<Note> {
+        return restClient.post<Note>("/notes", request);
+    },
 
-async function getNote(id: string): Promise<Note> {
-    return restClient.get<Note>(`/notes/${id}`);
-}
+    async updateNote(request: NoteUpdateRequest): Promise<Note> {
+        return restClient.put<Note>("/notes", request);
+    },
 
-async function createNote(title: string, parent: string): Promise<Note> {
-    return restClient.post<Note>("/notes", { title, parent });
-}
+    async deleteNote(id: string): Promise<void> {
+        return restClient.delete<void>(`/notes/${id}`);
+    },
+
+    async createBlock(noteId: string, request: BlockCreateRequest): Promise<Block> {
+        return restClient.post<Block>(`/notes/${noteId}/blocks`, request);
+    },
+
+    async updateBlock(noteId: string, blockId: string, request: BlockUpdateRequest): Promise<Block> {
+        return restClient.put<Block>(`/notes/${noteId}/blocks/${blockId}`, request);
+    },
+
+    async deleteBlock(noteId: string, blockId: string): Promise<void> {
+        return restClient.delete<void>(`/notes/${noteId}/blocks/${blockId}`);
+    },
+};

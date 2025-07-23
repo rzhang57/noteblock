@@ -4,15 +4,7 @@ import {FolderTreeItem} from "./FolderTreeItem";
 import {folderService} from "@/services/FolderService";
 import type {Folder} from "@/services/FolderService";
 
-interface NotebookSidebarProps {
-    selectedNoteId: string | null;
-    onNoteSelect: (noteId: string) => void;
-}
-
-export const Sidebar: React.FC<NotebookSidebarProps> = ({
-                                                            selectedNoteId,
-                                                            onNoteSelect,
-                                                        }) => {
+export const Sidebar: React.FC = () => {
     const [root, setRoot] = useState<Folder | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -57,8 +49,6 @@ export const Sidebar: React.FC<NotebookSidebarProps> = ({
                         depth={0}
                         expanded={expanded}
                         onToggle={toggleFolder}
-                        selectedNoteId={selectedNoteId}
-                        onNoteSelect={onNoteSelect}
                     />
                 ))}
                 {root.notes?.map(note => (
@@ -68,8 +58,6 @@ export const Sidebar: React.FC<NotebookSidebarProps> = ({
                         depth={0}
                         expanded={expanded}
                         onToggle={toggleFolder}
-                        selectedNoteId={selectedNoteId}
-                        onNoteSelect={onNoteSelect}
                     />
                 ))}
             </div>

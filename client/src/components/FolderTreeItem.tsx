@@ -8,14 +8,13 @@ import {
 import type {Folder} from "@/services/FolderService";
 import type {Note} from "@/services/NoteService";
 import {cn} from "@/lib/utils";
+import {useNoteContext} from "@/context/NoteContext.tsx";
 
 interface TreeProps {
     item: Folder | Note;
     depth: number;
     expanded: Set<string>;
     onToggle: (folderId: string) => void;
-    selectedNoteId: string | null;
-    onNoteSelect: (noteId: string) => void;
 }
 
 
@@ -25,11 +24,10 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                                         depth,
                                                         expanded,
                                                         onToggle,
-                                                        selectedNoteId,
-                                                        onNoteSelect,
                                                     }) => {
-    if (isFolder(item)) {
+    const {selectedNoteId, setSelectedNoteId} = useNoteContext();
 
+    if (isFolder(item)) {
         const open = expanded.has(item.id);
         const hasChildren = item.children.length > 0 || item.notes.length > 0;
 
@@ -70,8 +68,6 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                     depth={depth + 1}
                                     expanded={expanded}
                                     onToggle={onToggle}
-                                    selectedNoteId={selectedNoteId}
-                                    onNoteSelect={onNoteSelect}
                                 />
                             ))}
                         {item.notes
@@ -84,8 +80,6 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                     depth={depth + 1}
                                     expanded={expanded}
                                     onToggle={onToggle}
-                                    selectedNoteId={selectedNoteId}
-                                    onNoteSelect={onNoteSelect}
                                 />
                             ))}
                     </>
@@ -98,7 +92,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
 
     return (
         <div
-            onClick={() => onNoteSelect(item.id)}
+            onClick={() => setSelectedNoteId(item.id)}
             style={{paddingLeft: depth * 16 + 28}}
             className={cn(
                 "flex items-center gap-1 py-1 px-2 cursor-pointer hover:bg-gray-100 select-none",
