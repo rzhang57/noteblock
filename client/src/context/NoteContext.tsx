@@ -1,19 +1,20 @@
-// TODO: holds context for currently open note - metadata and blocks
-
 import React from "react";
 
 interface NoteContextType {
-    selectedNoteId: string | null;
+    selectedNoteId: string | undefined | null;
     setSelectedNoteId: (id: string | null) => void;
+    noteTitle: string | undefined | null;
+    setNoteTitle: (title: string) => void;
 }
 
 const NoteContext = React.createContext<NoteContextType | undefined>(undefined);
 
 export const NoteProvider: React.FC<React.PropsWithChildren> = ({children}) => {
     const [selectedNoteId, setSelectedNoteId] = React.useState<string | null>(null);
+    const [noteTitle, setNoteTitle] = React.useState<string | undefined>(undefined);
 
     return (
-        <NoteContext.Provider value={{selectedNoteId, setSelectedNoteId}}>
+        <NoteContext.Provider value={{selectedNoteId, setSelectedNoteId, noteTitle, setNoteTitle}}>
             {children}
         </NoteContext.Provider>
     );

@@ -5,7 +5,7 @@ import {MainContentPanel} from "@/components/ContentPanel.tsx";
 
 export default function App() {
 
-    const {selectedNoteId, setSelectedNoteId} = useNoteContext();
+    const {selectedNoteId, noteTitle} = useNoteContext();
 
     // const handleNoteSelect = {}
     //
@@ -31,7 +31,7 @@ export default function App() {
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Top Bar */}
                     <div className="border-b p-4 bg-white flex items-center justify-between">
-                        <h1 className="text-lg font-semibold text-gray-800">Noteblock</h1>
+                        <h1 className="text-lg font-semibold text-gray-800">{noteTitle}</h1>
                         {/* Navigation buttons can go here */}
                     </div>
 

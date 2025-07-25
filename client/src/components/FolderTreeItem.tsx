@@ -6,7 +6,7 @@ import {
     ChevronDown,
 } from "lucide-react";
 import type {Folder} from "@/services/FolderService";
-import type {Note} from "@/services/NoteService";
+import type {Note} from "@/types/Note";
 import {cn} from "@/lib/utils";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 
@@ -25,7 +25,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                                         expanded,
                                                         onToggle,
                                                     }) => {
-    const {selectedNoteId, setSelectedNoteId} = useNoteContext();
+    const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
 
     if (isFolder(item)) {
         const open = expanded.has(item.id);
@@ -92,7 +92,10 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
 
     return (
         <div
-            onClick={() => setSelectedNoteId(item.id)}
+            onClick={() => {
+                setSelectedNoteId(item.id)
+                setNoteTitle(item.title)
+            }}
             style={{paddingLeft: depth * 16 + 28}}
             className={cn(
                 "flex items-center gap-1 py-1 px-2 cursor-pointer hover:bg-gray-100 select-none",

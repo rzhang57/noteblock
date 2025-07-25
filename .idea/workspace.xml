@@ -5,18 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e8a2b7e3-4e62-4bce-aa45-89f39c77be53" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/client/src/types/Note.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/components/blocks/TextBlock.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/App.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/components/ContentPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/ContentPanel.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/components/FolderTreeItem.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/FolderTreeItem.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/Sidebar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/navigation-header.tsx" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/context/NoteContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/context/NoteContext.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/main.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/main.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/index.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/services/NoteService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/services/NoteService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/types/filesystem.ts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/api/mapper/mapper.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/api/mapper/mapper.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -32,9 +32,9 @@
         <option value="Enum" />
         <option value="Class" />
         <option value="Interface" />
-        <option value="TypeScript JSX File" />
         <option value="Go File" />
         <option value="TypeScript File" />
+        <option value="TypeScript JSX File" />
       </list>
     </option>
   </component>
@@ -253,7 +253,9 @@
       <workItem from="1752908697151" duration="5227000" />
       <workItem from="1753077282243" duration="7061000" />
       <workItem from="1753160600509" duration="11485000" />
-      <workItem from="1753212601062" duration="12076000" />
+      <workItem from="1753212601062" duration="12800000" />
+      <workItem from="1753332857186" duration="3360000" />
+      <workItem from="1753412868575" duration="6508000" />
     </task>
     <servers />
   </component>

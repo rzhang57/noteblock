@@ -19,7 +19,7 @@ export interface BlockCreateRequest {
 
 export interface BlockUpdateRequest {
     type: "text" | "canvas" | "image";
-    content: string;
+    content: Record<any, any>;
 }
 
 export const NoteService = {

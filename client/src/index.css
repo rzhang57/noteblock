@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@layer components {
+  .mdxeditor * {
+    all: revert;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
