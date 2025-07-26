@@ -1,5 +1,5 @@
-import { restClient } from "./RestClient";
-import type {Note} from "@/services/NoteService.ts";
+import {restClient} from "./RestClient";
+import type {Note} from "@/types/Note.ts";
 
 export interface Folder {
     id: string;

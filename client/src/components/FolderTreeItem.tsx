@@ -17,8 +17,6 @@ interface TreeProps {
     onToggle: (folderId: string) => void;
 }
 
-
-// TODO: if performance becomes an issue, consider lazy loading children on expand only
 export const FolderTreeItem: React.FC<TreeProps> = ({
                                                         item,
                                                         depth,
@@ -26,6 +24,11 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                                         onToggle,
                                                     }) => {
     const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
+
+    const isFolder = (item: Folder | Note): item is Folder =>
+        Array.isArray((item as Folder).children);
+
+    const baseIndent = depth * 16;
 
     if (isFolder(item)) {
         const open = expanded.has(item.id);
@@ -35,25 +38,31 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
             <>
                 <div
                     onClick={() => onToggle(item.id)}
-                    style={{paddingLeft: depth * 16 + 8}}
-                    className="flex items-center gap-1 py-1 px-2 cursor-pointer hover:bg-gray-100 select-none"
+                    className="group flex items-center py-1 px-2 hover:bg-gray-100 cursor-pointer select-none"
+                    style={{paddingLeft: baseIndent + 8}}
                 >
-                    {hasChildren ? (
-                        open ? (
-                            <ChevronDown className="w-3 h-3 text-gray-500"/>
+                    {/* Arrow */}
+                    <div className="w-4 flex items-center justify-center">
+                        {hasChildren ? (
+                            open ? (
+                                <ChevronDown className="w-3 h-3 text-gray-500"/>
+                            ) : (
+                                <ChevronRight className="w-3 h-3 text-gray-500"/>
+                            )
                         ) : (
-                            <ChevronRight className="w-3 h-3 text-gray-500"/>
-                        )
-                    ) : (
-                        <span className="w-3"/>
-                    )}
+                            <span className="w-3"/>
+                        )}
+                    </div>
 
-                    {open ? (
-                        <FolderOpen className="w-4 h-4 text-blue-500"/>
-                    ) : (
-                        <FolderIcon className="w-4 h-4 text-blue-500"/>
-                    )}
-                    <span className="truncate">{item.name}</span>
+                    {/* Folder icon + name */}
+                    <div className="flex items-center gap-2">
+                        {open ? (
+                            <FolderOpen className="w-4 h-4 text-blue-500"/>
+                        ) : (
+                            <FolderIcon className="w-4 h-4 text-blue-500"/>
+                        )}
+                        <span className="truncate text-sm">{item.name}</span>
+                    </div>
                 </div>
 
                 {open && (
@@ -61,7 +70,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                         {item.children
                             .slice()
                             .sort((a, b) => a.name.localeCompare(b.name))
-                            .map(f => (
+                            .map((f) => (
                                 <FolderTreeItem
                                     key={f.id}
                                     item={f}
@@ -73,7 +82,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                         {item.notes
                             .slice()
                             .sort((a, b) => a.title.localeCompare(b.title))
-                            .map(n => (
+                            .map((n) => (
                                 <FolderTreeItem
                                     key={n.id}
                                     item={n}
@@ -93,21 +102,17 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
     return (
         <div
             onClick={() => {
-                setSelectedNoteId(item.id)
-                setNoteTitle(item.title)
+                setSelectedNoteId(item.id);
+                setNoteTitle(item.title);
             }}
-            style={{paddingLeft: depth * 16 + 28}}
             className={cn(
-                "flex items-center gap-1 py-1 px-2 cursor-pointer hover:bg-gray-100 select-none",
+                "flex items-center py-1 px-2 gap-2 cursor-pointer hover:bg-gray-100 select-none",
                 active && "bg-blue-100 text-blue-900"
             )}
+            style={{paddingLeft: baseIndent + 24}}
         >
             <FileText className="w-4 h-4 text-gray-600"/>
-            <span className="truncate">{item.title}</span>
+            <span className="truncate text-sm">{item.title}</span>
         </div>
     );
-};
-
-const isFolder = (item: Folder | Note): item is Folder => {
-    return Array.isArray((item as Folder).children);
 };

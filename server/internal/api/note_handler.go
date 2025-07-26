@@ -16,7 +16,6 @@ type NoteHandler struct {
 	BlockSvc *service.BlockService
 }
 
-// parent/ associated folder is not required for note creation HOWEVER, should be provided - if nil, it will be set to "root" folder
 func (h *NoteHandler) Create(c *gin.Context) {
 	var body struct {
 		Title    *string `json:"title"`
@@ -58,8 +57,6 @@ func (h *NoteHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"id": note.ID, "title": note.Title, "folder_id": note.FolderID})
 }
 
-// Retrieve a note by ID, preload blocks in order to be displayed in UI, as well as load any metadata required by UI
-// TODO: NB-31 - implement GetNote to retrieve a note by its ID, preloading blocks and returning them
 func (h *NoteHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {

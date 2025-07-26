@@ -20,13 +20,13 @@ export function MainContentPanel() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        setLoading(true);
         if (!selectedNoteId) {
             setNote(null);
             return;
         }
 
         const fetchNote = async () => {
-            setLoading(true);
             try {
                 const fetched = await NoteService.getNote(selectedNoteId);
                 setNote(fetched);
@@ -60,10 +60,6 @@ export function MainContentPanel() {
 
     if (loading) {
         return <div className="p-6 text-gray-500">Loading note...</div>;
-    }
-
-    if (!loading && !note) {
-        return <div className="p-6 text-red-500">Note not found</div>;
     }
 
     return (

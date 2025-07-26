@@ -7,16 +7,6 @@ export default function App() {
 
     const {selectedNoteId, noteTitle} = useNoteContext();
 
-    // const handleNoteSelect = {}
-    //
-    // const handleNavigateRoot = {}
-    //
-    // const handleFolderToggle = {}
-    //
-    // const navigateBack = {}
-    //
-    // const navigateForward = {}
-
     return (
         <div className="h-screen w-full bg-gray-50 flex flex-col">
             {/* Navigation Header */}
