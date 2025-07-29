@@ -1,5 +1,5 @@
-import {useEffect, useState} from "react";
-import {FilePlus, FileText, FolderPlus, Plus} from "lucide-react";
+import {useEffect, useRef, useState} from "react";
+import {FileText, FolderPlus, Plus} from "lucide-react";
 import {FolderTreeItem} from "./FolderTreeItem";
 import {folderService} from "@/services/FolderService";
 import type {Folder} from "@/services/FolderService";
@@ -7,43 +7,76 @@ import {NoteService} from "@/services/NoteService.ts";
 import type {Note} from "@/types/Note.ts";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 
-const Popover: React.FC<{
+const AddMenu: React.FC<{
     open: boolean;
     onClose: () => void;
     onNewFolder: () => void;
     onNewNote: () => void;
-}> = ({open, onClose, onNewFolder, onNewNote}) =>
-    !open ? null : (
+    buttonRef: React.RefObject<HTMLButtonElement | null> | null;
+}> = ({open, onClose, onNewFolder, onNewNote, buttonRef}) => {
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                menuRef.current &&
+                !menuRef.current.contains(event.target as Node) &&
+                buttonRef?.current &&
+                !buttonRef.current.contains(event.target as Node)
+            ) {
+                onClose();
+            }
+        };
+
+        if (open) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [open, onClose, buttonRef]);
+
+    if (!open) return null;
+
+    const handleAction = (action: () => void) => {
+        action();
+        onClose();
+    };
+
+    return (
         <div
-            className="absolute right-2 mt-1 w-32 rounded border bg-white shadow-lg text-sm"
-            onMouseLeave={onClose}
+            ref={menuRef}
+            className="absolute right-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50 min-w-[140px]"
+            onClick={(e) => e.stopPropagation()}
         >
             <button
-                onClick={() => {
-                    onNewFolder();
-                    onClose();
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleAction(onNewNote);
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 hover:bg-gray-100"
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-100"
             >
-                <FolderPlus className="w-4 h-4"/> New folder
+                <FileText className="w-4 h-4"/>
+                New Note
             </button>
             <button
-                onClick={() => {
-                    onNewNote();
-                    onClose();
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleAction(onNewFolder);
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 hover:bg-gray-100"
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-100"
             >
-                <FilePlus className="w-4 h-4"/> New note
+                <FolderPlus className="w-4 h-4"/>
+                New Folder
             </button>
         </div>
     );
+};
 
 export const Sidebar: React.FC = () => {
     const [root, setRoot] = useState<Folder | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [showAddMenu, setShowAddMenu] = useState(false);
     const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
+    const buttonRef = useRef<HTMLButtonElement | null>(null);
 
     useEffect(() => {
         (async () => {
@@ -175,18 +208,25 @@ export const Sidebar: React.FC = () => {
 
             <div className="flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-500">
                 <span>NOTES</span>
-                <button
-                    onClick={() => setShowAddMenu(v => !v)}
-                    className="p-1 rounded hover:bg-gray-200 hover:cursor-pointer"
-                >
-                    <Plus className="w-4 h-4"/>
-                </button>
-                <Popover
-                    open={showAddMenu}
-                    onClose={() => setShowAddMenu(false)}
-                    onNewFolder={handleNewFolder}
-                    onNewNote={handleNewNote}
-                />
+                <div className="relative">
+                    <button
+                        ref={buttonRef}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            setShowAddMenu(v => !v)
+                        }}
+                        className="p-1 rounded hover:bg-gray-200 hover:cursor-pointer"
+                    >
+                        <Plus className="w-4 h-4"/>
+                    </button>
+                    <AddMenu
+                        open={showAddMenu}
+                        onClose={() => setShowAddMenu(false)}
+                        onNewFolder={handleNewFolder}
+                        onNewNote={handleNewNote}
+                        buttonRef={buttonRef}
+                    />
+                </div>
             </div>
 
             <div className="flex-1 overflow-auto p-2">
