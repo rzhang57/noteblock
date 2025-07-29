@@ -75,9 +75,18 @@ func (s *NoteService) UpdateNoteContents(id string, title string, md string, fol
 	return nil
 }
 
-// DeleteNote removes a note by its ID as well as all associated blocks
 // TODO: NB-32 - implement DeleteNote to remove a note and its blocks from DB only if it's already in "trash" folder, otherwise, move to "trash" folder first
 func (s *NoteService) DeleteNote(id string) error {
-	// stub
-	return nil
+	var note model.Note
+	if err := s.DB.First(&note, "id = ?", id).Error; err != nil {
+		return err
+	}
+	err := s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("note_id = ?", id).Delete(&model.Block{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&note).Error
+	})
+
+	return err
 }

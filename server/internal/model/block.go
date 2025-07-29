@@ -19,7 +19,7 @@ type Block struct {
 	Index     int
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	Content   string `gorm:"type:text"` // JSON object stored as string, can be unmarshalled into specific block type
+	Content   string `gorm:"type:text"`
 }
 
 func (b *Block) BeforeCreate(*gorm.DB) (err error) {

@@ -161,5 +161,17 @@ func generateUniqueNoteName(folders []model.Note) string {
 }
 
 func (h *NoteHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing note ID"})
+		return
+	}
 
+	err := h.Svc.DeleteNote(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error() + " - failed to delete note"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Note deleted successfully"})
 }

@@ -32,7 +32,7 @@ export const NoteService = {
     },
 
     async updateNote(request: NoteUpdateRequest): Promise<Note> {
-        return restClient.put<Note>("/notes", request);
+        return restClient.put<Note>(`/notes/${request.id}`, {title: request.title});
     },
 
     async deleteNote(id: string): Promise<void> {

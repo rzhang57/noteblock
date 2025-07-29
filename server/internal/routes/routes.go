@@ -11,7 +11,7 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler, bh *api.BlockHandler) *gi
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"}, // or "*"
+		AllowOrigins:     []string{"*"}, // or "*"
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -43,6 +43,7 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler, bh *api.BlockHandler) *gi
 		apiGroup.POST("/notes", nh.Create)
 		apiGroup.GET("/notes/:id", nh.Get) // retrieve blocks
 		apiGroup.PUT("/notes/:id", nh.UpdateMetaData)
+		apiGroup.DELETE("/notes/:id", nh.Delete)
 
 		apiGroup.POST("/notes/:id/blocks", bh.Create)                 // add a block to a note
 		apiGroup.PUT("/notes/:id/blocks/:block_id", bh.UpdateContent) // update contentType/content of a block

@@ -15,7 +15,7 @@ async function createTextBlock(noteId: string, index: number): Promise<Block> {
 }
 
 export function MainContentPanel() {
-    const {selectedNoteId} = useNoteContext();
+    const {selectedNoteId, noteTitle} = useNoteContext();
     const [note, setNote] = useState<Note | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -65,7 +65,7 @@ export function MainContentPanel() {
     return (
         note && (
             <div className="p-6 space-y-4">
-                <h1 className="text-xl font-semibold text-gray-800">{note.title}</h1>
+                <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
                 <button
                     className="px-4 py-2 bg-blue-500 text-white rounded"
                     onClick={handleAddTextBlock}

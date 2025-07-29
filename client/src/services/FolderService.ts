@@ -15,8 +15,18 @@ export interface FolderCreateRequest {
 }
 
 export interface FolderUpdateRequest {
-    id: string;
+    current_id: string;
     name: string;
+    parent_id: string | null;
+}
+
+export interface FolderRenameRequest {
+    current_id: string;
+    name: string;
+}
+
+export interface FolderMoveRequest {
+    current_id: string;
     parent_id: string | null;
 }
 
@@ -30,7 +40,7 @@ export const folderService = {
         return restClient.get<Folder>(`/folders/${id}`);
     },
 
-    async updateFolder(request: FolderUpdateRequest): Promise<Folder> {
+    async updateFolder(request: FolderUpdateRequest | FolderMoveRequest | FolderRenameRequest): Promise<Folder> {
         return restClient.put<Folder>("/folders", request);
     },
 
