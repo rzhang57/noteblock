@@ -49,7 +49,7 @@ export const Sidebar: React.FC = () => {
         (async () => {
             const rootFolder = await folderService.getFolder("root");
             setRoot(rootFolder);
-            setExpanded(new Set([rootFolder.id])); // open root by default
+            setExpanded(new Set([rootFolder.id]));
         })();
     }, []);
 
@@ -70,20 +70,23 @@ export const Sidebar: React.FC = () => {
         if (!root) return;
         await folderService.createFolder({name: '', parent_id: root.id});
         await refreshRoot();
+        setExpanded(prev => new Set([...prev, root.id]));
     };
 
     const handleNewNote = async () => {
         if (!root) return;
-        await NoteService.createNote({title: '', parent: root.id});
+        await NoteService.createNote({title: '', folder_id: root.id});
         await refreshRoot();
     };
 
     const handleCreateNote = async (parentFolderId: string) => {
-        await NoteService.createNote({title: '', parent: parentFolderId});
+        setExpanded(prev => new Set([...prev, parentFolderId]));
+        await NoteService.createNote({title: '', folder_id: parentFolderId});
         await refreshRoot();
     };
 
     const handleCreateFolder = async (parentFolderId: string) => {
+        setExpanded(prev => new Set([...prev, parentFolderId]));
         await folderService.createFolder({name: '', parent_id: parentFolderId});
         await refreshRoot();
     };
@@ -219,6 +222,3 @@ export const Sidebar: React.FC = () => {
         </aside>
     );
 };
-
-// TODO: fix note creation (only creating in root atm)
-// TODO: fix folder creation (creating in correct folder but not expanding the folder as it's being created)

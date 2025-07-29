@@ -3,7 +3,7 @@ import type {Block, Note} from "@/types/Note.ts";
 
 export interface NoteCreateRequest {
     title: string;
-    parent: string;
+    folder_id: string;
 }
 
 export interface NoteUpdateRequest {
