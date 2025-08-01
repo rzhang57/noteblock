@@ -1,11 +1,12 @@
 import {useEffect, useRef, useState} from "react";
-import {FileText, FolderPlus, Plus} from "lucide-react";
+import {AlertCircle, FileText, FolderPlus, Plus, X} from "lucide-react";
 import {FolderTreeItem} from "./FolderTreeItem";
 import {folderService} from "@/services/FolderService";
 import type {Folder} from "@/services/FolderService";
 import {NoteService} from "@/services/NoteService.ts";
 import type {Note} from "@/types/Note.ts";
 import {useNoteContext} from "@/context/NoteContext.tsx";
+import {Alert, AlertDescription} from "@/components/ui/alert.tsx";
 
 const AddMenu: React.FC<{
     open: boolean;
@@ -77,6 +78,7 @@ export const Sidebar: React.FC = () => {
     const [showAddMenu, setShowAddMenu] = useState(false);
     const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
     const buttonRef = useRef<HTMLButtonElement | null>(null);
+    const [moveError, setMoveError] = useState<string | null>(null);
 
     useEffect(() => {
         (async () => {
@@ -86,6 +88,7 @@ export const Sidebar: React.FC = () => {
         })();
     }, []);
 
+    // TODO: is there a better way to refresh UI without re-fetching the entire root every time?
     const refreshRoot = async () => {
         const refreshed = await folderService.getFolder('root');
         setRoot(refreshed);
@@ -189,6 +192,29 @@ export const Sidebar: React.FC = () => {
         }
     };
 
+    const handleMoveItem = async (item: string, targetFolderId: string, itemType: 'folder' | 'note') => {
+        setMoveError(null);
+
+        try {
+            if (itemType === 'folder') {
+                await folderService.updateFolder({current_id: item, parent_id: targetFolderId});
+            } else {
+                await NoteService.updateNote({id: item, folder_id: targetFolderId});
+            }
+            await refreshRoot();
+            setExpanded(prev => new Set([...prev, targetFolderId]));
+        } catch (err) {
+            console.error("Failed to move item:", err);
+            if (itemType === 'folder') {
+                setMoveError("Name conflict or invalid folder move.");
+            } else {
+                setMoveError("Note could not be moved. It might already exist in the target folder.");
+            }
+        } finally {
+            window.dispatchEvent(new CustomEvent('clearDragState'));
+        }
+    };
+
     if (!root) {
         return (
             <aside className="flex items-center justify-center h-full w-64 border-r bg-white">
@@ -205,6 +231,36 @@ export const Sidebar: React.FC = () => {
                 </div>
                 <h2 className="font-bold text-gray-900">Noteblock</h2>
             </div>
+
+            {moveError && (
+                <div className="p-2">
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4"/>
+                        <AlertDescription className="flex items-center justify-between">
+                            <span>{moveError}</span>
+                            <button
+                                onClick={() => setMoveError(null)}
+                                className="ml-2 hover:bg-red-200 rounded p-1"
+                            >
+                                <X className="h-3 w-3"/>
+                            </button>
+                        </AlertDescription>
+                    </Alert>
+                </div>
+            )}
+
+            {/*// TODO: might want to remove this, or replace with something more subtle like JIRA has it, spinner is*/}
+            {/*relatively satisfying*/}
+            {/*{isMoving && (*/}
+            {/*    <div className="p-2">*/}
+            {/*        <Alert>*/}
+            {/*            <AlertDescription>*/}
+            {/*                Moving item...*/}
+            {/*            </AlertDescription>*/}
+            {/*        </Alert>*/}
+            {/*    </div>*/}
+            {/*)}*/}
+
 
             <div className="flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-500">
                 <span>NOTES</span>
@@ -242,6 +298,7 @@ export const Sidebar: React.FC = () => {
                         onDeleteItem={handleDeleteItem}
                         onRenameFolder={handleRenameFolder}
                         onRenameNote={handleRenameNote}
+                        onMoveItem={handleMoveItem}
                     />
                 ))}
                 {root.notes?.map(note => (
@@ -256,6 +313,7 @@ export const Sidebar: React.FC = () => {
                         onDeleteItem={handleDeleteItem}
                         onRenameFolder={handleRenameFolder}
                         onRenameNote={handleRenameNote}
+                        onMoveItem={handleMoveItem}
                     />
                 ))}
             </div>

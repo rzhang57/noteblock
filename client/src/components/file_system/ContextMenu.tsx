@@ -1,4 +1,4 @@
-import {MoreHorizontal, FileText, Folder, Trash2, Edit3} from "lucide-react";
+import {MoreHorizontal, FileText, Folder, Trash2, Edit3, FolderUp} from "lucide-react";
 import {useState, useRef, useEffect} from "react";
 
 interface ContextMenuProps {
@@ -7,6 +7,7 @@ interface ContextMenuProps {
     onCreateFolder: () => void;
     onDelete: () => void;
     onRename: () => void;
+    onMoveToRoot: () => void;
 }
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -14,7 +15,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                                                             onCreateNote,
                                                             onCreateFolder,
                                                             onDelete,
-                                                            onRename
+                                                            onRename,
+                                                            onMoveToRoot
                                                         }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -77,6 +79,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                             <hr className="my-1 border-gray-200"/>
                         </>
                     )}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction(onMoveToRoot);
+                        }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-100"
+                    >
+                        <FolderUp className="w-4 h-4"/>
+                        Move to Root
+                    </button>
                     <button
                         onClick={(e) => {
                             e.stopPropagation()

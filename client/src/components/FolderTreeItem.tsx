@@ -11,7 +11,7 @@ import {cn} from "@/lib/utils";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {ContextMenu} from "./file_system/ContextMenu";
 import {InlineRename} from "./file_system/InlineRename";
-import {useState, type DragEvent} from "react";
+import {useState, type DragEvent, useEffect} from "react";
 
 interface TreeProps {
     item: Folder | Note;
@@ -23,7 +23,7 @@ interface TreeProps {
     onDeleteItem: (item: Folder | Note) => void;
     onRenameFolder: (folderId: string, newName: string) => void;
     onRenameNote: (noteId: string, newTitle: string) => void;
-    onMoveItem: (itemId: string, targetFolderId: string, itemType: 'folder' | 'note') => void;
+    onMoveItem: (item: string, targetFolderId: string, itemType: 'folder' | 'note') => void;
 }
 
 export const FolderTreeItem: React.FC<TreeProps> = ({
@@ -41,6 +41,21 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
     const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
     const [isRenaming, setIsRenaming] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
+
+    useEffect(() => {
+        const handleClearDragState = () => {
+            setIsDragOver(false);
+        };
+
+        window.addEventListener('clearDragState', handleClearDragState);
+        return () => window.removeEventListener('clearDragState', handleClearDragState);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            setIsDragOver(false);
+        };
+    }, []);
 
     const isFolder = (item: Folder | Note): item is Folder =>
         Array.isArray((item as Folder).children);
@@ -103,7 +118,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
 
     // TODO: do we really need this? Because dragging and dropping should be valid for any folder up to the root
     // TODO: nvm we do, because we need to prevent dropping a folder into its own descendant
-    // TODO: we probably need a new API for this
+    // TODO: need some cached logic, access the current root tree and check if sourceId is a descendant of targetId
     const isDescendant = (sourceId: string, targetId: string): boolean => {
         return false;
     };
@@ -118,16 +133,17 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
             const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
             const {id: draggedId, type: draggedType} = dragData;
 
-            // Prevent dropping on itself or its children
             if (draggedId === item.id) return;
-
-            // Prevent dropping a folder into its own descendant
-            if (draggedType === 'folder' && isDescendant(draggedId, item.id)) return;
 
             onMoveItem(draggedId, item.id, draggedType);
         } catch (error) {
             console.error('Failed to parse drag data:', error);
         }
+    };
+
+    const handleMoveToRoot = () => {
+        const itemType = isFolder(item) ? 'folder' : 'note';
+        onMoveItem(item.id, 'root', itemType);
     };
 
     if (isFolder(item)) {
@@ -187,6 +203,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                             onCreateFolder={() => onCreateFolder(item.id)}
                             onDelete={() => onDeleteItem(item)}
                             onRename={handleRename}
+                            onMoveToRoot={handleMoveToRoot}
                         />
                     )}
                 </div>
@@ -275,6 +292,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                     }}
                     onDelete={() => onDeleteItem(item)}
                     onRename={handleRename}
+                    onMoveToRoot={handleMoveToRoot}
                 />
             )}
         </div>

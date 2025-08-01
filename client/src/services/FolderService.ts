@@ -16,8 +16,8 @@ export interface FolderCreateRequest {
 
 export interface FolderUpdateRequest {
     current_id: string;
-    name: string;
-    parent_id: string | null;
+    name?: string;
+    parent_id?: string | null;
 }
 
 export interface FolderRenameRequest {
