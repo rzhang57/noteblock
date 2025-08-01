@@ -11,7 +11,7 @@ import {cn} from "@/lib/utils";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {ContextMenu} from "./file_system/ContextMenu";
 import {InlineRename} from "./file_system/InlineRename";
-import {useState} from "react";
+import {useState, type DragEvent} from "react";
 
 interface TreeProps {
     item: Folder | Note;
@@ -23,6 +23,7 @@ interface TreeProps {
     onDeleteItem: (item: Folder | Note) => void;
     onRenameFolder: (folderId: string, newName: string) => void;
     onRenameNote: (noteId: string, newTitle: string) => void;
+    onMoveItem: (itemId: string, targetFolderId: string, itemType: 'folder' | 'note') => void;
 }
 
 export const FolderTreeItem: React.FC<TreeProps> = ({
@@ -35,9 +36,11 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                                         onDeleteItem,
                                                         onRenameFolder,
                                                         onRenameNote,
+                                                        onMoveItem
                                                     }) => {
     const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
     const [isRenaming, setIsRenaming] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
 
     const isFolder = (item: Folder | Note): item is Folder =>
         Array.isArray((item as Folder).children);
@@ -61,6 +64,72 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
         setIsRenaming(false);
     };
 
+    const handleDragStart = (e: DragEvent) => {
+        const dragData = {
+            id: item.id,
+            type: isFolder(item) ? 'folder' : 'note'
+        };
+        if (e.dataTransfer) {
+            e.dataTransfer.setData('application/json', JSON.stringify(dragData));
+            e.dataTransfer.effectAllowed = 'move';
+        }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+        if (!isFolder(item)) return;
+
+        e.preventDefault();
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'move';
+        }
+        setIsDragOver(true);
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+        if (!isFolder(item)) return;
+
+        // Only reset if we're actually leaving the element (not entering a child)
+        const target = e.currentTarget as HTMLElement;
+        if (!target) return;
+
+        const rect = target.getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
+
+        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+            setIsDragOver(false);
+        }
+    };
+
+    // TODO: do we really need this? Because dragging and dropping should be valid for any folder up to the root
+    // TODO: nvm we do, because we need to prevent dropping a folder into its own descendant
+    // TODO: we probably need a new API for this
+    const isDescendant = (sourceId: string, targetId: string): boolean => {
+        return false;
+    };
+
+    const handleDrop = (e: DragEvent) => {
+        if (!isFolder(item)) return;
+
+        e.preventDefault();
+        setIsDragOver(false);
+
+        try {
+            const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
+            const {id: draggedId, type: draggedType} = dragData;
+
+            // Prevent dropping on itself or its children
+            if (draggedId === item.id) return;
+
+            // Prevent dropping a folder into its own descendant
+            if (draggedType === 'folder' && isDescendant(draggedId, item.id)) return;
+
+            onMoveItem(draggedId, item.id, draggedType);
+        } catch (error) {
+            console.error('Failed to parse drag data:', error);
+        }
+    };
+
     if (isFolder(item)) {
         const open = expanded.has(item.id);
         const hasChildren = item.children.length > 0 || item.notes.length > 0;
@@ -68,8 +137,16 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
         return (
             <>
                 <div
+                    draggable={!isRenaming}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
                     onClick={() => !isRenaming && onToggle(item.id)}
-                    className="group flex items-center justify-between py-1 px-2 hover:bg-gray-100 cursor-pointer select-none"
+                    className={cn(
+                        "group flex items-center justify-between py-1 px-2 hover:bg-gray-100 cursor-pointer select-none",
+                        isDragOver && "bg-blue-50 border-2 border-blue-300 border-dashed"
+                    )}
                     style={{paddingLeft: baseIndent + 8}}
                 >
                     <div className="flex items-center flex-1">
@@ -131,6 +208,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                     onDeleteItem={onDeleteItem}
                                     onRenameFolder={onRenameFolder}
                                     onRenameNote={onRenameNote}
+                                    onMoveItem={onMoveItem}
                                 />
                             ))}
                         {item.notes
@@ -148,6 +226,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                     onDeleteItem={onDeleteItem}
                                     onRenameFolder={onRenameFolder}
                                     onRenameNote={onRenameNote}
+                                    onMoveItem={onMoveItem}
                                 />
                             ))}
                     </>
@@ -160,6 +239,8 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
 
     return (
         <div
+            draggable={!isRenaming}
+            onDragStart={handleDragStart}
             onClick={() => {
                 if (!isRenaming) {
                     setSelectedNoteId(item.id)
