@@ -116,13 +116,6 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
         }
     };
 
-    // TODO: do we really need this? Because dragging and dropping should be valid for any folder up to the root
-    // TODO: nvm we do, because we need to prevent dropping a folder into its own descendant
-    // TODO: need some cached logic, access the current root tree and check if sourceId is a descendant of targetId
-    const isDescendant = (sourceId: string, targetId: string): boolean => {
-        return false;
-    };
-
     const handleDrop = (e: DragEvent) => {
         if (!isFolder(item)) return;
 

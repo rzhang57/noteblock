@@ -195,6 +195,25 @@ export const Sidebar: React.FC = () => {
     const handleMoveItem = async (item: string, targetFolderId: string, itemType: 'folder' | 'note') => {
         setMoveError(null);
 
+        if (itemType === 'folder' && targetFolderId !== 'root') {
+            const isDescendant = (sourceId: string, targetId: string, folder: Folder): boolean => {
+                if (folder.id === sourceId) {
+                    const checkDescendant = (f: Folder): boolean => {
+                        if (f.id === targetId) return true;
+                        return f.children.some(checkDescendant);
+                    };
+                    return checkDescendant(folder);
+                }
+                return folder.children.some(child => isDescendant(sourceId, targetId, child));
+            };
+
+            if (isDescendant(item, targetFolderId, root!)) {
+                setMoveError("Cannot move a parent folder into its own child.");
+                window.dispatchEvent(new CustomEvent('clearDragState'));
+                return;
+            }
+        }
+
         try {
             if (itemType === 'folder') {
                 await folderService.updateFolder({current_id: item, parent_id: targetFolderId});
@@ -248,19 +267,6 @@ export const Sidebar: React.FC = () => {
                     </Alert>
                 </div>
             )}
-
-            {/*// TODO: might want to remove this, or replace with something more subtle like JIRA has it, spinner is*/}
-            {/*relatively satisfying*/}
-            {/*{isMoving && (*/}
-            {/*    <div className="p-2">*/}
-            {/*        <Alert>*/}
-            {/*            <AlertDescription>*/}
-            {/*                Moving item...*/}
-            {/*            </AlertDescription>*/}
-            {/*        </Alert>*/}
-            {/*    </div>*/}
-            {/*)}*/}
-
 
             <div className="flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-500">
                 <span>NOTES</span>
