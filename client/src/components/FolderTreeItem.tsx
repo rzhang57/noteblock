@@ -26,6 +26,8 @@ interface TreeProps {
     onRenameNote: (noteId: string, newTitle: string) => void;
     onMoveItem: (item: string, targetFolderId: string, itemType: 'folder' | 'note') => void;
     isTemporary?: boolean;
+    setSidebarError: (message: string | null) => void;
+    refreshRoot: () => void;
 }
 
 export const FolderTreeItem: React.FC<TreeProps> = ({
@@ -39,7 +41,9 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                                         onRenameFolder,
                                                         onRenameNote,
                                                         onMoveItem,
-                                                        isTemporary = false
+                                                        isTemporary = false,
+                                                        setSidebarError,
+                                                        refreshRoot
                                                     }) => {
     const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
     const [isRenaming, setIsRenaming] = useState(isTemporary);
@@ -70,6 +74,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
     };
 
     const handleRenameSave = async (newName: string) => {
+        setSidebarError(null);
         if (isTemporary) {
             try {
                 if (isFolder(item)) {
@@ -79,15 +84,25 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                 }
             } catch (err) {
                 console.error("Failed to create item:", err);
+                setSidebarError("Failed to create item. Try again with a new name.");
             }
+            setIsRenaming(false);
+            refreshRoot();
+            return;
         }
 
-        if (isFolder(item)) {
-            onRenameFolder(item.id, newName);
-        } else {
-            onRenameNote(item.id, newName);
+        try {
+            if (isFolder(item)) {
+                onRenameFolder(item.id, newName);
+            } else {
+                onRenameNote(item.id, newName);
+            }
+        } catch (err) {
+            console.error("Failed to rename item:", err);
+            setSidebarError("Failed to rename item. Try again with a new name.");
         }
         setIsRenaming(false);
+        refreshRoot();
     };
 
     const handleRenameCancel = () => {
@@ -196,6 +211,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                     initialValue={item.name}
                                     onSave={handleRenameSave}
                                     onCancel={handleRenameCancel}
+                                    isTemporary={isTemporary}
                                 />
                             ) : (
                                 <span className="truncate text-sm">{item.name}</span>
@@ -234,6 +250,8 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                     onRenameNote={onRenameNote}
                                     onMoveItem={onMoveItem}
                                     isTemporary={f.id.includes("temp-")}
+                                    setSidebarError={setSidebarError}
+                                    refreshRoot={refreshRoot}
                                 />
                             ))}
                         {item.notes
@@ -253,6 +271,8 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                     onRenameNote={onRenameNote}
                                     onMoveItem={onMoveItem}
                                     isTemporary={n.id.includes("temp-")}
+                                    setSidebarError={setSidebarError}
+                                    refreshRoot={refreshRoot}
                                 />
                             ))}
                     </>
@@ -286,6 +306,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                         initialValue={item.title}
                         onSave={handleRenameSave}
                         onCancel={handleRenameCancel}
+                        isTemporary={isTemporary}
                     />
                 ) : (
                     <span className="truncate text-sm">{item.title}</span>

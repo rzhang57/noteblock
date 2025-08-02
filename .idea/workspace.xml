@@ -8,9 +8,7 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/components/FolderTreeItem.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/FolderTreeItem.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/components/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/Sidebar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/services/FolderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/services/FolderService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/db/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/db/db.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/routes/routes.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/routes/routes.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/file_system/InlineRename.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/file_system/InlineRename.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -259,7 +257,7 @@
       <workItem from="1754026465464" duration="8448000" />
       <workItem from="1754035651973" duration="247000" />
       <workItem from="1754069604337" duration="3693000" />
-      <workItem from="1754113316029" duration="2609000" />
+      <workItem from="1754113316029" duration="5115000" />
     </task>
     <servers />
   </component>

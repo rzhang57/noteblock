@@ -5,12 +5,14 @@ interface InlineRenameProps {
     initialValue: string;
     onSave: (newName: string) => void;
     onCancel: () => void;
+    isTemporary?: boolean;
 }
 
 export const InlineRename: React.FC<InlineRenameProps> = ({
                                                               initialValue,
                                                               onSave,
-                                                              onCancel
+                                                              onCancel,
+                                                              isTemporary = false
                                                           }) => {
     const [value, setValue] = useState(initialValue);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -31,11 +33,15 @@ export const InlineRename: React.FC<InlineRenameProps> = ({
     };
 
     const handleSave = () => {
-        const trimmed = value.trim();
-        if (trimmed && trimmed !== initialValue) {
-            onSave(trimmed);
+        if (isTemporary) {
+            onSave(value.trim());
         } else {
-            onCancel();
+            const trimmed = value.trim();
+            if (trimmed && trimmed !== initialValue) {
+                onSave(trimmed);
+            } else {
+                onCancel();
+            }
         }
     };
 

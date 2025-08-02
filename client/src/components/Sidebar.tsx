@@ -216,11 +216,13 @@ export const Sidebar: React.FC = () => {
             });
         } catch (err) {
             console.error("Failed to rename folder:", err);
+            setMoveError("Failed to rename folder. It might already exist in the target folder.");
             await refreshRoot();
         }
     };
 
     const handleRenameNote = async (noteId: string, newTitle: string) => {
+        setMoveError(null);
         setRoot(prev => {
             if (!prev) return prev;
             const updateNote = (folder: Folder): Folder => ({
@@ -238,6 +240,7 @@ export const Sidebar: React.FC = () => {
             setNoteTitle(newTitle);
         } catch (err) {
             console.error("Failed to rename note:", err);
+            setMoveError("Failed to rename note. It might already exist in the target folder.");
             await refreshRoot();
         }
     };
@@ -356,6 +359,8 @@ export const Sidebar: React.FC = () => {
                         onRenameNote={handleRenameNote}
                         onMoveItem={handleMoveItem}
                         isTemporary={child.id.includes('temp-folder-')}
+                        setSidebarError={setMoveError}
+                        refreshRoot={refreshRoot}
                     />
                 ))}
                 {root.notes?.map(note => (
@@ -372,6 +377,8 @@ export const Sidebar: React.FC = () => {
                         onRenameNote={handleRenameNote}
                         onMoveItem={handleMoveItem}
                         isTemporary={note.id.includes('temp-note-')}
+                        setSidebarError={setMoveError}
+                        refreshRoot={refreshRoot}
                     />
                 ))}
             </div>
