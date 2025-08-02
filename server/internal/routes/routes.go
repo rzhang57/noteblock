@@ -20,33 +20,18 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler, bh *api.BlockHandler) *gi
 
 	apiGroup := r.Group("/api")
 	{
-		// {
-		//   "name": {name of folder},
-		//   "parent_id": {parent}
-		// }
 		apiGroup.POST("/folders", fh.Create)
-		// returns {
-		//	"id":        folder.ID,
-		//	"name":      folder.Name,
-		//	"parent_id": folder.ParentID,
-		//	"notes":     folder.Notes,
-		//	"children":  folder.Children,`
-		// }
 		apiGroup.GET("/folders/:id", fh.Retrieve)
-		// {
-		//   "name": {name of folder},
-		//   "parent_id": {parent}
-		// }
 		apiGroup.PUT("/folders", fh.Update)
 		apiGroup.DELETE("/folders/:id", fh.Delete)
 
 		apiGroup.POST("/notes", nh.Create)
-		apiGroup.GET("/notes/:id", nh.Get) // retrieve blocks
+		apiGroup.GET("/notes/:id", nh.Get)
 		apiGroup.PUT("/notes/:id", nh.UpdateMetaData)
 		apiGroup.DELETE("/notes/:id", nh.Delete)
 
-		apiGroup.POST("/notes/:id/blocks", bh.Create)                 // add a block to a note
-		apiGroup.PUT("/notes/:id/blocks/:block_id", bh.UpdateContent) // update contentType/content of a block
+		apiGroup.POST("/notes/:id/blocks", bh.Create)
+		apiGroup.PUT("/notes/:id/blocks/:block_id", bh.UpdateContent)
 	}
 	return r
 }

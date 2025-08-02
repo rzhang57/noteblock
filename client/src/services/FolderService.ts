@@ -30,7 +30,7 @@ export interface FolderMoveRequest {
     parent_id: string | null;
 }
 
-export const folderService = {
+export const FolderService = {
 
     async createFolder(request: FolderCreateRequest): Promise<Folder> {
         return restClient.post<Folder>("/folders", request);

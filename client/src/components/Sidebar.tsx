@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {AlertCircle, FileText, FolderPlus, Plus, X} from "lucide-react";
 import {FolderTreeItem} from "./FolderTreeItem";
-import {folderService} from "@/services/FolderService";
+import {FolderService} from "@/services/FolderService";
 import type {Folder} from "@/services/FolderService";
 import {NoteService} from "@/services/NoteService.ts";
 import type {Note} from "@/types/Note.ts";
@@ -82,7 +82,7 @@ export const Sidebar: React.FC = () => {
 
     useEffect(() => {
         (async () => {
-            const rootFolder = await folderService.getFolder("root");
+            const rootFolder = await FolderService.getFolder("root");
             setRoot(rootFolder);
             setExpanded(new Set([rootFolder.id]));
         })();
@@ -90,7 +90,7 @@ export const Sidebar: React.FC = () => {
 
     // TODO: is there a better way to refresh UI without re-fetching the entire root every time?
     const refreshRoot = async () => {
-        const refreshed = await folderService.getFolder('root');
+        const refreshed = await FolderService.getFolder('root');
         setRoot(refreshed);
     };
 
@@ -102,36 +102,86 @@ export const Sidebar: React.FC = () => {
         });
     };
 
-    const handleNewFolder = async () => {
-        if (!root) return;
-        await folderService.createFolder({name: '', parent_id: root.id});
-        await refreshRoot();
-        setExpanded(prev => new Set([...prev, root.id]));
+    const createTemporaryNote = (parentFolderId: string | null) => {
+        const tempId = `temp-note-${Date.now()}`;
+        const tempNote: Note = {
+            id: tempId,
+            title: '',
+            folder_id: parentFolderId || root?.id || '',
+            blocks: [],
+        };
+
+        setRoot((prev) => {
+            if (!prev) return prev;
+
+            if (!parentFolderId) {
+                return {
+                    ...prev,
+                    notes: [...prev.notes, tempNote],
+                };
+            }
+
+            const updateFolder = (folder: Folder): Folder => {
+                if (folder.id === parentFolderId) {
+                    return {
+                        ...folder,
+                        notes: [...folder.notes, tempNote],
+                    };
+                }
+                return {
+                    ...folder,
+                    children: folder.children.map(updateFolder),
+                };
+            };
+
+            return updateFolder(prev);
+        });
     };
 
-    const handleNewNote = async () => {
-        if (!root) return;
-        await NoteService.createNote({title: '', folder_id: root.id});
-        await refreshRoot();
-    };
+    const createTemporaryFolder = (parentFolderId: string | null) => {
+        const tempId = `temp-folder-${Date.now()}`;
+        const tempFolder: Folder = {
+            id: tempId,
+            name: '',
+            parent_id: parentFolderId || root?.id || '',
+            children: [],
+            notes: [],
+        };
 
-    const handleCreateNote = async (parentFolderId: string) => {
-        setExpanded(prev => new Set([...prev, parentFolderId]));
-        await NoteService.createNote({title: '', folder_id: parentFolderId});
-        await refreshRoot();
-    };
+        setRoot((prev) => {
+            if (!prev) return prev;
 
-    const handleCreateFolder = async (parentFolderId: string) => {
-        setExpanded(prev => new Set([...prev, parentFolderId]));
-        await folderService.createFolder({name: '', parent_id: parentFolderId});
-        await refreshRoot();
+            if (!parentFolderId) {
+                return {
+                    ...prev,
+                    children: [...prev.children, tempFolder],
+                };
+            }
+
+            const updateFolder = (folder: Folder): Folder => {
+                if (folder.id === parentFolderId) {
+                    return {
+                        ...folder,
+                        children: [...folder.children, tempFolder],
+                    };
+                }
+                return {
+                    ...folder,
+                    children: folder.children.map(updateFolder),
+                };
+            };
+
+            return updateFolder(prev);
+        });
+
+        setExpanded((prev) => new Set([...prev, parentFolderId || root?.id || '']));
     };
 
     const handleDeleteItem = async (item: Folder | Note) => {
         try {
             const isFolder = Array.isArray((item as Folder).children);
             if (isFolder) {
-                await folderService.deleteFolder(item.id);
+                await FolderService.deleteFolder(item.id);
             } else {
                 if (item.id === selectedNoteId) {
                     setSelectedNoteId(null);
@@ -160,7 +210,7 @@ export const Sidebar: React.FC = () => {
             return updateFolder(prev);
         });
         try {
-            await folderService.updateFolder({
+            await FolderService.updateFolder({
                 current_id: folderId,
                 name: newName,
             });
@@ -216,7 +266,7 @@ export const Sidebar: React.FC = () => {
 
         try {
             if (itemType === 'folder') {
-                await folderService.updateFolder({current_id: item, parent_id: targetFolderId});
+                await FolderService.updateFolder({current_id: item, parent_id: targetFolderId});
             } else {
                 await NoteService.updateNote({id: item, folder_id: targetFolderId});
             }
@@ -284,8 +334,8 @@ export const Sidebar: React.FC = () => {
                     <AddMenu
                         open={showAddMenu}
                         onClose={() => setShowAddMenu(false)}
-                        onNewFolder={handleNewFolder}
-                        onNewNote={handleNewNote}
+                        onNewFolder={() => createTemporaryFolder(null)}
+                        onNewNote={() => createTemporaryNote(null)}
                         buttonRef={buttonRef}
                     />
                 </div>
@@ -299,12 +349,13 @@ export const Sidebar: React.FC = () => {
                         depth={0}
                         expanded={expanded}
                         onToggle={toggleFolder}
-                        onCreateNote={handleCreateNote}
-                        onCreateFolder={handleCreateFolder}
+                        onCreateNote={createTemporaryNote}
+                        onCreateFolder={createTemporaryFolder}
                         onDeleteItem={handleDeleteItem}
                         onRenameFolder={handleRenameFolder}
                         onRenameNote={handleRenameNote}
                         onMoveItem={handleMoveItem}
+                        isTemporary={child.id.includes('temp-folder-')}
                     />
                 ))}
                 {root.notes?.map(note => (
@@ -314,12 +365,13 @@ export const Sidebar: React.FC = () => {
                         depth={0}
                         expanded={expanded}
                         onToggle={toggleFolder}
-                        onCreateNote={handleCreateNote}
-                        onCreateFolder={handleCreateFolder}
+                        onCreateNote={createTemporaryNote}
+                        onCreateFolder={createTemporaryFolder}
                         onDeleteItem={handleDeleteItem}
                         onRenameFolder={handleRenameFolder}
                         onRenameNote={handleRenameNote}
                         onMoveItem={handleMoveItem}
+                        isTemporary={note.id.includes('temp-note-')}
                     />
                 ))}
             </div>

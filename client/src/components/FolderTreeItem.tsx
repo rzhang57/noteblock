@@ -5,13 +5,14 @@ import {
     ChevronRight,
     ChevronDown,
 } from "lucide-react";
-import type {Folder} from "@/services/FolderService";
+import {type Folder, FolderService} from "@/services/FolderService";
 import type {Note} from "@/types/Note";
 import {cn} from "@/lib/utils";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {ContextMenu} from "./file_system/ContextMenu";
 import {InlineRename} from "./file_system/InlineRename";
 import {useState, type DragEvent, useEffect} from "react";
+import {NoteService} from "@/services/NoteService.ts";
 
 interface TreeProps {
     item: Folder | Note;
@@ -24,6 +25,7 @@ interface TreeProps {
     onRenameFolder: (folderId: string, newName: string) => void;
     onRenameNote: (noteId: string, newTitle: string) => void;
     onMoveItem: (item: string, targetFolderId: string, itemType: 'folder' | 'note') => void;
+    isTemporary?: boolean;
 }
 
 export const FolderTreeItem: React.FC<TreeProps> = ({
@@ -36,10 +38,11 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                                         onDeleteItem,
                                                         onRenameFolder,
                                                         onRenameNote,
-                                                        onMoveItem
+                                                        onMoveItem,
+                                                        isTemporary = false
                                                     }) => {
     const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
-    const [isRenaming, setIsRenaming] = useState(false);
+    const [isRenaming, setIsRenaming] = useState(isTemporary);
     const [isDragOver, setIsDragOver] = useState(false);
 
     useEffect(() => {
@@ -66,7 +69,19 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
         setIsRenaming(true);
     };
 
-    const handleRenameSave = (newName: string) => {
+    const handleRenameSave = async (newName: string) => {
+        if (isTemporary) {
+            try {
+                if (isFolder(item)) {
+                    await FolderService.createFolder({name: newName, parent_id: item.parent_id});
+                } else {
+                    await NoteService.createNote({title: newName, folder_id: item.folder_id});
+                }
+            } catch (err) {
+                console.error("Failed to create item:", err);
+            }
+        }
+
         if (isFolder(item)) {
             onRenameFolder(item.id, newName);
         } else {
@@ -103,7 +118,6 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
     const handleDragLeave = (e: DragEvent) => {
         if (!isFolder(item)) return;
 
-        // Only reset if we're actually leaving the element (not entering a child)
         const target = e.currentTarget as HTMLElement;
         if (!target) return;
 
@@ -219,6 +233,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                     onRenameFolder={onRenameFolder}
                                     onRenameNote={onRenameNote}
                                     onMoveItem={onMoveItem}
+                                    isTemporary={f.id.includes("temp-")}
                                 />
                             ))}
                         {item.notes
@@ -237,6 +252,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                                     onRenameFolder={onRenameFolder}
                                     onRenameNote={onRenameNote}
                                     onMoveItem={onMoveItem}
+                                    isTemporary={n.id.includes("temp-")}
                                 />
                             ))}
                     </>
