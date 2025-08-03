@@ -102,7 +102,6 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
             setSidebarError("Failed to rename item. Try again with a new name.");
         }
         setIsRenaming(false);
-        refreshRoot();
     };
 
     const handleRenameCancel = () => {

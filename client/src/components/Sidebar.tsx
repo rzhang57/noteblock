@@ -136,6 +136,7 @@ export const Sidebar: React.FC = () => {
 
             return updateFolder(prev);
         });
+        setExpanded((prev) => new Set([...prev, parentFolderId || root?.id || '']));
     };
 
     const createTemporaryFolder = (parentFolderId: string | null) => {
