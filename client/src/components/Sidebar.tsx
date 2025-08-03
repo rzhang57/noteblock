@@ -217,8 +217,8 @@ export const Sidebar: React.FC = () => {
         } catch (err) {
             console.error("Failed to rename folder:", err);
             setMoveError("Failed to rename folder. It might already exist in the target folder.");
-            await refreshRoot();
         }
+        await refreshRoot();
     };
 
     const handleRenameNote = async (noteId: string, newTitle: string) => {
