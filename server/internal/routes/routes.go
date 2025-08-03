@@ -27,7 +27,7 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler, bh *api.BlockHandler) *gi
 
 		apiGroup.POST("/notes", nh.Create)
 		apiGroup.GET("/notes/:id", nh.Get)
-		apiGroup.PUT("/notes/:id", nh.UpdateMetaData)
+		apiGroup.PUT("/notes/:id", nh.Update)
 		apiGroup.DELETE("/notes/:id", nh.Delete)
 
 		apiGroup.POST("/notes/:id/blocks", bh.Create)

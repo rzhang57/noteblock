@@ -16,6 +16,9 @@ async function createTextBlock(noteId: string, index: number): Promise<Block> {
 
 export function MainContentPanel() {
     const {selectedNoteId, noteTitle} = useNoteContext();
+    // local note state that we can use to reorder blocks and update ui without refetching
+    // this note object will be sent to the server when blocks are reordered in an API request to update the note in its entirety
+    // update the "update" api endpoint to handle an optional blocks array
     const [note, setNote] = useState<Note | null>(null);
     const [loading, setLoading] = useState(false);
 

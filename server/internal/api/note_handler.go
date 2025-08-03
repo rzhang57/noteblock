@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"net/http"
 	"regexp"
 	"server/internal/api/mapper"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 )
 
+// TODO: this handler is too fat, consider moving more down to services
 type NoteHandler struct {
 	Svc      *service.NoteService
 	BlockSvc *service.BlockService
@@ -83,15 +85,16 @@ func (h *NoteHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, dtoNote)
 }
 
-func (h *NoteHandler) UpdateMetaData(c *gin.Context) {
+func (h *NoteHandler) Update(c *gin.Context) {
 	id := c.Param("id")
-	if id == "" || &id == nil {
+	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing note ID"})
 		return
 	}
 	var body struct {
-		Title    *string `json:"title"`
-		FolderID *string `json:"folder_id"`
+		Title    *string        `json:"title"`
+		FolderID *string        `json:"folder_id"`
+		Blocks   *[]model.Block `json:"blocks"`
 	}
 	err := ValidateAndSetJsonBody(&body, c)
 	if err != nil {
@@ -113,6 +116,23 @@ func (h *NoteHandler) UpdateMetaData(c *gin.Context) {
 		targetFolderId = *body.FolderID
 	}
 
+	if body.Blocks != nil {
+		// database logic in handler = bad
+		err := h.BlockSvc.DB.Transaction(func(tx *gorm.DB) error {
+			for _, block := range *body.Blocks {
+				if err := tx.Model(&model.Block{}).Where("id = ? AND note_id = ?", block.ID, id).
+					Update("index", block.Index).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update blocks"})
+			return
+		}
+	}
+
 	folder, err := h.Svc.ListNotesByFolderId(&targetFolderId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve notes in new folder, double check id"})
@@ -131,10 +151,8 @@ func (h *NoteHandler) UpdateMetaData(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"id": data.ID, "title": data.Title, "folder_id": data.FolderID})
+	c.JSON(http.StatusOK, gin.H{"id": data.ID, "title": data.Title, "folder_id": data.FolderID, "message": "Note and blocks updated successfully"})
 }
-
-// TODO: at a note level, reorder all blocks in a note (batch update)
 
 func generateUniqueNoteName(folders []model.Note) string {
 	base := "New Note"

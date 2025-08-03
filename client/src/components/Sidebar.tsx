@@ -241,8 +241,8 @@ export const Sidebar: React.FC = () => {
         } catch (err) {
             console.error("Failed to rename note:", err);
             setMoveError("Failed to rename note. It might already exist in the target folder.");
-            await refreshRoot();
         }
+        await refreshRoot();
     };
 
     const handleMoveItem = async (item: string, targetFolderId: string, itemType: 'folder' | 'note') => {
