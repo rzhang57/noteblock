@@ -5,9 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e8a2b7e3-4e62-4bce-aa45-89f39c77be53" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/client/src/components/blocks/SortableBlock.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/FolderTreeItem.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/FolderTreeItem.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/Sidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/ContentPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/ContentPanel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/blocks/TextBlock.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/blocks/block_types/TextBlock.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/services/NoteService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/services/NoteService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/cmd/noteblock/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/cmd/noteblock/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/internal/api/mapper/mapper.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/api/mapper/mapper.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/internal/api/note_handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/api/note_handler.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -127,6 +134,7 @@
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\client\src\components" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\client\src\components\blocks\block_types" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\server\internal" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\server\cmd\main" />
@@ -183,8 +191,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-jdk-9f38398b9061-39b83d9b5494-intellij.indexing.shared.core-IU-241.18034.62" />
-        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-IU-241.18034.62" />
+        <option value="bundled-jdk-9f38398b9061-39b83d9b5494-intellij.indexing.shared.core-IU-241.19416.15" />
+        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-IU-241.19416.15" />
       </set>
     </attachedChunks>
   </component>
@@ -257,7 +265,10 @@
       <workItem from="1754035651973" duration="247000" />
       <workItem from="1754069604337" duration="3693000" />
       <workItem from="1754113316029" duration="5115000" />
-      <workItem from="1754197740421" duration="5558000" />
+      <workItem from="1754197740421" duration="5688000" />
+      <workItem from="1754358509301" duration="983000" />
+      <workItem from="1754361102369" duration="2229000" />
+      <workItem from="1754455289159" duration="3748000" />
     </task>
     <servers />
   </component>

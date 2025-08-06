@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"server/internal/api/mapper"
 	"server/internal/model"
+	"server/internal/model/dto"
 	"server/internal/service"
 	"strconv"
 )
@@ -92,9 +93,9 @@ func (h *NoteHandler) Update(c *gin.Context) {
 		return
 	}
 	var body struct {
-		Title    *string        `json:"title"`
-		FolderID *string        `json:"folder_id"`
-		Blocks   *[]model.Block `json:"blocks"`
+		Title    *string         `json:"title"`
+		FolderID *string         `json:"folder_id"`
+		Blocks   *[]dto.BlockDTO `json:"blocks"`
 	}
 	err := ValidateAndSetJsonBody(&body, c)
 	if err != nil {
@@ -117,7 +118,7 @@ func (h *NoteHandler) Update(c *gin.Context) {
 	}
 
 	if body.Blocks != nil {
-		// database logic in handler = bad
+		// TODO: database logic in handler = bad
 		err := h.BlockSvc.DB.Transaction(func(tx *gorm.DB) error {
 			for _, block := range *body.Blocks {
 				if err := tx.Model(&model.Block{}).Where("id = ? AND note_id = ?", block.ID, id).

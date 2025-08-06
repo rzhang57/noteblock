@@ -7,10 +7,10 @@ import {
     quotePlugin
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
-import {useNoteContext} from "@/context/NoteContext";
-import {NoteService} from "@/services/NoteService";
+import {useNoteContext} from "@/context/NoteContext.tsx";
+import {NoteService} from "@/services/NoteService.ts";
 import {useState} from "react";
-import type {Block, TextContent} from "@/types/Note";
+import type {Block, TextContent} from "@/types/Note.ts";
 
 export function TextBlock({block}: { block: Block }) {
     const {selectedNoteId} = useNoteContext();

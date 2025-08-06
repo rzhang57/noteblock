@@ -17,7 +17,7 @@ func main() {
 
 	// handlers - controllers
 	fHandler := &api.FolderHandler{Svc: fSvc}
-	nHandler := &api.NoteHandler{Svc: nSvc}
+	nHandler := &api.NoteHandler{Svc: nSvc, BlockSvc: bSvc}
 	bHandler := &api.BlockHandler{Svc: bSvc}
 
 	r := routes.Setup(fHandler, nHandler, bHandler)

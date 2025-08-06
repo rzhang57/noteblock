@@ -10,6 +10,7 @@ export interface NoteUpdateRequest {
     id: string;
     title?: string;
     folder_id?: string;
+    blocks?: Block[];
 }
 
 export interface BlockCreateRequest {
@@ -33,7 +34,11 @@ export const NoteService = {
     },
 
     async updateNote(request: NoteUpdateRequest): Promise<Note> {
-        return restClient.put<Note>(`/notes/${request.id}`, {title: request.title, folder_id: request.folder_id});
+        return restClient.put<Note>(`/notes/${request.id}`, {
+            title: request.title,
+            folder_id: request.folder_id,
+            blocks: request.blocks
+        });
     },
 
     async deleteNote(id: string): Promise<void> {

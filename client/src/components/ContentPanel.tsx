@@ -2,7 +2,23 @@ import {useEffect, useState} from "react";
 import {useNoteContext} from "@/context/NoteContext";
 import {NoteService} from "@/services/NoteService";
 import type {Block, Note} from "@/types/Note.ts";
-import {TextBlock} from "@/components/blocks/TextBlock.tsx";
+import {TextBlock} from "@/components/blocks/block_types/TextBlock.tsx";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent, DragOverlay, type DragStartEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {SortableBlock} from "@/components/blocks/SortableBlock.tsx";
 
 async function createTextBlock(noteId: string, index: number): Promise<Block> {
     const blockRequest = {
@@ -16,11 +32,16 @@ async function createTextBlock(noteId: string, index: number): Promise<Block> {
 
 export function MainContentPanel() {
     const {selectedNoteId, noteTitle} = useNoteContext();
-    // local note state that we can use to reorder blocks and update ui without refetching
-    // this note object will be sent to the server when blocks are reordered in an API request to update the note in its entirety
-    // update the "update" api endpoint to handle an optional blocks array
     const [note, setNote] = useState<Note | null>(null);
     const [loading, setLoading] = useState(false);
+    const [activeBlock, setActiveBlock] = useState<Block | null>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
     useEffect(() => {
         setLoading(true);
@@ -47,13 +68,57 @@ export function MainContentPanel() {
     const handleAddTextBlock = async () => {
         if (!note || !selectedNoteId) return;
 
-        // TODO: handle some cases where you cannot create a new block if the newest block is empty
         try {
             await createTextBlock(selectedNoteId, note.blocks.length);
             const updatedNote = await NoteService.getNote(selectedNoteId);
             setNote(updatedNote);
         } catch (err) {
             console.error("Failed to add text block:", err);
+        }
+    };
+
+    const handleDragStart = (event: DragStartEvent) => {
+        const {active} = event;
+        const block = note?.blocks.find(b => b.id === active.id) || null;
+        setActiveBlock(block);
+    };
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const {active, over} = event;
+        setActiveBlock(null);
+
+        if (!over || !note || !selectedNoteId) return;
+
+        if (active.id !== over.id) {
+            const sortedBlocks = [...note.blocks].sort((a, b) => a.index - b.index);
+
+            const oldIndex = sortedBlocks.findIndex(block => block.id === active.id);
+            const newIndex = sortedBlocks.findIndex(block => block.id === over.id);
+
+            const reorderedBlocks = arrayMove(sortedBlocks, oldIndex, newIndex);
+
+            const blocksWithNewIndices = reorderedBlocks.map((block, index) => ({
+                ...block,
+                index: index
+            }));
+
+            setNote(prev => prev ? {
+                ...prev,
+                blocks: blocksWithNewIndices
+            } : null);
+
+            try {
+                await NoteService.updateNote({
+                    id: selectedNoteId,
+                    title: note.title,
+                    folder_id: note.folder_id,
+                    blocks: blocksWithNewIndices
+                });
+            } catch (err) {
+                console.error("Failed to reorder blocks:", err);
+                const updatedNote = await NoteService.getNote(selectedNoteId);
+                setNote(updatedNote);
+            }
         }
     };
 
@@ -65,34 +130,57 @@ export function MainContentPanel() {
         return <div className="p-6 text-gray-500">Loading note...</div>;
     }
 
+    const sortedBlocks = note?.blocks ? [...note.blocks].sort((a, b) => a.index - b.index) : [];
+
     return (
         note && (
             <div className="p-6 space-y-4">
                 <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
                 <button
-                    className="px-4 py-2 bg-blue-500 text-white rounded"
+                    className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
                     onClick={handleAddTextBlock}
                 >
                     Add Text Block
                 </button>
-                {note.blocks
-                    .sort((a: Block, b: Block) => a.index - b.index)
-                    .map((block: Block) => {
-                        switch (block.type) {
-                            case "text":
-                                return <TextBlock block={block} key={block.id}/>;
-                            case "image":
-                                return <p key={block.id}>image</p>;
-                            case "canvas":
-                                return <p key={block.id}>canvas</p>;
-                            default:
-                                return (
-                                    <div key={block.id} className="text-red-600">
-                                        Unknown block type: {block.type}
-                                    </div>
-                                );
-                        }
-                    })}
+
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                    onDragStart={handleDragStart}
+                >
+                    <SortableContext
+                        items={sortedBlocks.map(block => block.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <div className="space-y-2">
+                            {sortedBlocks.map((block: Block) => {
+                                switch (block.type) {
+                                    case "text":
+                                        return (
+                                            <SortableBlock blockId={block.id}>
+                                                <TextBlock key={block.id} block={block}/>
+                                            </SortableBlock>
+                                        );
+                                    case "image":
+                                        return <p key={block.id}>image</p>;
+                                    case "canvas":
+                                        return <p key={block.id}>canvas</p>;
+                                    default:
+                                        return (
+                                            <div key={block.id} className="text-red-600">
+                                                Unknown block type: {block.type}
+                                            </div>
+                                        );
+                                }
+                            })}
+                        </div>
+                    </SortableContext>
+
+                    <DragOverlay>
+                        {activeBlock?.type === "text" && <TextBlock block={activeBlock}/>}
+                    </DragOverlay>
+                </DndContext>
             </div>
         )
     );
