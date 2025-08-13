@@ -19,10 +19,11 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import {SortableBlock} from "@/components/blocks/SortableBlock.tsx";
+import {CanvasBlock} from "@/components/blocks/block_types/CanvasBlock.tsx";
 
-async function createTextBlock(noteId: string, index: number): Promise<Block> {
+async function createBlock(type: "text" | "canvas" | "image", noteId: string, index: number): Promise<Block> {
     const blockRequest = {
-        type: "text" as const,
+        type: type,
         index,
         content: ""
     };
@@ -69,7 +70,19 @@ export function MainContentPanel() {
         if (!note || !selectedNoteId) return;
 
         try {
-            await createTextBlock(selectedNoteId, note.blocks.length);
+            await createBlock("text", selectedNoteId, note.blocks.length);
+            const updatedNote = await NoteService.getNote(selectedNoteId);
+            setNote(updatedNote);
+        } catch (err) {
+            console.error("Failed to add text block:", err);
+        }
+    };
+
+    const handleAddCanvasBlock = async () => {
+        if (!note || !selectedNoteId) return;
+
+        try {
+            await createBlock("canvas", selectedNoteId, note.blocks.length);
             const updatedNote = await NoteService.getNote(selectedNoteId);
             setNote(updatedNote);
         } catch (err) {
@@ -142,6 +155,12 @@ export function MainContentPanel() {
                 >
                     Add Text Block
                 </button>
+                <button
+                    className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+                    onClick={handleAddCanvasBlock}
+                >
+                    Add Canvas Block
+                </button>
 
                 <DndContext
                     sensors={sensors}
@@ -165,7 +184,11 @@ export function MainContentPanel() {
                                     case "image":
                                         return <p key={block.id}>image</p>;
                                     case "canvas":
-                                        return <p key={block.id}>canvas</p>;
+                                        return (
+                                            <SortableBlock blockId={block.id}>
+                                                <CanvasBlock key={block.id} block={block}/>
+                                            </SortableBlock>
+                                        );
                                     default:
                                         return (
                                             <div key={block.id} className="text-red-600">
