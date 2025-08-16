@@ -172,7 +172,7 @@ export function MainContentPanel() {
                         items={sortedBlocks.map(block => block.id)}
                         strategy={verticalListSortingStrategy}
                     >
-                        <div className="space-y-2">
+                        <div className="space-y-2 flex flex-col w-full">
                             {sortedBlocks.map((block: Block) => {
                                 switch (block.type) {
                                     case "text":
@@ -185,9 +185,11 @@ export function MainContentPanel() {
                                         return <p key={block.id}>image</p>;
                                     case "canvas":
                                         return (
-                                            <SortableBlock blockId={block.id}>
-                                                <CanvasBlock key={block.id} block={block}/>
-                                            </SortableBlock>
+                                            <div key={block.id} className="flex justify-center">
+                                                <SortableBlock blockId={block.id}>
+                                                    <CanvasBlock key={block.id} block={block}/>
+                                                </SortableBlock>
+                                            </div>
                                         );
                                     default:
                                         return (
@@ -202,6 +204,7 @@ export function MainContentPanel() {
 
                     <DragOverlay>
                         {activeBlock?.type === "text" && <TextBlock block={activeBlock}/>}
+                        {activeBlock?.type === "canvas" && <CanvasBlock block={activeBlock}/>}
                     </DragOverlay>
                 </DndContext>
             </div>
