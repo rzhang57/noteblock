@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {useNoteContext} from "@/context/NoteContext";
 import {NoteService} from "@/services/NoteService";
 import type {Block, Note} from "@/types/Note.ts";
@@ -20,6 +20,7 @@ import {
 } from '@dnd-kit/sortable';
 import {SortableBlock} from "@/components/blocks/SortableBlock.tsx";
 import {CanvasBlock} from "@/components/blocks/block_types/CanvasBlock.tsx";
+import {ChevronDownIcon, DocumentTextIcon, PhotoIcon, RectangleGroupIcon} from '@heroicons/react/24/outline';
 
 async function createBlock(type: "text" | "canvas" | "image", noteId: string, index: number): Promise<Block> {
     const blockRequest = {
@@ -36,6 +37,8 @@ export function MainContentPanel() {
     const [note, setNote] = useState<Note | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeBlock, setActiveBlock] = useState<Block | null>(null);
+    const [showAddMenu, setShowAddMenu] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -66,27 +69,31 @@ export function MainContentPanel() {
         fetchNote();
     }, [selectedNoteId]);
 
-    const handleAddTextBlock = async () => {
-        if (!note || !selectedNoteId) return;
+    const getDropdownPosition = (): 'up' | 'down' => {
+        if (!dropdownRef.current) return 'down';
 
-        try {
-            await createBlock("text", selectedNoteId, note.blocks.length);
-            const updatedNote = await NoteService.getNote(selectedNoteId);
-            setNote(updatedNote);
-        } catch (err) {
-            console.error("Failed to add text block:", err);
-        }
+        const rect = dropdownRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const spaceBelow = viewportHeight - rect.bottom;
+        const dropdownHeight = 200; // Approximate height of dropdown
+
+        return spaceBelow >= dropdownHeight ? 'down' : 'up';
     };
 
-    const handleAddCanvasBlock = async () => {
+    const handleToggleMenu = () => {
+        setShowAddMenu(!showAddMenu);
+    };
+
+    const handleAddBlock = async (type: "text" | "canvas" | "image") => {
         if (!note || !selectedNoteId) return;
 
         try {
-            await createBlock("canvas", selectedNoteId, note.blocks.length);
+            await createBlock(type, selectedNoteId, note.blocks.length);
             const updatedNote = await NoteService.getNote(selectedNoteId);
             setNote(updatedNote);
+            setShowAddMenu(false);
         } catch (err) {
-            console.error("Failed to add text block:", err);
+            console.error(`Failed to add ${type} block:`, err);
         }
     };
 
@@ -161,18 +168,6 @@ export function MainContentPanel() {
         note && (
             <div className="p-6 space-y-4">
                 <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
-                <button
-                    className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
-                    onClick={handleAddTextBlock}
-                >
-                    Add Text Block
-                </button>
-                <button
-                    className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
-                    onClick={handleAddCanvasBlock}
-                >
-                    Add Canvas Block
-                </button>
 
                 <DndContext
                     sensors={sensors}
@@ -219,6 +214,69 @@ export function MainContentPanel() {
                         {activeBlock?.type === "canvas" && <CanvasBlock block={activeBlock}/>}
                     </DragOverlay>
                 </DndContext>
+
+                <div className="flex justify-center mt-8">
+                    <div className="relative" ref={dropdownRef}>
+                        <button
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            onClick={handleToggleMenu}
+                        >
+                            <span>Add Block</span>
+                            <ChevronDownIcon className="ml-2 h-4 w-4"/>
+                        </button>
+
+                        {showAddMenu && (
+                            <>
+                                <div
+                                    className={`absolute w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 ${
+                                        getDropdownPosition() === 'up'
+                                            ? 'bottom-full mb-2'
+                                            : 'top-full mt-2'
+                                    }`}>
+                                    <div className="py-1">
+                                        <button
+                                            className="flex items-center w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                                            onClick={() => handleAddBlock("text")}
+                                        >
+                                            <DocumentTextIcon className="h-5 w-5 mr-3 text-gray-500"/>
+                                            <div>
+                                                <div className="font-medium">Text Block</div>
+                                                <div className="text-sm text-gray-500">Add formatted text content</div>
+                                            </div>
+                                        </button>
+
+                                        <button
+                                            className="flex items-center w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                                            onClick={() => handleAddBlock("canvas")}
+                                        >
+                                            <RectangleGroupIcon className="h-5 w-5 mr-3 text-gray-500"/>
+                                            <div>
+                                                <div className="font-medium">Canvas Block</div>
+                                                <div className="text-sm text-gray-500">Add drawing or diagram</div>
+                                            </div>
+                                        </button>
+
+                                        <button
+                                            className="flex items-center w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                                            onClick={() => handleAddBlock("image")}
+                                        >
+                                            <PhotoIcon className="h-5 w-5 mr-3 text-gray-500"/>
+                                            <div>
+                                                <div className="font-medium">Image Block</div>
+                                                <div className="text-sm text-gray-500">Upload or embed images</div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div
+                                    className="fixed inset-0 z-0"
+                                    onClick={() => setShowAddMenu(false)}
+                                />
+                            </>
+                        )}
+                    </div>
+                </div>
             </div>
         )
     );
