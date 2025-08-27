@@ -65,10 +65,25 @@ interface CanvasContent {
     strokes: Stroke[];
     width: number;
     height: number;
+    isLocked?: boolean;
 }
 
 export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
     const {selectedNoteId} = useNoteContext();
+
+    // sizing
+    const MIN_W = 800;
+    const MIN_H = 450;
+    const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({
+        width: MIN_W,
+        height: MIN_H
+    });
+    const [maxWidth, setMaxWidth] = useState<number>(Infinity);
+    const [maxHeight, setMaxHeight] = useState<number>(Infinity);
+    const boundsRef = useRef<HTMLDivElement | null>(null);
+    const [isLocked, setIsLocked] = useState(false);
+
+    // drawing state
     const [isDrawing, setIsDrawing] = useState(false);
     const [strokes, setStrokes] = useState<Stroke[]>([]);
     const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
@@ -96,28 +111,75 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
         visible: false
     });
 
-    const canvasWidth = 800;
-    const canvasHeight = 450;
+    // resize handle state
+    const [isResizing, setIsResizing] = useState(false);
+    const resizeStateRef = useRef<{
+        startX: number;
+        startY: number;
+        startW: number;
+        startH: number;
+    } | null>(null);
 
+    // load content
     useEffect(() => {
         if (!block.content) {
             setStrokes([]);
+            setCanvasSize({width: MIN_W, height: MIN_H});
+            setIsLocked(false);
             return;
         }
         try {
             let parsed: any = block.content;
             if (typeof block.content === 'string') parsed = JSON.parse(block.content);
+
             if (parsed && Array.isArray(parsed.strokes)) setStrokes(parsed.strokes);
             else setStrokes([]);
+
+            const w = typeof parsed?.width === 'number' ? parsed.width : MIN_W;
+            const h = typeof parsed?.height === 'number' ? parsed.height : MIN_H;
+            setCanvasSize({
+                width: Math.max(MIN_W, w),
+                height: Math.max(MIN_H, h)
+            });
+
+            setIsLocked(!!parsed?.isLocked);
         } catch {
             setStrokes([]);
+            setCanvasSize({width: MIN_W, height: MIN_H});
+            setIsLocked(false);
         }
     }, [block.content]);
 
+    // observe available space from content panel to clamp max dimensions
+    useEffect(() => {
+        if (!boundsRef.current) return;
+
+        const el = boundsRef.current;
+        const ro = new ResizeObserver(entries => {
+            for (const entry of entries) {
+                const w = Math.floor(entry.contentRect.width);
+                const h = Math.floor(entry.contentRect.height);
+                setMaxWidth(w);
+                setMaxHeight(h);
+
+                // clamp current size if needed
+                setCanvasSize(prev => {
+                    const clampedW = Math.min(Math.max(prev.width, MIN_W), w);
+                    const clampedH = Math.min(Math.max(prev.height, MIN_H), h);
+                    return (prev.width !== clampedW || prev.height !== clampedH)
+                        ? {width: clampedW, height: clampedH}
+                        : prev;
+                });
+            }
+        });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+
     const persist = useCallback(
-        async (data: Stroke[]) => {
+        async (data: Stroke[], width: number, height: number, locked: boolean) => {
             if (!selectedNoteId) return;
-            const payload: CanvasContent = {strokes: data, width: canvasWidth, height: canvasHeight};
+            const payload: CanvasContent = {strokes: data, width, height, isLocked: locked};
             try {
                 await NoteService.updateBlock(selectedNoteId, block.id, {
                     type: 'canvas',
@@ -133,12 +195,12 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
     useEffect(() => {
         if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = window.setTimeout(() => {
-            persist(strokes);
+            persist(strokes, canvasSize.width, canvasSize.height, isLocked);
         }, 600);
         return () => {
             if (saveTimeoutRef.current) window.clearTimeout(saveTimeoutRef.current);
         };
-    }, [strokes, persist]);
+    }, [strokes, canvasSize, isLocked, persist]);
 
     const startFreehand = (x: number, y: number): FreehandStroke => ({
         id: `stroke_${Date.now()}_${Math.random()}`,
@@ -197,7 +259,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
     };
 
     const handleMouseDown = (e: any) => {
-        if (!stageRef.current) return;
+        if (!stageRef.current || isResizing) return;
         const stage = e.target.getStage();
         const pos = stage.getPointerPosition();
         if (!pos) return;
@@ -274,9 +336,6 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
             return;
         }
         const nodes: any[] = [];
-        selectedIds.forEach(() => {
-        });
-
         strokes.forEach(s => {
             const node = stageRef.current.findOne(`#${s.id}`);
             if (!node) return;
@@ -326,14 +385,14 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
         setCurrentStroke(null);
         setSelectedIds([]);
         setEditingTextId(null);
-        persist([]);
+        persist([], canvasSize.width, canvasSize.height, isLocked);
     };
 
     const undoLastStroke = () => {
         setStrokes(prev => {
             const next = prev.slice(0, -1);
             setSelectedIds(ids => ids.filter(id => next.find(s => s.id === id)));
-            persist(next);
+            persist(next, canvasSize.width, canvasSize.height, isLocked);
             return next;
         });
     };
@@ -351,8 +410,6 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
 
     useEffect(() => {
         const handleKey = (e: KeyboardEvent) => {
-
-
             if (editingTextId) {
                 if (e.key === 'Escape') {
                     finalizeTextEdit();
@@ -391,7 +448,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
             if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length) {
                 setStrokes(prev => {
                     const next = prev.filter(s => !selectedIds.includes(s.id));
-                    persist(next);
+                    persist(next, canvasSize.width, canvasSize.height, isLocked);
                     return next;
                 });
                 setSelectedIds([]);
@@ -405,7 +462,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-    }, [selectedIds, editingTextId, persist]);
+    }, [selectedIds, editingTextId, persist, canvasSize.width, canvasSize.height]);
 
     const finalizeTextEdit = () => {
         if (!editingTextId) return;
@@ -478,246 +535,425 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
 
     const isSelected = (id: string) => selectedIds.includes(id);
 
+    // resize handlers
+    useEffect(() => {
+        const onMove = (e: MouseEvent) => {
+            if (!isResizing || !resizeStateRef.current) return;
+            const dx = e.clientX - resizeStateRef.current.startX;
+            const dy = e.clientY - resizeStateRef.current.startY;
+
+            const nextW = Math.min(
+                Math.max(MIN_W, resizeStateRef.current.startW + dx),
+                isFinite(maxWidth) ? maxWidth : resizeStateRef.current.startW + dx
+            );
+
+            const nextH = Math.min(
+                Math.max(MIN_H, resizeStateRef.current.startH + dy),
+                isFinite(maxHeight) ? maxHeight : resizeStateRef.current.startH + dy
+            );
+
+            setCanvasSize({width: nextW, height: nextH});
+        };
+        const onUp = () => {
+            if (isResizing) {
+                setIsResizing(false);
+                resizeStateRef.current = null;
+            }
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        return () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+        };
+    }, [isResizing, maxWidth, maxHeight]);
+
+    const beginResize = (e: React.MouseEvent) => {
+        if (isLocked) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        setIsResizing(true);
+        resizeStateRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            startW: canvasSize.width,
+            startH: canvasSize.height
+        };
+    };
+
     return (
-        <div className="border rounded-lg p-4 bg-white inline-block">
-            <div className="flex flex-wrap items-center gap-3 mb-4 p-2 bg-gray-50 rounded">
-                <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium">Tool:</label>
-                    <select
-                        className="border rounded px-2 py-1 text-sm"
-                        value={tool}
-                        onChange={e => {
-                            if (editingTextId) finalizeTextEdit();
-                            setTool(e.target.value as Tool);
-                            setSelectedIds([]);
-                        }}
-                    >
-                        <option value="pen">Pen</option>
-                        <option value="eraser">Eraser</option>
-                        <option value="rect">Rectangle</option>
-                        <option value="ellipse">Ellipse</option>
-                        <option value="text">Text</option>
-                        <option value="select">Select</option>
-                    </select>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium">Color:</label>
-                    <input
-                        type="color"
-                        value={strokeColor}
-                        disabled={tool === 'eraser'}
-                        onChange={e => setStrokeColor(e.target.value)}
-                        className="w-8 h-8 border rounded cursor-pointer disabled:opacity-40"
-                    />
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium">Size:</label>
-                    <input
-                        type="range"
-                        min="1"
-                        max="40"
-                        value={strokeWidth}
-                        onChange={e => setStrokeWidth(Number(e.target.value))}
-                        className="w-24"
-                    />
-                    <span className="text-sm w-6 text-center">{strokeWidth}</span>
-                </div>
-
+        <div className="border rounded-lg p-4 bg-white inline-block w-full">
+            {/* Lock toggle outside the main toolbar */}
+            <div className="flex justify-end mb-2">
                 <button
-                    onClick={undoLastStroke}
-                    disabled={strokes.length === 0}
-                    className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 disabled:opacity-50 rounded"
+                    onClick={() => setIsLocked(!isLocked)}
+                    className={`p-2 rounded transition-colors ${
+                        isLocked
+                            ? 'bg-red-100 hover:bg-red-200 text-red-700'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                    }`}
+                    title={isLocked ? "Unlock canvas" : "Lock canvas"}
                 >
-                    Undo
-                </button>
-
-                <button
-                    onClick={clearCanvas}
-                    disabled={strokes.length === 0}
-                    className="px-3 py-1 text-sm bg-red-200 hover:bg-red-300 disabled:opacity-50 rounded"
-                >
-                    Clear
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        {isLocked ? (
+                            // Locked icon
+                            <path
+                                d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/>
+                        ) : (
+                            // Unlocked icon
+                            <path
+                                d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6H9c0-1.66 1.34-3 3-3s3 1.34 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/>
+                        )}
+                    </svg>
                 </button>
             </div>
 
-            <div
-                className="border border-gray-300 rounded overflow-hidden"
-                style={{width: canvasWidth, height: canvasHeight, position: 'relative'}}
-            >
-                <Stage
-                    width={canvasWidth}
-                    height={canvasHeight}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseLeave}
-                    ref={stageRef}
-                    className="cursor-crosshair select-none"
-                >
-                    <Layer>
-                        {strokes.map(stroke => {
-                            if (stroke.tool === 'pen' || stroke.tool === 'eraser') {
-                                return (
-                                    <Line
-                                        id={stroke.id}
-                                        key={stroke.id}
-                                        points={stroke.points}
-                                        stroke={stroke.tool === 'eraser' ? 'white' : stroke.color}
-                                        strokeWidth={stroke.width}
-                                        tension={0.5}
-                                        lineCap="round"
-                                        lineJoin="round"
-                                        globalCompositeOperation={
-                                            stroke.tool === 'eraser' ? 'destination-out' : 'source-over'
-                                        }
-                                        onClick={e => handleShapeClick(stroke.id, e)}
-                                    />
-                                );
-                            }
-                            if (stroke.tool === 'rect') {
-                                return (
-                                    <Rect
-                                        id={stroke.id}
-                                        key={stroke.id}
-                                        x={Math.min(stroke.x, stroke.x + stroke.w)}
-                                        y={Math.min(stroke.y, stroke.y + stroke.h)}
-                                        width={Math.abs(stroke.w)}
-                                        height={Math.abs(stroke.h)}
-                                        stroke={stroke.color}
-                                        strokeWidth={stroke.width}
-                                        draggable={tool === 'select' && isSelected(stroke.id)}
-                                        onDragEnd={e =>
-                                            updateShapePosition(stroke.id, {x: e.target.x(), y: e.target.y()})
-                                        }
-                                        onTransformEnd={e => handleTransformEnd(e.target)}
-                                        onClick={e => handleShapeClick(stroke.id, e)}
-                                    />
-                                );
-                            }
-                            if (stroke.tool === 'ellipse') {
-                                return (
-                                    <Ellipse
-                                        id={stroke.id}
-                                        key={stroke.id}
-                                        x={stroke.x}
-                                        y={stroke.y}
-                                        radiusX={stroke.rx}
-                                        radiusY={stroke.ry}
-                                        stroke={stroke.color}
-                                        strokeWidth={stroke.width}
-                                        draggable={tool === 'select' && isSelected(stroke.id)}
-                                        onDragEnd={e =>
-                                            updateShapePosition(stroke.id, {x: e.target.x(), y: e.target.y()})
-                                        }
-                                        onTransformEnd={e => handleTransformEnd(e.target)}
-                                        onClick={e => handleShapeClick(stroke.id, e)}
-                                    />
-                                );
-                            }
-                            if (stroke.tool === 'text') {
-                                const isEditing = editingTextId === stroke.id;
-                                return (
-                                    <Text
-                                        id={stroke.id}
-                                        key={stroke.id}
-                                        x={stroke.x}
-                                        y={stroke.y}
-                                        text={
-                                            isEditing
-                                                ? stroke.text + (Math.floor(Date.now() / 500) % 2 ? '|' : ' ')
-                                                : stroke.text
-                                        }
-                                        fontSize={stroke.fontSize}
-                                        fill={stroke.color}
-                                        draggable={tool === 'select' && isSelected(stroke.id)}
-                                        onDragEnd={e =>
-                                            updateShapePosition(stroke.id, {x: e.target.x(), y: e.target.y()})
-                                        }
-                                        onClick={e => {
-                                            if (tool === 'text') {
-                                                if (editingTextId !== stroke.id) {
-                                                    setEditingTextId(stroke.id);
-                                                }
-                                            } else {
-                                                handleShapeClick(stroke.id, e);
-                                            }
-                                        }}
-                                        onDblClick={e => {
-                                            if (tool === 'select') {
-                                                setEditingTextId(stroke.id);
-                                                setSingleSelection(stroke.id);
-                                            }
-                                            e.cancelBubble = true;
-                                        }}
-                                    />
-                                );
-                            }
-                            return null;
-                        })}
+            {/* Main toolbar - only show when unlocked */}
+            {!isLocked && (
+                <div className="flex flex-wrap items-center gap-3 mb-4 p-2 bg-gray-50 rounded">
+                    <div className="flex items-center gap-1 p-1 bg-gray-100 rounded border">
+                        <button
+                            onClick={() => {
+                                if (editingTextId) finalizeTextEdit();
+                                setTool('pen');
+                                setSelectedIds([]);
+                            }}
+                            className={`p-2 rounded transition-colors ${
+                                tool === 'pen'
+                                    ? 'bg-blue-500 text-white shadow-sm'
+                                    : 'hover:bg-gray-200 text-gray-700'
+                            }`}
+                            title="Pen Tool"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                            </svg>
+                        </button>
 
-                        {currentStroke && (currentStroke.tool === 'pen' || currentStroke.tool === 'eraser') && (
-                            <Line
-                                points={currentStroke.points}
-                                stroke={currentStroke.tool === 'eraser' ? 'white' : currentStroke.color}
-                                strokeWidth={currentStroke.width}
-                                tension={0.5}
-                                lineCap="round"
-                                lineJoin="round"
-                                globalCompositeOperation={
-                                    currentStroke.tool === 'eraser' ? 'destination-out' : 'source-over'
-                                }
-                            />
-                        )}
+                        <button
+                            onClick={() => {
+                                if (editingTextId) finalizeTextEdit();
+                                setTool('eraser');
+                                setSelectedIds([]);
+                            }}
+                            className={`p-2 rounded transition-colors ${
+                                tool === 'eraser'
+                                    ? 'bg-blue-500 text-white shadow-sm'
+                                    : 'hover:bg-gray-200 text-gray-700'
+                            }`}
+                            title="Eraser Tool"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.008 4.008 0 0 1-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84l10.6-10.6c.79-.78 2.05-.78 2.83 0M4.22 15.58l3.54 3.53c.78.79 2.04.79 2.83 0l3.53-3.53-6.36-6.36-3.54 3.54c-.78.78-.78 2.05 0 2.82z"/>
+                            </svg>
+                        </button>
 
-                        {currentStroke && currentStroke.tool === 'rect' && (
-                            <Rect
-                                x={Math.min(currentStroke.x, currentStroke.x + currentStroke.w)}
-                                y={Math.min(currentStroke.y, currentStroke.y + currentStroke.h)}
-                                width={Math.abs(currentStroke.w)}
-                                height={Math.abs(currentStroke.h)}
-                                stroke={currentStroke.color}
-                                strokeWidth={currentStroke.width}
-                                dash={[4, 4]}
-                            />
-                        )}
+                        <button
+                            onClick={() => {
+                                if (editingTextId) finalizeTextEdit();
+                                setTool('rect');
+                                setSelectedIds([]);
+                            }}
+                            className={`p-2 rounded transition-colors ${
+                                tool === 'rect'
+                                    ? 'bg-blue-500 text-white shadow-sm'
+                                    : 'hover:bg-gray-200 text-gray-700'
+                            }`}
+                            title="Rectangle Tool"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 strokeWidth="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            </svg>
+                        </button>
 
-                        {currentStroke && currentStroke.tool === 'ellipse' && (
-                            <Ellipse
-                                x={currentStroke.x}
-                                y={currentStroke.y}
-                                radiusX={currentStroke.rx}
-                                radiusY={currentStroke.ry}
-                                stroke={currentStroke.color}
-                                strokeWidth={currentStroke.width}
-                                dash={[4, 4]}
-                            />
-                        )}
+                        <button
+                            onClick={() => {
+                                if (editingTextId) finalizeTextEdit();
+                                setTool('ellipse');
+                                setSelectedIds([]);
+                            }}
+                            className={`p-2 rounded transition-colors ${
+                                tool === 'ellipse'
+                                    ? 'bg-blue-500 text-white shadow-sm'
+                                    : 'hover:bg-gray-200 text-gray-700'
+                            }`}
+                            title="Ellipse Tool"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 strokeWidth="2">
+                                <circle cx="12" cy="12" r="10"/>
+                            </svg>
+                        </button>
 
-                        {/* selection marquee */}
-                        {selectionRect.visible && (
-                            <Rect
-                                x={selectionRect.x}
-                                y={selectionRect.y}
-                                width={selectionRect.w}
-                                height={selectionRect.h}
-                                stroke="#3b82f6"
-                                strokeWidth={1}
-                                dash={[4, 4]}
-                                listening={false}
-                                fill="rgba(59,130,246,0.1)"
-                            />
-                        )}
+                        <button
+                            onClick={() => {
+                                if (editingTextId) finalizeTextEdit();
+                                setTool('text');
+                                setSelectedIds([]);
+                            }}
+                            className={`p-2 rounded transition-colors ${
+                                tool === 'text'
+                                    ? 'bg-blue-500 text-white shadow-sm'
+                                    : 'hover:bg-gray-200 text-gray-700'
+                            }`}
+                            title="Text Tool"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M5 4v3h5.5v12h3V7H19V4z"/>
+                            </svg>
+                        </button>
 
-                        <Transformer
-                            ref={transformerRef}
-                            rotateEnabled={false}
-                            enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
-                            onTransformEnd={e => handleTransformEnd(e.target)}
+                        <button
+                            onClick={() => {
+                                if (editingTextId) finalizeTextEdit();
+                                setTool('select');
+                            }}
+                            className={`p-2 rounded transition-colors ${
+                                tool === 'select'
+                                    ? 'bg-blue-500 text-white shadow-sm'
+                                    : 'hover:bg-gray-200 text-gray-700'
+                            }`}
+                            title="Select Tool"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M2 2h20v20H2V2zm18 18V4H4v16h16z"/>
+                                <path d="M8 8h8v8H8z" fill="none" stroke="currentColor" strokeWidth="1"
+                                      strokeDasharray="2,2"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium">Color:</label>
+                        <input
+                            type="color"
+                            value={strokeColor}
+                            disabled={tool === 'eraser'}
+                            onChange={e => setStrokeColor(e.target.value)}
+                            className="w-8 h-8 border rounded cursor-pointer disabled:opacity-40"
                         />
-                    </Layer>
-                </Stage>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium">Size:</label>
+                        <input
+                            type="range"
+                            min="1"
+                            max="40"
+                            value={strokeWidth}
+                            onChange={e => setStrokeWidth(Number(e.target.value))}
+                            className="w-24"
+                        />
+                        <span className="text-sm w-6 text-center">{strokeWidth}</span>
+                    </div>
+
+                    <button
+                        onClick={undoLastStroke}
+                        disabled={strokes.length === 0}
+                        className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 disabled:opacity-50 rounded"
+                    >
+                        Undo
+                    </button>
+
+                    <button
+                        onClick={clearCanvas}
+                        disabled={strokes.length === 0}
+                        className="px-3 py-1 text-sm bg-red-200 hover:bg-red-300 disabled:opacity-50 rounded"
+                    >
+                        Clear
+                    </button>
+                </div>
+            )}
+
+            {/* bounds container spans the content panel dimensions */}
+            <div ref={boundsRef} className="w-full h-full">
+                <div
+                    className="border border-gray-300 rounded overflow-hidden relative mx-auto"
+                    style={{width: canvasSize.width, height: canvasSize.height}}
+                >
+                    <Stage
+                        width={canvasSize.width}
+                        height={canvasSize.height}
+                        onMouseDown={isLocked ? undefined : handleMouseDown}
+                        onMouseMove={isLocked ? undefined : handleMouseMove}
+                        onMouseUp={isLocked ? undefined : handleMouseUp}
+                        onMouseLeave={isLocked ? undefined : handleMouseLeave}
+                        ref={stageRef}
+                        className={isLocked ? "select-none" : "cursor-crosshair select-none"}
+                    >
+                        <Layer>
+                            {selectionRect.visible && (
+                                <Rect
+                                    x={selectionRect.x}
+                                    y={selectionRect.y}
+                                    width={selectionRect.w}
+                                    height={selectionRect.h}
+                                    fill="rgba(0, 123, 255, 0.1)"
+                                    stroke="blue"
+                                    strokeWidth={1}
+                                    dash={[5, 5]}
+                                />
+                            )}
+
+                            {strokes.map(stroke => {
+                                if (stroke.tool === 'pen' || stroke.tool === 'eraser') {
+                                    const freehand = stroke as FreehandStroke;
+                                    return (
+                                        <Line
+                                            key={stroke.id}
+                                            id={stroke.id}
+                                            points={freehand.points}
+                                            stroke={freehand.color}
+                                            strokeWidth={freehand.width}
+                                            tension={0.5}
+                                            lineCap="round"
+                                            lineJoin="round"
+                                            globalCompositeOperation={
+                                                freehand.tool === 'eraser' ? 'destination-out' : 'source-over'
+                                            }
+                                            onClick={e => handleShapeClick(stroke.id, e)}
+                                            draggable={tool === 'select' && isSelected(stroke.id)}
+                                        />
+                                    );
+                                } else if (stroke.tool === 'rect') {
+                                    const rect = stroke as RectShape;
+                                    return (
+                                        <Rect
+                                            key={stroke.id}
+                                            id={stroke.id}
+                                            x={rect.x}
+                                            y={rect.y}
+                                            width={rect.w}
+                                            height={rect.h}
+                                            stroke={rect.color}
+                                            strokeWidth={rect.width}
+                                            fill="transparent"
+                                            onClick={e => handleShapeClick(stroke.id, e)}
+                                            draggable={tool === 'select' && isSelected(stroke.id)}
+                                            onDragEnd={e => updateShapePosition(stroke.id, {
+                                                x: e.target.x(),
+                                                y: e.target.y()
+                                            })}
+                                        />
+                                    );
+                                } else if (stroke.tool === 'ellipse') {
+                                    const ellipse = stroke as EllipseShape;
+                                    return (
+                                        <Ellipse
+                                            key={stroke.id}
+                                            id={stroke.id}
+                                            x={ellipse.x}
+                                            y={ellipse.y}
+                                            radiusX={ellipse.rx}
+                                            radiusY={ellipse.ry}
+                                            stroke={ellipse.color}
+                                            strokeWidth={ellipse.width}
+                                            fill="transparent"
+                                            onClick={e => handleShapeClick(stroke.id, e)}
+                                            draggable={tool === 'select' && isSelected(stroke.id)}
+                                            onDragEnd={e => updateShapePosition(stroke.id, {
+                                                x: e.target.x(),
+                                                y: e.target.y()
+                                            })}
+                                        />
+                                    );
+                                } else if (stroke.tool === 'text') {
+                                    const text = stroke as TextShape;
+                                    return (
+                                        <Text
+                                            key={stroke.id}
+                                            id={stroke.id}
+                                            x={text.x}
+                                            y={text.y}
+                                            text={text.text}
+                                            fontSize={text.fontSize}
+                                            fill={text.color}
+                                            onClick={e => handleShapeClick(stroke.id, e)}
+                                            draggable={tool === 'select' && isSelected(stroke.id)}
+                                            onDragEnd={e => updateShapePosition(stroke.id, {
+                                                x: e.target.x(),
+                                                y: e.target.y()
+                                            })}
+                                        />
+                                    );
+                                }
+                                return null;
+                            })}
+
+                            {currentStroke && (
+                                <>
+                                    {(currentStroke.tool === 'pen' || currentStroke.tool === 'eraser') && (
+                                        <Line
+                                            points={(currentStroke as FreehandStroke).points}
+                                            stroke={currentStroke.color}
+                                            strokeWidth={currentStroke.width}
+                                            tension={0.5}
+                                            lineCap="round"
+                                            lineJoin="round"
+                                            globalCompositeOperation={
+                                                currentStroke.tool === 'eraser' ? 'destination-out' : 'source-over'
+                                            }
+                                        />
+                                    )}
+                                    {currentStroke.tool === 'rect' && (
+                                        <Rect
+                                            x={(currentStroke as RectShape).x}
+                                            y={(currentStroke as RectShape).y}
+                                            width={(currentStroke as RectShape).w}
+                                            height={(currentStroke as RectShape).h}
+                                            stroke={currentStroke.color}
+                                            strokeWidth={currentStroke.width}
+                                            fill="transparent"
+                                        />
+                                    )}
+                                    {currentStroke.tool === 'ellipse' && (
+                                        <Ellipse
+                                            x={(currentStroke as EllipseShape).x}
+                                            y={(currentStroke as EllipseShape).y}
+                                            radiusX={(currentStroke as EllipseShape).rx}
+                                            radiusY={(currentStroke as EllipseShape).ry}
+                                            stroke={currentStroke.color}
+                                            strokeWidth={currentStroke.width}
+                                            fill="transparent"
+                                        />
+                                    )}
+                                </>
+                            )}
+
+                            <Transformer
+                                ref={transformerRef}
+                                onTransformEnd={handleTransformEnd}
+                            />
+                        </Layer>
+                    </Stage>
+
+                    {/* Vertical resize handle - only show when unlocked */}
+                    {!isLocked && (
+                        <div
+                            onMouseDown={beginResize}
+                            onClick={e => e.stopPropagation()}
+                            title="Drag to resize canvas height"
+                            className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-3 bg-blue-500 hover:bg-blue-600
+                                   rounded cursor-ns-resize flex items-center justify-center shadow-lg opacity-70 hover:opacity-100 transition-opacity"
+                        >
+                            {/* Vertical resize arrows SVG */}
+                            <svg width="12" height="8" viewBox="0 0 12 8" className="text-white">
+                                <path d="M6 0L2 3h8L6 0z" fill="currentColor"/>
+                                <path d="M6 8L2 5h8L6 8z" fill="currentColor"/>
+                            </svg>
+                        </div>
+                    )}
+                </div>
+
+                {/* size hint */}
+                <div className="text-xs text-gray-500 mt-1 text-center">
+                    {Math.round(canvasSize.width)} × {Math.round(canvasSize.height)}
+                    {isLocked && <span className="ml-2 text-red-500">🔒 Locked</span>}
+                </div>
             </div>
         </div>
     );
