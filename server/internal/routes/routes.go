@@ -32,6 +32,7 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler, bh *api.BlockHandler) *gi
 
 		apiGroup.POST("/notes/:id/blocks", bh.Create)
 		apiGroup.PUT("/notes/:id/blocks/:block_id", bh.UpdateContent)
+		apiGroup.DELETE("/notes/:id/blocks/:block_id", bh.Delete)
 	}
 	return r
 }

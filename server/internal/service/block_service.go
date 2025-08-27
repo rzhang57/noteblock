@@ -53,3 +53,7 @@ func (s *BlockService) UpdateBlockContent(noteID string, blockID string, blockTy
 
 	return &block, err
 }
+
+func (s *BlockService) DeleteBlock(noteID string, blockID string) error {
+	return s.DB.Delete(&model.Block{}, "id = ? AND note_id = ?", blockID, noteID).Error
+}

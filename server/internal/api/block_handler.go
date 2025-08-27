@@ -54,3 +54,16 @@ func (b *BlockHandler) UpdateContent(c *gin.Context) {
 
 	c.JSON(200, gin.H{"id": block.ID, "note_id": block.NoteID, "type": block.Type, "index": block.Index})
 }
+
+func (b *BlockHandler) Delete(c *gin.Context) {
+	noteId := c.Param("id")
+	blockId := c.Param("block_id")
+
+	err := b.Svc.DeleteBlock(noteId, blockId)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to delete block: " + err.Error()})
+		return
+	}
+
+	c.Status(204)
+}

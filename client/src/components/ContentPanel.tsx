@@ -90,6 +90,18 @@ export function MainContentPanel() {
         }
     };
 
+    const handleDeleteBlock = async (blockId: string) => {
+        if (!selectedNoteId) return;
+
+        try {
+            await NoteService.deleteBlock(selectedNoteId, blockId);
+            const updatedNote = await NoteService.getNote(selectedNoteId);
+            setNote(updatedNote);
+        } catch (error) {
+            console.error('Error deleting block:', error);
+        }
+    };
+
     const handleDragStart = (event: DragStartEvent) => {
         const {active} = event;
         const block = note?.blocks.find(b => b.id === active.id) || null;
@@ -177,7 +189,7 @@ export function MainContentPanel() {
                                 switch (block.type) {
                                     case "text":
                                         return (
-                                            <SortableBlock blockId={block.id}>
+                                            <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
                                                 <TextBlock key={block.id} block={block}/>
                                             </SortableBlock>
                                         );
@@ -186,7 +198,7 @@ export function MainContentPanel() {
                                     case "canvas":
                                         return (
                                             <div key={block.id} className="flex justify-center">
-                                                <SortableBlock blockId={block.id}>
+                                                <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
                                                     <CanvasBlock key={block.id} block={block}/>
                                                 </SortableBlock>
                                             </div>
