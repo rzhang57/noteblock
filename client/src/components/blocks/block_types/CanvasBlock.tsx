@@ -583,7 +583,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
     };
 
     return (
-        <div className="border rounded-lg p-4 bg-white inline-block w-full">
+        <div className="rounded p-4 bg-white inline-block w-full">
             {/* Lock toggle outside the main toolbar */}
             <div className="flex justify-end mb-2">
                 <button

@@ -184,9 +184,11 @@ export function MainContentPanel() {
                                 switch (block.type) {
                                     case "text":
                                         return (
-                                            <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
-                                                <TextBlock key={block.id} block={block}/>
-                                            </SortableBlock>
+                                            <div key={block.id} className="flex justify-center">
+                                                <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
+                                                    <TextBlock key={block.id} block={block}/>
+                                                </SortableBlock>
+                                            </div>
                                         );
                                     case "image":
                                         return <p key={block.id}>image</p>;
