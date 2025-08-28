@@ -949,10 +949,8 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                     )}
                 </div>
 
-                {/* size hint */}
                 <div className="text-xs text-gray-500 mt-1 text-center">
                     {Math.round(canvasSize.width)} × {Math.round(canvasSize.height)}
-                    {isLocked && <span className="ml-2 text-red-500">🔒 Locked</span>}
                 </div>
             </div>
         </div>
