@@ -167,7 +167,9 @@ export function MainContentPanel() {
     return (
         note && (
             <div className="p-6 space-y-4">
-                <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
+                <div className="flex justify-center">
+                    <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
+                </div>
 
                 <DndContext
                     sensors={sensors}

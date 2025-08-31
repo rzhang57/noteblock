@@ -45,7 +45,7 @@ const AddMenu: React.FC<{
     return (
         <div
             ref={menuRef}
-            className="absolute right-0 top-8 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50 min-w-[140px]"
+            className="absolute right-0 top-8 bg-white border border-gray-200 shadow-lg py-1 z-50 min-w-[140px]"
             onClick={(e) => e.stopPropagation()}
         >
             <button

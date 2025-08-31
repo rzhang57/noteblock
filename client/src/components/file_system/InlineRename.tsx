@@ -53,7 +53,7 @@ export const InlineRename: React.FC<InlineRenameProps> = ({
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={handleSave}
-            className="bg-white border border-blue-500 rounded px-1 py-0.5 text-sm w-full"
+            className="bg-white border border-blue-500 px-1 py-0.5 text-sm w-full"
             onClick={(e) => e.stopPropagation()}
         />
     );

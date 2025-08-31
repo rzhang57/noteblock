@@ -46,14 +46,14 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         <div className="relative" ref={menuRef}>
             <button
                 onClick={handleMenuClick}
-                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-opacity hover:cursor-pointer"
+                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 transition-opacity hover:cursor-pointer"
             >
                 <MoreHorizontal className="w-3 h-3 text-gray-500"/>
             </button>
 
             {isOpen && (
                 <div
-                    className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50 min-w-[140px]">
+                    className="absolute right-0 top-6 bg-white border border-gray-200 shadow-lg z-50 min-w-[140px]">
                     {isFolder && (
                         <>
                             <button

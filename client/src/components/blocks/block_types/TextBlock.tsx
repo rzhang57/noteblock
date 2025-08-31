@@ -37,7 +37,7 @@ export function TextBlock({block}: { block: Block }) {
     };
 
     return (
-        <div className="rounded p-2 bg-white w-[834px]">
+        <div className="p-2 bg-white w-[834px]">
             <MDXEditor
                 markdown={content}
                 onChange={setContent}

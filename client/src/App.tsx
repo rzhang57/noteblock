@@ -25,7 +25,16 @@ export default function App() {
                                 <MainContentPanel/>
                             </div>
                         ) : (
-                            <p className="text-gray-500">Select a note to view its content.</p>
+                            <div className={"flex flex-col items-center justify-center h-full"}>
+                                <h3 className="text-xl font-bold text-foreground mb-2 tracking-wide">Welcome to
+                                    noteblock</h3>
+                                <p className="text-muted-foreground mb-6 text-balance leading-relaxed">
+                                    Select a note from the sidebar to start editing, or create a new one to begin your
+                                    block-based
+                                    note-taking journey.
+                                </p>
+                            </div>
+
                         )}
                     </div>
                 </div>
