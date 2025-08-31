@@ -11,7 +11,7 @@ import {cn} from "@/lib/utils";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {ContextMenu} from "./file_system/ContextMenu";
 import {InlineRename} from "./file_system/InlineRename";
-import {useState, type DragEvent, useEffect} from "react";
+import {useState, type DragEvent, useEffect, useRef} from "react";
 import {NoteService} from "@/services/NoteService.ts";
 
 interface TreeProps {
@@ -48,6 +48,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
     const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
     const [isRenaming, setIsRenaming] = useState(isTemporary);
     const [isDragOver, setIsDragOver] = useState(false);
+    const dragDepthRef = useRef(0);
 
     useEffect(() => {
         const handleClearDragState = () => {
@@ -109,6 +110,8 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
     };
 
     const handleDragStart = (e: DragEvent) => {
+        window.dispatchEvent(new CustomEvent('clearDragState'));
+
         const dragData = {
             id: item.id,
             type: isFolder(item) ? 'folder' : 'note'
@@ -119,27 +122,25 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
         }
     };
 
+    const handleDragEnter = (e: DragEvent) => {
+        if (!isFolder(item)) return;
+        e.preventDefault();
+        dragDepthRef.current += 1;
+        setIsDragOver(true);
+    };
+
     const handleDragOver = (e: DragEvent) => {
         if (!isFolder(item)) return;
-
         e.preventDefault();
         if (e.dataTransfer) {
             e.dataTransfer.dropEffect = 'move';
         }
-        setIsDragOver(true);
     };
 
-    const handleDragLeave = (e: DragEvent) => {
+    const handleDragLeave = (_e: DragEvent) => {
         if (!isFolder(item)) return;
-
-        const target = e.currentTarget as HTMLElement;
-        if (!target) return;
-
-        const rect = target.getBoundingClientRect();
-        const x = e.clientX;
-        const y = e.clientY;
-
-        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+        if (dragDepthRef.current === 0) {
             setIsDragOver(false);
         }
     };
@@ -148,14 +149,13 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
         if (!isFolder(item)) return;
 
         e.preventDefault();
+        dragDepthRef.current = 0;
         setIsDragOver(false);
 
         try {
             const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
             const {id: draggedId, type: draggedType} = dragData;
-
             if (draggedId === item.id) return;
-
             onMoveItem(draggedId, item.id, draggedType);
         } catch (error) {
             console.error('Failed to parse drag data:', error);
@@ -176,6 +176,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                 <div
                     draggable={!isRenaming}
                     onDragStart={handleDragStart}
+                    onDragEnter={handleDragEnter}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
