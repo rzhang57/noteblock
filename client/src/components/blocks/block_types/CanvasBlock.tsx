@@ -940,7 +940,6 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                             className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-3 bg-blue-500 hover:bg-blue-600
                                    rounded cursor-ns-resize flex items-center justify-center shadow-lg opacity-70 hover:opacity-100 transition-opacity"
                         >
-                            {/* Vertical resize arrows SVG */}
                             <svg width="12" height="8" viewBox="0 0 12 8" className="text-white">
                                 <path d="M6 0L2 3h8L6 0z" fill="currentColor"/>
                                 <path d="M6 8L2 5h8L6 8z" fill="currentColor"/>
