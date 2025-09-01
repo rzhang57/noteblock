@@ -32,16 +32,26 @@ async function createBlock(type: "text" | "canvas" | "image", noteId: string, in
     return await NoteService.createBlock(noteId, blockRequest);
 }
 
-function InsertionDivider({onAdd}: { onAdd: (type: "text" | "canvas" | "image") => void }) {
+function InsertionDivider({onAdd, visibleWithoutHover}: {
+    onAdd: (type: "text" | "canvas" | "image") => void,
+    visibleWithoutHover?: boolean
+}) {
     return (
         <div className="relative group h-0">
             <div className="absolute inset-x-0 top-0 -translate-y-1/2 h-8 cursor-pointer"/>
-
             <div
-                className="absolute inset-x-0 top-0 -translate-y-1/2 border-t border-transparent group-hover:border-gray-200 transition-colors duration-150 pointer-events-none"/>
-
+                className={`absolute inset-x-0 top-0 -translate-y-1/2 border-t transition-colors duration-150 pointer-events-none ${
+                    visibleWithoutHover
+                        ? 'border-gray-200'
+                        : 'border-transparent group-hover:border-gray-200'
+                }`}
+            />
             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <div className={`transition-opacity duration-150 ${
+                    visibleWithoutHover
+                        ? 'opacity-100'
+                        : 'opacity-0 group-hover:opacity-100'
+                }`}>
                     <div className="flex gap-1">
                         <button
                             onClick={() => onAdd("text")}
@@ -219,7 +229,7 @@ export function MainContentPanel() {
     return (
         note && (
             <div className="p-6 space-y-4">
-                <div className="flex justify-center">
+                <div className="flex justify-center pb-2">
                     <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
                 </div>
 
@@ -235,7 +245,16 @@ export function MainContentPanel() {
                     >
                         <div className="space-y-2 flex flex-col w-full">
                             {sortedBlocks.length === 0 && (
-                                <InsertionDivider onAdd={(type) => handleAddBlockAt(type, 0)}/>
+                                <>
+                                    <div className="flex flex-col items-center pb-4">
+                                        <p className="text-center text-gray-500 mb-4">Begin your note by adding your
+                                            first
+                                            block below.</p>
+                                    </div>
+                                    <InsertionDivider onAdd={(type) => handleAddBlockAt(type, 0)}
+                                                      visibleWithoutHover={true}/>
+                                </>
+
                             )}
                             {sortedBlocks.map((block: Block, i: number) => (
                                 <Fragment key={block.id}>
