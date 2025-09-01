@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useState, Fragment} from "react";
 import {useNoteContext} from "@/context/NoteContext";
 import {NoteService} from "@/services/NoteService";
 import type {Block, Note} from "@/types/Note.ts";
@@ -20,7 +20,7 @@ import {
 } from '@dnd-kit/sortable';
 import {SortableBlock} from "@/components/blocks/SortableBlock.tsx";
 import {CanvasBlock} from "@/components/blocks/block_types/CanvasBlock.tsx";
-import {ChevronDownIcon, DocumentTextIcon, PhotoIcon, RectangleGroupIcon} from '@heroicons/react/24/outline';
+import {DocumentTextIcon, PhotoIcon, RectangleGroupIcon} from '@heroicons/react/24/outline';
 
 async function createBlock(type: "text" | "canvas" | "image", noteId: string, index: number): Promise<Block> {
     const blockRequest = {
@@ -32,13 +32,53 @@ async function createBlock(type: "text" | "canvas" | "image", noteId: string, in
     return await NoteService.createBlock(noteId, blockRequest);
 }
 
+function InsertionDivider({onAdd}: { onAdd: (type: "text" | "canvas" | "image") => void }) {
+    return (
+        <div className="relative group h-0">
+            <div className="absolute inset-x-0 top-0 -translate-y-1/2 h-8 cursor-pointer"/>
+
+            <div
+                className="absolute inset-x-0 top-0 -translate-y-1/2 border-t border-transparent group-hover:border-gray-200 transition-colors duration-150 pointer-events-none"/>
+
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                    <div className="flex gap-1">
+                        <button
+                            onClick={() => onAdd("text")}
+                            className="px-2 py-1 border border-gray-300 bg-white hover:bg-gray-50 text-[11px] font-medium text-gray-700 shadow-sm inline-flex items-center gap-1"
+                            title="Add text block"
+                        >
+                            <DocumentTextIcon className="h-4 w-4 text-gray-500"/>
+                            Text
+                        </button>
+                        <button
+                            onClick={() => onAdd("canvas")}
+                            className="px-2 py-1 border border-gray-300 bg-white hover:bg-gray-50 text-[11px] font-medium text-gray-700 shadow-sm inline-flex items-center gap-1"
+                            title="Add canvas block"
+                        >
+                            <RectangleGroupIcon className="h-4 w-4 text-gray-500"/>
+                            Canvas
+                        </button>
+                        <button
+                            onClick={() => onAdd("image")}
+                            className="px-2 py-1 border border-gray-300 bg-white hover:bg-gray-50 text-[11px] font-medium text-gray-700 shadow-sm inline-flex items-center gap-1"
+                            title="Add image block"
+                        >
+                            <PhotoIcon className="h-4 w-4 text-gray-500"/>
+                            Image
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function MainContentPanel() {
     const {selectedNoteId, noteTitle} = useNoteContext();
     const [note, setNote] = useState<Note | null>(null);
     const [loading, setLoading] = useState(false);
     const [activeBlock, setActiveBlock] = useState<Block | null>(null);
-    const [showAddMenu, setShowAddMenu] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -69,31 +109,39 @@ export function MainContentPanel() {
         fetchNote();
     }, [selectedNoteId]);
 
-    const getDropdownPosition = (): 'up' | 'down' => {
-        if (!dropdownRef.current) return 'down';
-
-        const rect = dropdownRef.current.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const spaceBelow = viewportHeight - rect.bottom;
-        const dropdownHeight = 200; // Approximate height of dropdown
-
-        return spaceBelow >= dropdownHeight ? 'down' : 'up';
-    };
-
-    const handleToggleMenu = () => {
-        setShowAddMenu(!showAddMenu);
-    };
-
-    const handleAddBlock = async (type: "text" | "canvas" | "image") => {
+    const handleAddBlockAt = async (type: "text" | "canvas" | "image", index: number) => {
         if (!note || !selectedNoteId) return;
-
         try {
-            await createBlock(type, selectedNoteId, note.blocks.length);
-            const updatedNote = await NoteService.getNote(selectedNoteId);
-            setNote(updatedNote);
-            setShowAddMenu(false);
+            const created = await createBlock(type, selectedNoteId, index);
+            const fetched = await NoteService.getNote(selectedNoteId);
+            const blocksSorted = [...fetched.blocks].sort((a, b) => a.index - b.index);
+
+            const newIdxCurrent = blocksSorted.findIndex(b => b.id === created.id);
+            let withoutNew = blocksSorted;
+            if (newIdxCurrent !== -1) {
+                withoutNew = [
+                    ...blocksSorted.slice(0, newIdxCurrent),
+                    ...blocksSorted.slice(newIdxCurrent + 1)
+                ];
+            }
+            const targetIndex = Math.max(0, Math.min(index, withoutNew.length));
+            const reordered = [
+                ...withoutNew.slice(0, targetIndex),
+                blocksSorted[newIdxCurrent !== -1 ? newIdxCurrent : blocksSorted.length - 1],
+                ...withoutNew.slice(targetIndex)
+            ];
+            const blocksWithNewIndices: Block[] = reordered.map((b, i) => ({...b, index: i}));
+
+            await NoteService.updateNote({
+                id: selectedNoteId,
+                title: fetched.title,
+                folder_id: fetched.folder_id,
+                blocks: blocksWithNewIndices
+            });
+
+            setNote({...fetched, blocks: blocksWithNewIndices});
         } catch (err) {
-            console.error(`Failed to add ${type} block:`, err);
+            console.error(`Failed to add ${type} block at index ${index}:`, err);
         }
     };
 
@@ -182,34 +230,42 @@ export function MainContentPanel() {
                         strategy={verticalListSortingStrategy}
                     >
                         <div className="space-y-2 flex flex-col w-full">
-                            {sortedBlocks.map((block: Block) => {
-                                switch (block.type) {
-                                    case "text":
-                                        return (
-                                            <div key={block.id} className="flex justify-center">
-                                                <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
-                                                    <TextBlock key={block.id} block={block}/>
-                                                </SortableBlock>
-                                            </div>
-                                        );
-                                    case "image":
-                                        return <p key={block.id}>image</p>;
-                                    case "canvas":
-                                        return (
-                                            <div key={block.id} className="flex justify-center">
-                                                <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
-                                                    <CanvasBlock key={block.id} block={block}/>
-                                                </SortableBlock>
-                                            </div>
-                                        );
-                                    default:
-                                        return (
-                                            <div key={block.id} className="text-red-600">
-                                                Unknown block type: {block.type}
-                                            </div>
-                                        );
-                                }
-                            })}
+                            {sortedBlocks.length === 0 && (
+                                <InsertionDivider onAdd={(type) => handleAddBlockAt(type, 0)}/>
+                            )}
+                            {sortedBlocks.map((block: Block, i: number) => (
+                                <Fragment key={block.id}>
+                                    {(() => {
+                                        switch (block.type) {
+                                            case "text":
+                                                return (
+                                                    <div className="flex justify-center">
+                                                        <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
+                                                            <TextBlock block={block}/>
+                                                        </SortableBlock>
+                                                    </div>
+                                                );
+                                            case "image":
+                                                return <p>image</p>;
+                                            case "canvas":
+                                                return (
+                                                    <div className="flex justify-center">
+                                                        <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
+                                                            <CanvasBlock block={block}/>
+                                                        </SortableBlock>
+                                                    </div>
+                                                );
+                                            default:
+                                                return (
+                                                    <div className="text-red-600">
+                                                        Unknown block type: {block.type}
+                                                    </div>
+                                                );
+                                        }
+                                    })()}
+                                    <InsertionDivider onAdd={(type) => handleAddBlockAt(type, i + 1)}/>
+                                </Fragment>
+                            ))}
                         </div>
                     </SortableContext>
 
@@ -218,69 +274,6 @@ export function MainContentPanel() {
                         {activeBlock?.type === "canvas" && <CanvasBlock block={activeBlock}/>}
                     </DragOverlay>
                 </DndContext>
-
-                <div className="flex justify-center mt-8">
-                    <div className="relative" ref={dropdownRef}>
-                        <button
-                            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                            onClick={handleToggleMenu}
-                        >
-                            <span>Add Block</span>
-                            <ChevronDownIcon className="ml-2 h-4 w-4"/>
-                        </button>
-
-                        {showAddMenu && (
-                            <>
-                                <div
-                                    className={`absolute w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 ${
-                                        getDropdownPosition() === 'up'
-                                            ? 'bottom-full mb-2'
-                                            : 'top-full mt-2'
-                                    }`}>
-                                    <div className="py-1">
-                                        <button
-                                            className="flex items-center w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors duration-150"
-                                            onClick={() => handleAddBlock("text")}
-                                        >
-                                            <DocumentTextIcon className="h-5 w-5 mr-3 text-gray-500"/>
-                                            <div>
-                                                <div className="font-medium">Text Block</div>
-                                                <div className="text-sm text-gray-500">Add formatted text content</div>
-                                            </div>
-                                        </button>
-
-                                        <button
-                                            className="flex items-center w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors duration-150"
-                                            onClick={() => handleAddBlock("canvas")}
-                                        >
-                                            <RectangleGroupIcon className="h-5 w-5 mr-3 text-gray-500"/>
-                                            <div>
-                                                <div className="font-medium">Canvas Block</div>
-                                                <div className="text-sm text-gray-500">Add drawing or diagram</div>
-                                            </div>
-                                        </button>
-
-                                        <button
-                                            className="flex items-center w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors duration-150"
-                                            onClick={() => handleAddBlock("image")}
-                                        >
-                                            <PhotoIcon className="h-5 w-5 mr-3 text-gray-500"/>
-                                            <div>
-                                                <div className="font-medium">Image Block</div>
-                                                <div className="text-sm text-gray-500">Upload or embed images</div>
-                                            </div>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div
-                                    className="fixed inset-0 z-0"
-                                    onClick={() => setShowAddMenu(false)}
-                                />
-                            </>
-                        )}
-                    </div>
-                </div>
             </div>
         )
     );

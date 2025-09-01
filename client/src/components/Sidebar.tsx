@@ -299,10 +299,7 @@ export const Sidebar: React.FC = () => {
     return (
         <aside className="h-full w-64 border-r bg-white flex flex-col">
             <div className="border-b p-4 flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-white"/>
-                </div>
-                <h2 className="font-bold text-gray-900">Noteblock</h2>
+                <h1 className="font-bold text-gray-900">Noteblock</h1>
             </div>
 
             {moveError && (

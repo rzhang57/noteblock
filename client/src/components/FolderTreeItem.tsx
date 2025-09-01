@@ -202,9 +202,9 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
 
                         <div className="flex items-center gap-2 flex-1">
                             {open ? (
-                                <FolderOpen className="w-4 h-4 text-blue-500"/>
+                                <FolderOpen className="w-4 h-4 text-gray-800"/>
                             ) : (
-                                <FolderIcon className="w-4 h-4 text-blue-500"/>
+                                <FolderIcon className="w-4 h-4 text-gray-800"/>
                             )}
                             {isRenaming ? (
                                 <InlineRename
@@ -295,7 +295,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
             }}
             className={cn(
                 "group flex items-center justify-between py-1 px-2 gap-2 cursor-pointer hover:bg-gray-100 select-none",
-                active && "bg-blue-100 text-blue-900"
+                active && "bg-gray-100 text-gray-900 font-medium",
             )}
             style={{paddingLeft: baseIndent + 24}}
         >

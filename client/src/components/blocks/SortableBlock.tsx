@@ -31,7 +31,7 @@ export const SortableBlock = ({blockId, children, onDelete}: SortableBlockProps)
         <div
             ref={setNodeRef}
             style={style}
-            className="group relative"
+            className="group relative border border-gray-300"
         >
             <div
                 {...attributes}

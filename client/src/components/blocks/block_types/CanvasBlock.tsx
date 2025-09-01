@@ -583,12 +583,12 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
     };
 
     return (
-        <div className="rounded p-4 bg-white inline-block w-full">
+        <div className="p-4 bg-white inline-block w-full">
             {/* Lock toggle outside the main toolbar */}
             <div className="flex justify-end mb-2">
                 <button
                     onClick={() => setIsLocked(!isLocked)}
-                    className={`p-2 rounded transition-colors ${
+                    className={`p-2 transition-colors ${
                         isLocked
                             ? 'bg-red-100 hover:bg-red-200 text-red-700'
                             : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
@@ -597,11 +597,9 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                         {isLocked ? (
-                            // Locked icon
                             <path
                                 d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/>
                         ) : (
-                            // Unlocked icon
                             <path
                                 d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6H9c0-1.66 1.34-3 3-3s3 1.34 3 3v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2z"/>
                         )}
@@ -611,15 +609,15 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
 
             {/* Main toolbar - only show when unlocked */}
             {!isLocked && (
-                <div className="flex flex-wrap items-center gap-3 mb-4 p-2 bg-gray-50 rounded">
-                    <div className="flex items-center gap-1 p-1 bg-gray-100 rounded border">
+                <div className="flex flex-wrap items-center gap-3 mb-4 p-2 bg-gray-50">
+                    <div className="flex items-center gap-1 p-1 bg-gray-100 border">
                         <button
                             onClick={() => {
                                 if (editingTextId) finalizeTextEdit();
                                 setTool('pen');
                                 setSelectedIds([]);
                             }}
-                            className={`p-2 rounded transition-colors ${
+                            className={`p-2 transition-colors ${
                                 tool === 'pen'
                                     ? 'bg-blue-500 text-white shadow-sm'
                                     : 'hover:bg-gray-200 text-gray-700'
@@ -638,7 +636,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                                 setTool('eraser');
                                 setSelectedIds([]);
                             }}
-                            className={`p-2 rounded transition-colors ${
+                            className={`p-2 transition-colors ${
                                 tool === 'eraser'
                                     ? 'bg-blue-500 text-white shadow-sm'
                                     : 'hover:bg-gray-200 text-gray-700'
@@ -657,7 +655,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                                 setTool('rect');
                                 setSelectedIds([]);
                             }}
-                            className={`p-2 rounded transition-colors ${
+                            className={`p-2 transition-colors ${
                                 tool === 'rect'
                                     ? 'bg-blue-500 text-white shadow-sm'
                                     : 'hover:bg-gray-200 text-gray-700'
@@ -676,7 +674,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                                 setTool('ellipse');
                                 setSelectedIds([]);
                             }}
-                            className={`p-2 rounded transition-colors ${
+                            className={`p-2 transition-colors ${
                                 tool === 'ellipse'
                                     ? 'bg-blue-500 text-white shadow-sm'
                                     : 'hover:bg-gray-200 text-gray-700'
@@ -695,7 +693,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                                 setTool('text');
                                 setSelectedIds([]);
                             }}
-                            className={`p-2 rounded transition-colors ${
+                            className={`p-2 transition-colors ${
                                 tool === 'text'
                                     ? 'bg-blue-500 text-white shadow-sm'
                                     : 'hover:bg-gray-200 text-gray-700'
@@ -712,7 +710,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                                 if (editingTextId) finalizeTextEdit();
                                 setTool('select');
                             }}
-                            className={`p-2 rounded transition-colors ${
+                            className={`p-2 transition-colors ${
                                 tool === 'select'
                                     ? 'bg-blue-500 text-white shadow-sm'
                                     : 'hover:bg-gray-200 text-gray-700'
@@ -734,7 +732,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                             value={strokeColor}
                             disabled={tool === 'eraser'}
                             onChange={e => setStrokeColor(e.target.value)}
-                            className="w-8 h-8 border rounded cursor-pointer disabled:opacity-40"
+                            className="w-8 h-8 border cursor-pointer disabled:opacity-40"
                         />
                     </div>
 
@@ -754,7 +752,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                     <button
                         onClick={undoLastStroke}
                         disabled={strokes.length === 0}
-                        className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 disabled:opacity-50 rounded"
+                        className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
                     >
                         Undo
                     </button>
@@ -762,7 +760,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                     <button
                         onClick={clearCanvas}
                         disabled={strokes.length === 0}
-                        className="px-3 py-1 text-sm bg-red-200 hover:bg-red-300 disabled:opacity-50 rounded"
+                        className="px-3 py-1 text-sm bg-red-200 hover:bg-red-300 disabled:opacity-50"
                     >
                         Clear
                     </button>
@@ -772,7 +770,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
             {/* bounds container spans the content panel dimensions */}
             <div ref={boundsRef} className="w-full h-full">
                 <div
-                    className="border border-gray-300 rounded overflow-hidden relative mx-auto"
+                    className="border border-gray-300 overflow-hidden relative mx-auto"
                     style={{width: canvasSize.width, height: canvasSize.height}}
                 >
                     <Stage
@@ -938,7 +936,7 @@ export const CanvasBlock: React.FC<CanvasBlockProps> = ({block}) => {
                             onClick={e => e.stopPropagation()}
                             title="Drag to resize canvas height"
                             className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-3 bg-blue-500 hover:bg-blue-600
-                                   rounded cursor-ns-resize flex items-center justify-center shadow-lg opacity-70 hover:opacity-100 transition-opacity"
+                                   cursor-ns-resize flex items-center justify-center shadow-lg opacity-70 hover:opacity-100 transition-opacity"
                         >
                             <svg width="12" height="8" viewBox="0 0 12 8" className="text-white">
                                 <path d="M6 0L2 3h8L6 0z" fill="currentColor"/>
