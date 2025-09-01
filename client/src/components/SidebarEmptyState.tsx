@@ -18,22 +18,24 @@ export default function SidebarEmptyState({createTemporaryNote, createTemporaryF
                 <p className="text-sm text-sidebar-foreground/60 mb-4 leading-relaxed">
                     Create your first note or folder to get started with your noteblock workspace.
                 </p>
-                <Button
-                    variant={"ghost"}
-                    size="sm"
-                    onClick={() => createTemporaryNote(null)}
-                >
-                    <FileText className="w-3 h-3 mr-1"/>
-                    New Note
-                </Button>
-                <Button
-                    variant={"ghost"}
-                    size="sm"
-                    onClick={() => createTemporaryFolder(null)}
-                >
-                    <FolderPlus className="w-3 h-3 mr-1"/>
-                    New Folder
-                </Button>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant={"ghost"}
+                        size="sm"
+                        onClick={() => createTemporaryNote(null)}
+                    >
+                        <FileText className="w-3 h-3 mr-1"/>
+                        New Note
+                    </Button>
+                    <Button
+                        variant={"ghost"}
+                        size="sm"
+                        onClick={() => createTemporaryFolder(null)}
+                    >
+                        <FolderPlus className="w-3 h-3 mr-1"/>
+                        New Folder
+                    </Button>
+                </div>
             </div>
         </aside>)
 }
