@@ -301,14 +301,29 @@ export const Sidebar: React.FC = () => {
 
     if (root.children.length === 0 && root.notes.length === 0) {
         return (
-            <SidebarEmptyState createTemporaryNote={createTemporaryNote} createTemporaryFolder={createTemporaryFolder}/>
+            <>
+                <div className="border-b p-4 flex items-center gap-2 h-full w-64 border-r bg-white flex flex-col">
+                    <div className="flex items-center justify-center gap-3">
+                        <img src="/noteblock.png" alt="" className="h-8 w-8 align-middle"/>
+                        <h1 className="text-black text-3xl leading-[2rem] ml-1"
+                            style={{fontFamily: 'Minecraft'}}>Noteblock</h1>
+                    </div>
+                    <SidebarEmptyState createTemporaryNote={createTemporaryNote}
+                                       createTemporaryFolder={createTemporaryFolder}/>
+                </div>
+            </>
+
         )
     }
 
     return (
         <aside className="h-full w-64 border-r bg-white flex flex-col">
             <div className="border-b p-4 flex items-center gap-2">
-                <h1 className="font-bold text-gray-900">Noteblock</h1>
+                <div className="flex items-center justify-center gap-3">
+                    <img src="/noteblock.png" alt="" className="h-8 w-8 align-middle"/>
+                    <h1 className="text-black text-3xl leading-[2rem] ml-1"
+                        style={{fontFamily: 'Minecraft'}}>Noteblock</h1>
+                </div>
             </div>
 
             {moveError && (

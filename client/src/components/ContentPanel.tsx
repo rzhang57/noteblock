@@ -20,7 +20,7 @@ import {
 } from '@dnd-kit/sortable';
 import {SortableBlock} from "@/components/blocks/SortableBlock.tsx";
 import {CanvasBlock} from "@/components/blocks/block_types/CanvasBlock.tsx";
-import {DocumentTextIcon, PhotoIcon, RectangleGroupIcon} from '@heroicons/react/24/outline';
+import {DocumentTextIcon, RectangleGroupIcon} from '@heroicons/react/24/outline';
 
 async function createBlock(type: "text" | "canvas" | "image", noteId: string, index: number): Promise<Block> {
     const blockRequest = {
@@ -69,14 +69,15 @@ function InsertionDivider({onAdd, visibleWithoutHover}: {
                             <RectangleGroupIcon className="h-4 w-4 text-gray-500"/>
                             Canvas
                         </button>
-                        <button
-                            onClick={() => onAdd("image")}
-                            className="px-2 py-1 border border-gray-300 bg-white hover:bg-gray-50 text-[11px] font-medium text-gray-700 shadow-sm inline-flex items-center gap-1"
-                            title="Add image block"
-                        >
-                            <PhotoIcon className="h-4 w-4 text-gray-500"/>
-                            Image
-                        </button>
+                        {/* TODO: vaulted until furhter work is done for this block type (plan is to merge with canvas potentially)*/}
+                        {/*<button*/}
+                        {/*    onClick={() => onAdd("image")}*/}
+                        {/*    className="px-2 py-1 border border-gray-300 bg-white hover:bg-gray-50 text-[11px] font-medium text-gray-700 shadow-sm inline-flex items-center gap-1"*/}
+                        {/*    title="Add image block"*/}
+                        {/*>*/}
+                        {/*    <PhotoIcon className="h-4 w-4 text-gray-500"/>*/}
+                        {/*    Image*/}
+                        {/*</button>*/}
                     </div>
                 </div>
             </div>
