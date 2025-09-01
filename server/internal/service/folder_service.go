@@ -7,7 +7,8 @@ import (
 )
 
 type FolderService struct {
-	DB *gorm.DB
+	DB          *gorm.DB
+	NoteService *NoteService
 }
 
 func (s *FolderService) CreateNewFolder(name string, parentID *string) (*model.Folder, error) {
@@ -118,11 +119,11 @@ func (s *FolderService) buildFolderResponseRecursive(folderID string) (*dto.Fold
 // TODO: delete folder, all children folders, notes in folder, and blocks associated with notes
 func (s *FolderService) DeleteFolderAndContents(folderID string) error {
 	return s.DB.Transaction(func(tx *gorm.DB) error {
-		return deleteFolderRecursive(tx, folderID)
+		return deleteFolderRecursive(tx, folderID, s.NoteService)
 	})
 }
 
-func deleteFolderRecursive(db *gorm.DB, folderID string) error {
+func deleteFolderRecursive(db *gorm.DB, folderID string, service *NoteService) error {
 	var folder model.Folder
 	if err := db.Preload("ChildrenFolders").Preload("Notes").First(&folder, "id = ?", folderID).Error; err != nil {
 		return err
@@ -130,14 +131,16 @@ func deleteFolderRecursive(db *gorm.DB, folderID string) error {
 
 	// Recursively delete child folders
 	for _, child := range folder.ChildrenFolders {
-		if err := deleteFolderRecursive(db, child.ID); err != nil {
+		if err := deleteFolderRecursive(db, child.ID, service); err != nil {
 			return err
 		}
 	}
 
 	// Delete notes in this folder
-	if err := db.Where("folder_id = ?", folder.ID).Delete(&model.Note{}).Error; err != nil {
-		return err
+	for _, note := range folder.Notes {
+		if err := service.DeleteNoteTx(db, note.ID); err != nil {
+			return err
+		}
 	}
 
 	// Delete this folder

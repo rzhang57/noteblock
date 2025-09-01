@@ -7,7 +7,6 @@ import (
 
 type NoteService struct{ DB *gorm.DB }
 
-// NewNote creates a new note with the given title and folder ID
 func (s *NoteService) NewNote(title string, folderID string) (*model.Note, error) {
 	note := &model.Note{
 		Title:    title,
@@ -73,6 +72,13 @@ func (s *NoteService) UpdateNoteMetaData(id string, title string, folderId strin
 func (s *NoteService) UpdateNoteContents(id string, title string, md string, folderID string) error {
 	// stub
 	return nil
+}
+
+func (s *NoteService) DeleteNoteTx(tx *gorm.DB, id string) error {
+	if err := tx.Where("note_id = ?", id).Delete(&model.Block{}).Error; err != nil {
+		return err
+	}
+	return tx.Where("id = ?", id).Delete(&model.Note{}).Error
 }
 
 // TODO: NB-32 - implement DeleteNote to remove a note and its blocks from DB only if it's already in "trash" folder, otherwise, move to "trash" folder first

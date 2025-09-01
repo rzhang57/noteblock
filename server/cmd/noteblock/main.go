@@ -11,8 +11,8 @@ func main() {
 	dbConn := db.InitDb()
 
 	// services
-	fSvc := &service.FolderService{DB: dbConn}
 	nSvc := &service.NoteService{DB: dbConn}
+	fSvc := &service.FolderService{DB: dbConn, NoteService: nSvc}
 	bSvc := &service.BlockService{DB: dbConn}
 
 	// handlers - controllers
