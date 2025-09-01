@@ -7,6 +7,7 @@ import {NoteService} from "@/services/NoteService.ts";
 import type {Note} from "@/types/Note.ts";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {Alert, AlertDescription} from "@/components/ui/alert.tsx";
+import SidebarEmptyState from "@/components/SidebarEmptyState.tsx";
 
 const AddMenu: React.FC<{
     open: boolean;
@@ -291,9 +292,17 @@ export const Sidebar: React.FC = () => {
     if (!root) {
         return (
             <aside className="flex items-center justify-center h-full w-64 border-r bg-white">
-                Loading…
+                <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-gray-900 animate-spin"
+                     aria-label="Loading"></div>
+                <span className="sr-only">Loading</span>
             </aside>
         );
+    }
+
+    if (root.children.length === 0 && root.notes.length === 0) {
+        return (
+            <SidebarEmptyState createTemporaryNote={createTemporaryNote} createTemporaryFolder={createTemporaryFolder}/>
+        )
     }
 
     return (

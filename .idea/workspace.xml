@@ -5,10 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e8a2b7e3-4e62-4bce-aa45-89f39c77be53" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/client/src/components/SidebarEmptyState.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/cmd/noteblock/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/cmd/noteblock/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/service/folder_service.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/service/folder_service.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/internal/service/note_service.go" beforeDir="false" afterPath="$PROJECT_DIR$/server/internal/service/note_service.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/Sidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/ui/button.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/ui/button.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -275,7 +276,8 @@
       <workItem from="1756623380587" duration="3684000" />
       <workItem from="1756681232969" duration="9000" />
       <workItem from="1756685256806" duration="6000" />
-      <workItem from="1756686364308" duration="6847000" />
+      <workItem from="1756686364308" duration="6971000" />
+      <workItem from="1756697636372" duration="2535000" />
     </task>
     <servers />
   </component>
