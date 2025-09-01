@@ -81,7 +81,9 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                 if (isFolder(item)) {
                     await FolderService.createFolder({name: newName, parent_id: item.parent_id});
                 } else {
-                    await NoteService.createNote({title: newName, folder_id: item.folder_id});
+                    const note = await NoteService.createNote({title: newName, folder_id: item.folder_id});
+                    setNoteTitle(note.title);
+                    setSelectedNoteId(note.id);
                 }
             } catch (err) {
                 console.error("Failed to create item:", err);

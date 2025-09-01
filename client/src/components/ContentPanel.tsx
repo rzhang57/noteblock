@@ -207,7 +207,11 @@ export function MainContentPanel() {
     }
 
     if (loading) {
-        return <div className="p-6 text-gray-500">Loading note...</div>;
+        return (
+            <div className="flex justify-center items-center p-6">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+        );
     }
 
     const sortedBlocks = note?.blocks ? [...note.blocks].sort((a, b) => a.index - b.index) : [];

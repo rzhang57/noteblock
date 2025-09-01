@@ -9,15 +9,8 @@ export default function App() {
 
     return (
         <div className="h-screen w-full bg-gray-50 flex flex-col">
-            {/* Navigation Header */}
-
-            {/* Main Layout */}
             <div className="flex flex-1 overflow-hidden">
-                {/* Sidebar */}
                 <Sidebar/>
-
-
-                {/* Main Content */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                     <div className="flex-1 overflow-auto p-6">
                         {selectedNoteId ? (
