@@ -11,3 +11,7 @@ memory
 *.sqlite3
 
 noteblock-local-service/data/
+
+dist
+
+node_modules
