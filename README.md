@@ -42,3 +42,30 @@ try before it's released to the public:
 > cd client
 > npm install
 > npm run dev
+
+## access pre-release distributions
+
+> ```bash
+> cd noteblock-local-service
+>
+> # build background process binary
+> # Windows
+> go build -o bin/noteblock-server.exe ./cmd/noteblock
+> # macOS
+> go build -o bin/noteblock-server ./cmd/noteblock
+>
+> cd ..
+>
+> # build frontend
+> cd client
+> npm run build
+>
+> cd..
+>
+> # install electron dependencies
+> npm install
+> 
+> # Windows
+> npx electron-builder --win
+> # macOS (must run on a Mac)
+> npx electron-builder --mac
