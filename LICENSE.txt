@@ -1,0 +1,18 @@
+Copyright © 2025 Ryan Zhang
+
+This software, Noteblock, is made available for personal use, evaluation, and educational purposes only.
+
+You are permitted to:
+- View, download, and run the source code for personal, non-commercial use
+- Use the application to test, demo, or showcase your work (e.g., in a portfolio or job application)
+
+You are not permitted to:
+- Copy, modify, or redistribute this source code
+- Incorporate any part of this software into a commercial or derivative product
+- Use the name "Noteblock" or its associated materials for your own branding or commercial purposes
+
+This project is source-available, but **not open source**. All rights are reserved by the author.
+
+This repository may become private or closed-source at any time without notice.
+
+For licensing inquiries, contact ryanzhang@outlook.com.

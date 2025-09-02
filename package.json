@@ -1,0 +1,46 @@
+{
+  "name": "noteblock",
+  "version": "0.1.0",
+  "description": "Noteblock desktop app",
+  "author": "Ryan",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:electron\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:electron": "wait-on tcp:5173 && electron .",
+    "build": "cd client && npm run build && electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^26.0.12",
+    "concurrently": "^8.0.0",
+    "wait-on": "^7.0.0"
+  },
+  "build": {
+    "appId": "com.noteblock.app",
+    "productName": "Noteblock",
+    "files": [
+      "electron/**/*",
+      "client/dist/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "extraResources": [
+        {
+          "from": "noteblock-local-service/bin/noteblock-server.exe",
+          "to": "noteblock-server.exe"
+        }
+      ]
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "extraResources": [
+        {
+          "from": "noteblock-local-service/bin/noteblock-server",
+          "to": "noteblock-server"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,17 @@
+/noteblock-local-service/data/noteblock.sqlite
+
+server.iml
+client.iml
+
+identifier.sqlite
+memory
+
+*.db
+*.sqlite
+*.sqlite3
+
+noteblock-local-service/data/
+
+dist
+
+node_modules

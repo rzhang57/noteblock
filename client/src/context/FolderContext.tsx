@@ -1,0 +1,1 @@
+// TODO: Lightweight folder context for breadcrumbs only
