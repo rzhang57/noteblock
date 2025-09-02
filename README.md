@@ -16,6 +16,7 @@ desktop note-taking made intuitive
 
 ## incoming features
 
+- user-based cloud sync-service for seamless access to notes across devices, on and offline (in progress)
 - new block types and 3rd party integrations
 - plugin framework that allows users to create their own block types
 
