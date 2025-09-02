@@ -1,4 +1,4 @@
-/server/data/noteblock.sqlite
+/noteblock-local-service/data/noteblock.sqlite
 
 server.iml
 client.iml
@@ -10,4 +10,4 @@ memory
 *.sqlite
 *.sqlite3
 
-server/data/
+noteblock-local-service/data/

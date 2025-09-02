@@ -31,7 +31,7 @@ func (b *BlockHandler) Create(c *gin.Context) {
 	c.JSON(201, gin.H{"id": block.ID, "note_id": block.NoteID, "type": block.Type, "index": block.Index})
 }
 
-// TODO: updating order of blocks given one is moved or removed should be handled by the client which will use a list to represent blocks, and then send the new order to the server with the natural indexes of the list
+// TODO: updating order of blocks given one is moved or removed should be handled by the client which will use a list to represent blocks, and then send the new order to the noteblock-local-service with the natural indexes of the list
 
 // TODO: Update content specifically updates one of two things: either changes the content of the block and not the type, or changes both type and content at the same time.
 func (b *BlockHandler) UpdateContent(c *gin.Context) {
