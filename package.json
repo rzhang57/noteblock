@@ -25,6 +25,7 @@
     ],
     "win": {
       "target": "nsis",
+      "icon": "assets/icons/noteblock.ico",
       "extraResources": [
         {
           "from": "noteblock-local-service/bin/noteblock-server.exe",
@@ -34,6 +35,7 @@
     },
     "mac": {
       "target": "dmg",
+      "icon": "assets/icons/noteblock.icns",
       "category": "public.app-category.productivity",
       "extraResources": [
         {

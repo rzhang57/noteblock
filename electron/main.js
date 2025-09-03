@@ -12,12 +12,22 @@ function createWindow() {
             nodeIntegration: false,
             contextIsolation: true,
         },
+        title: 'Noteblock',
+        icon: path.join(__dirname, "../assets/icons/noteblock.png"),
     })
 
+    if (app.isPackaged) {
+        win.setMenu(null)
+    }
+
     const indexPath = path.join(__dirname, "../client/dist/index.html")
-    win.loadFile(indexPath).catch(err => {
-        console.error("Failed to load index.html:", err)
-    })
+    win.loadFile(indexPath)
+        .then(() => {
+            win.setTitle('Noteblock')
+        })
+        .catch(err => {
+            console.error("Failed to load index.html:", err)
+        })
 }
 
 app.whenReady().then(() => {
