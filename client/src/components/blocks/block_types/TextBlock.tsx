@@ -64,9 +64,6 @@ export function TextBlock({block}: { block: Block }) {
 
     return (
         <div className="p-2 bg-white w-[834px]">
-            <div className="mb-2 text-xs text-gray-500">
-                Shortcuts: Ctrl+Shift+` or Ctrl+K for code block
-            </div>
             <MDXEditor
                 ref={editorRef}
                 markdown={content}
@@ -85,13 +82,17 @@ export function TextBlock({block}: { block: Block }) {
                         codeBlockLanguages: {
                             '': 'Plain text',
                             text: 'Plain text',
-                            js: 'JavaScript',
-                            javascript: 'JavaScript',
                             ts: 'TypeScript',
-                            typescript: 'TypeScript',
                             python: 'Python',
+                            js: 'JavaScript',
+                            java: 'Java',
+                            go: 'Go',
+                            cpp: 'C++',
+                            c: 'C',
+                            csharp: 'C#',
                             html: 'HTML',
-                            css: 'CSS'
+                            css: 'CSS',
+                            sql: 'SQL',
                         }
                     }),
                     markdownShortcutPlugin(),

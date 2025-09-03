@@ -8,7 +8,7 @@ export default function App() {
     const {selectedNoteId} = useNoteContext();
 
     return (
-        <div className="h-screen w-full bg-gray-50 flex flex-col">
+        <div className="h-screen w-full bg-white flex flex-col">
             <div className="flex flex-1 overflow-hidden">
                 <Sidebar/>
                 <div className="flex-1 flex flex-col overflow-hidden">
