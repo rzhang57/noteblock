@@ -32,12 +32,12 @@ func InitDb() *gorm.DB {
 	}
 	db.Exec("PRAGMA foreign_keys = ON")
 
-	//ON //TODO: remove in production
+	//////TODO: remove in production
 	//db.Migrator().DropTable(&model.Block{}, &model.Note{}, &model.Folder{})
-	//db.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{})
+	db.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{})
 
 	var count int64
-	db.Model(&model.Folder{}).Where("id = ?", "root").Count(&count)
+	db.Model(&model.Folder{}).Where("id = root", "root").Count(&count)
 	if count == 0 {
 		db.Create(&model.Folder{
 			ID:   "root",
