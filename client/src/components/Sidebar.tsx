@@ -306,7 +306,7 @@ export const Sidebar: React.FC = () => {
                     <div className="flex items-center justify-center gap-3">
                         <img src="./noteblock.png" alt="" className="h-8 w-8 align-middle"/>
                         <h1 className="text-black text-3xl leading-[2rem] ml-1"
-                            style={{fontFamily: 'Minecraft'}}>Noteblock</h1>
+                            style={{fontFamily: 'Minecraft'}}>noteblock</h1>
                     </div>
                     <SidebarEmptyState createTemporaryNote={createTemporaryNote}
                                        createTemporaryFolder={createTemporaryFolder}/>
@@ -319,10 +319,10 @@ export const Sidebar: React.FC = () => {
     return (
         <aside className="h-full w-64 border-r bg-white flex flex-col">
             <div className="border-b p-4 flex items-center gap-2">
-                <div className="flex items-center justify-center gap-3">
-                    <img src="./noteblock.png" alt="" className="h-8 w-8 align-middle"/>
-                    <h1 className="text-black text-3xl leading-[2rem] ml-1"
-                        style={{fontFamily: 'Minecraft'}}>Noteblock</h1>
+                <div className="flex items-center justify-center gap-1">
+                    <img src="./noteblock.png" alt="" className="h-6 w-6 align-middle"/>
+                    <h1 className="text-black text-xl leading-[2rem] ml-1"
+                        style={{fontFamily: 'Minecraft'}}>noteblock</h1>
                 </div>
             </div>
 
