@@ -258,29 +258,28 @@ export function MainContentPanel() {
     return (
         note && noteTitle && (
             <div className="p-6 space-y-4">
-                <div
-                    className="flex justify-center pb-2"
-                    onClick={() => setEditingTitle(true)}
-                >
-                    {editingTitle ? (
-                        <input
-                            className="text-xl font-semibold text-gray-800 bg-white focus:outline-none shadow-md px-4 py-2 border-2 border-gray-200"
-                            style={{boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff"}}
-                            value={localNoteTitle !== null ? localNoteTitle : noteTitle}
-                            onChange={e => setLocalNoteTitle(e.target.value)}
-                            onKeyDown={e => {
-                                if (e.key === "Enter") {
-                                    tryUpdateTitle(localNoteTitle ? localNoteTitle : "");
-                                }
-                            }}
-                            onBlur={() => {
-                                setEditingTitle(false)
-                            }}
-                            autoFocus
-                        />
-                    ) : (
-                        <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
-                    )}
+                <div className="flex justify-center pb-2">
+                    <div className="w-full max-w-3xl text-left" onClick={() => !editingTitle && setEditingTitle(true)}>
+                        {editingTitle ? (
+                            <input
+                                className="text-xl font-semibold text-gray-800 bg-white focus:outline-none px-4 py-2 border-2 border-gray-200 w-full"
+                                style={{boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff"}}
+                                value={localNoteTitle !== null ? localNoteTitle : noteTitle}
+                                onChange={e => setLocalNoteTitle(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === "Enter") {
+                                        tryUpdateTitle(localNoteTitle ? localNoteTitle : "");
+                                    }
+                                }}
+                                onBlur={() => {
+                                    setEditingTitle(false)
+                                }}
+                                autoFocus
+                            />
+                        ) : (
+                            <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
+                        )}
+                    </div>
                 </div>
 
                 <DndContext
