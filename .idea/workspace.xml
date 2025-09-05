@@ -6,8 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="e8a2b7e3-4e62-4bce-aa45-89f39c77be53" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/App.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/blocks/block_types/TextBlock.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/blocks/block_types/TextBlock.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,12 +47,12 @@
     &quot;assignee&quot;: &quot;rzhang57&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/rzhang57/noteblock.git",
-    "accountId": "52312e67-41fe-4750-9c1f-fb31fcceca7c"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/rzhang57/noteblock.git&quot;,
+    &quot;accountId&quot;: &quot;52312e67-41fe-4750-9c1f-fb31fcceca7c&quot;
   }
-}]]></component>
+}</component>
   <component name="GoLibraries">
     <option name="indexEntireGoPath" value="true" />
   </component>
@@ -109,7 +107,7 @@
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.2",
     "settings.editor.selected.configurable": "reference.settingsdialog.project.grazie",
-    "ts.external.directory.path": "/Users/ryanzhang/IdeaProjects/noteblock/client/node_modules/typescript/lib",
+    "ts.external.directory.path": "C:\\Users\\Ryan\\Documents\\GitHub\\noteblock\\client\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
   },
   "keyToStringList": {

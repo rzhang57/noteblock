@@ -108,6 +108,9 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
     };
 
     const handleRenameCancel = () => {
+        if (isTemporary) {
+            refreshRoot();
+        }
         setIsRenaming(false);
     };
 
