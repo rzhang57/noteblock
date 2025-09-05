@@ -86,10 +86,12 @@ function InsertionDivider({onAdd, visibleWithoutHover}: {
 }
 
 export function MainContentPanel() {
-    const {selectedNoteId, noteTitle} = useNoteContext();
+    const {selectedNoteId, noteTitle, setNoteTitle} = useNoteContext();
     const [note, setNote] = useState<Note | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [activeBlock, setActiveBlock] = useState<Block | null>(null);
+    const [editingTitle, setEditingTitle] = useState(false);
+    const [localNoteTitle, setLocalNoteTitle] = useState(noteTitle);
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -117,7 +119,12 @@ export function MainContentPanel() {
             }
         };
 
-        fetchNote();
+        fetchNote().then(
+            () => {
+                setLoading(false)
+                setLocalNoteTitle(noteTitle);
+            }
+        );
     }, [selectedNoteId]);
 
     const handleAddBlockAt = async (type: "text" | "canvas" | "image", index: number) => {
@@ -227,11 +234,53 @@ export function MainContentPanel() {
 
     const sortedBlocks = note?.blocks ? [...note.blocks].sort((a, b) => a.index - b.index) : [];
 
+    const tryUpdateTitle = async (newTitle: string) => {
+        if (!selectedNoteId) return;
+        try {
+            const trimmed = newTitle.trim();
+            if (trimmed && trimmed !== noteTitle) {
+                await NoteService.updateNote({
+                    id: selectedNoteId,
+                    title: trimmed,
+                    folder_id: note?.folder_id,
+                    blocks: note?.blocks
+                });
+                setEditingTitle(false);
+                setNoteTitle(trimmed);
+                setLocalNoteTitle(trimmed);
+            }
+        } catch (err) {
+            console.error("Failed to update note title:", err);
+            setLocalNoteTitle(noteTitle);
+        }
+    }
+
     return (
-        note && (
+        note && noteTitle && (
             <div className="p-6 space-y-4">
-                <div className="flex justify-center pb-2">
-                    <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
+                <div
+                    className="flex justify-center pb-2"
+                    onClick={() => setEditingTitle(true)}
+                >
+                    {editingTitle ? (
+                        <input
+                            className="text-xl font-semibold text-gray-800 bg-white focus:outline-none shadow-md px-4 py-2 border-2 border-gray-200"
+                            style={{boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff"}}
+                            value={localNoteTitle !== null ? localNoteTitle : noteTitle}
+                            onChange={e => setLocalNoteTitle(e.target.value)}
+                            onKeyDown={e => {
+                                if (e.key === "Enter") {
+                                    tryUpdateTitle(localNoteTitle ? localNoteTitle : "");
+                                }
+                            }}
+                            onBlur={() => {
+                                setEditingTitle(false)
+                            }}
+                            autoFocus
+                        />
+                    ) : (
+                        <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
+                    )}
                 </div>
 
                 <DndContext

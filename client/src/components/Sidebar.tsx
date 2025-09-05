@@ -77,7 +77,7 @@ export const Sidebar: React.FC = () => {
     const [root, setRoot] = useState<Folder | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [showAddMenu, setShowAddMenu] = useState(false);
-    const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
+    const {selectedNoteId, setSelectedNoteId, setNoteTitle, noteTitle} = useNoteContext();
     const buttonRef = useRef<HTMLButtonElement | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
 
@@ -87,7 +87,7 @@ export const Sidebar: React.FC = () => {
             setRoot(rootFolder);
             setExpanded(new Set([rootFolder.id]));
         })();
-    }, []);
+    }, [noteTitle]);
 
     // TODO: is there a better way to refresh UI without re-fetching the entire root every time?
     const refreshRoot = async () => {
