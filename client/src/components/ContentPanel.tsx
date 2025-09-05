@@ -339,6 +339,7 @@ export function MainContentPanel() {
                                     <InsertionDivider onAdd={(type) => handleAddBlockAt(type, i + 1)}/>
                                 </Fragment>
                             ))}
+                            <div className="h-[40vh]"/>
                         </div>
                     </SortableContext>
 
