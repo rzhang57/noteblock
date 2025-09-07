@@ -2,12 +2,22 @@ package service
 
 import (
 	"encoding/json"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"mime/multipart"
 	"server/internal/model"
 )
 
 type BlockService struct {
 	DB *gorm.DB
+}
+
+func (s *BlockService) SaveImage(file *multipart.FileHeader) string {
+	newImageUuid := uuid.NewString()
+	imageName := newImageUuid + "_" + file.Filename
+	savePath := "/uploads/images/" + imageName
+
+	return savePath
 }
 
 // TODO: for non-plugin blocks, we can assert type and json content fields by unmarshalling before storing

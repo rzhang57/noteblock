@@ -18,6 +18,8 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler, bh *api.BlockHandler) *gi
 		AllowCredentials: true,
 	}))
 
+	r.Static("/images", "./uploads/images")
+
 	apiGroup := r.Group("/api")
 	{
 		apiGroup.POST("/folders", fh.Create)
@@ -33,6 +35,8 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler, bh *api.BlockHandler) *gi
 		apiGroup.POST("/notes/:id/blocks", bh.Create)
 		apiGroup.PUT("/notes/:id/blocks/:block_id", bh.UpdateContent)
 		apiGroup.DELETE("/notes/:id/blocks/:block_id", bh.Delete)
+
+		apiGroup.POST("/upload", bh.UploadImage)
 	}
 	return r
 }

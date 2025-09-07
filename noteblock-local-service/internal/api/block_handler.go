@@ -10,6 +10,24 @@ type BlockHandler struct {
 	Svc *service.BlockService
 }
 
+func (b *BlockHandler) UploadImage(c *gin.Context) {
+	file, err := c.FormFile("image")
+	if err != nil {
+		c.JSON(400, gin.H{"error": "No image is received: " + err.Error()})
+		return
+	}
+
+	savePath := b.Svc.SaveImage(file)
+
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		c.JSON(500, gin.H{"error": "Failed to save image: " + err.Error()})
+		return
+	}
+
+	// TODO: instead of localhost, use unix socket or env variable for domain of server (dev, staging, prod)
+	c.JSON(200, gin.H{"url": "http://localhost:7474" + savePath})
+}
+
 func (b *BlockHandler) Create(c *gin.Context) {
 	noteId := c.Param("id")
 	var body struct {
