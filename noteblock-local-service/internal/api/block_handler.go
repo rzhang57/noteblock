@@ -17,7 +17,7 @@ func (b *BlockHandler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	savePath := b.Svc.SaveImage(file)
+	savePath, _ := b.Svc.SaveImage(file)
 
 	if err := c.SaveUploadedFile(file, savePath); err != nil {
 		c.JSON(500, gin.H{"error": "Failed to save image: " + err.Error()})

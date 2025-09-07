@@ -39,9 +39,7 @@ export function TextBlock({block}: { block: Block }) {
     }, [content]);
 
     async function imageUploadHandler(image: File) {
-        const formData = new FormData();
-        formData.append('image', image);
-        return ""
+        return await NoteService.uploadImage(image);
     }
 
     const handleBlur = async () => {

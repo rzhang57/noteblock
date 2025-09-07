@@ -15,3 +15,5 @@ noteblock-local-service/data/
 dist
 
 node_modules
+
+noteblock-local-service/uploads

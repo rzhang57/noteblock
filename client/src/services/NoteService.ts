@@ -56,4 +56,15 @@ export const NoteService = {
     async deleteBlock(noteId: string, blockId: string): Promise<void> {
         return restClient.delete<void>(`/notes/${noteId}/blocks/${blockId}`);
     },
+
+    async uploadImage(image: File): Promise<string> {
+        const formData = new FormData();
+        formData.append('image', image);
+        const response = await restClient.post<{ url: string }>('/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.url;
+    }
 };

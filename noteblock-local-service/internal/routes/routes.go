@@ -18,7 +18,7 @@ func Setup(fh *api.FolderHandler, nh *api.NoteHandler, bh *api.BlockHandler) *gi
 		AllowCredentials: true,
 	}))
 
-	r.Static("/images", "./uploads/images")
+	r.Static("/uploads/images", "./uploads/images")
 
 	apiGroup := r.Group("/api")
 	{
