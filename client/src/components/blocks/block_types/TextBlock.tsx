@@ -6,7 +6,7 @@ import {
     MDXEditor,
     quotePlugin,
     codeBlockPlugin,
-    codeMirrorPlugin
+    codeMirrorPlugin, imagePlugin
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
 import {useNoteContext} from "@/context/NoteContext.tsx";
@@ -21,13 +21,6 @@ export function TextBlock({block}: { block: Block }) {
         const textContent = block.content as TextContent;
         return textContent.text ?? "";
     });
-
-    // Custom function to insert code block
-    const insertCodeBlock = () => {
-        const currentContent = content;
-        const codeBlockMarkdown = currentContent.endsWith('\n') ? '```\n\n```\n' : '\n```\n\n```\n';
-        setContent(prev => prev + codeBlockMarkdown);
-    };
 
     useEffect(() => {
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -45,6 +38,12 @@ export function TextBlock({block}: { block: Block }) {
         return () => document.removeEventListener('keydown', handleGlobalKeyDown);
     }, [content]);
 
+    async function imageUploadHandler(image: File) {
+        const formData = new FormData();
+        formData.append('image', image);
+        return ""
+    }
+
     const handleBlur = async () => {
         if (!selectedNoteId) return;
         const dbTextContent = block.content as TextContent;
@@ -60,6 +59,12 @@ export function TextBlock({block}: { block: Block }) {
                 console.error("Failed to save block:", err);
             }
         }
+    };
+
+    const insertCodeBlock = () => {
+        const currentContent = content;
+        const codeBlockMarkdown = currentContent.endsWith('\n') ? '```\n\n```\n' : '\n```\n\n```\n';
+        setContent(prev => prev + codeBlockMarkdown);
     };
 
     return (
@@ -95,6 +100,7 @@ export function TextBlock({block}: { block: Block }) {
                             sql: 'SQL',
                         }
                     }),
+                    imagePlugin({imageUploadHandler}),
                     markdownShortcutPlugin(),
                 ]}
             />
