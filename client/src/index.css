@@ -2,7 +2,29 @@
 @import "tw-animate-css";
 
 @layer components {
-  .mdxeditor * {
+  .mdxeditor h1,
+  .mdxeditor h2,
+  .mdxeditor h3,
+  .mdxeditor h4,
+  .mdxeditor h5,
+  .mdxeditor h6,
+  .mdxeditor p,
+  .mdxeditor ul,
+  .mdxeditor ol,
+  .mdxeditor li,
+  .mdxeditor blockquote,
+  .mdxeditor hr,
+  .mdxeditor a,
+  .mdxeditor strong,
+  .mdxeditor em,
+  .mdxeditor table,
+  .mdxeditor thead,
+  .mdxeditor tbody,
+  .mdxeditor tr,
+  .mdxeditor th,
+  .mdxeditor td,
+  .mdxeditor img,
+  .mdxeditor code {
     all: revert;
   }
 }

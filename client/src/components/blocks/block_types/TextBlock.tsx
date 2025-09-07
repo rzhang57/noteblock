@@ -83,7 +83,6 @@ export function TextBlock({block}: { block: Block }) {
                     }),
                     codeMirrorPlugin({
                         codeBlockLanguages: {
-                            '': 'Plain text',
                             text: 'Plain text',
                             ts: 'TypeScript',
                             python: 'Python',
@@ -96,7 +95,7 @@ export function TextBlock({block}: { block: Block }) {
                             html: 'HTML',
                             css: 'CSS',
                             sql: 'SQL',
-                        }
+                        },
                     }),
                     imagePlugin({
                         imageUploadHandler: imageUploadHandler,
