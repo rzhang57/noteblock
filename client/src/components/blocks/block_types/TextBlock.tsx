@@ -98,7 +98,10 @@ export function TextBlock({block}: { block: Block }) {
                             sql: 'SQL',
                         }
                     }),
-                    imagePlugin({imageUploadHandler}),
+                    imagePlugin({
+                        imageUploadHandler: imageUploadHandler,
+                        EditImageToolbar: () => null
+                    }),
                     markdownShortcutPlugin(),
                 ]}
             />
