@@ -95,7 +95,7 @@ export function TextBlock({block}: { block: Block }) {
                             html: 'HTML',
                             css: 'CSS',
                             sql: 'SQL',
-                        },
+                        }
                     }),
                     imagePlugin({
                         imageUploadHandler: imageUploadHandler,
