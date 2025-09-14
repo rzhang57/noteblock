@@ -28,6 +28,7 @@ func NewServer() *http.Server {
 
 	// Declare Server config
 	server := &http.Server{
+		// default localhost 8080
 		Addr:         fmt.Sprintf(":%d", NewServer.port),
 		Handler:      NewServer.RegisterRoutes(),
 		IdleTimeout:  time.Minute,
