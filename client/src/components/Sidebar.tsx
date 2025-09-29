@@ -318,7 +318,7 @@ export const Sidebar: React.FC = () => {
 
     return (
         <aside className="h-full w-64 border-r bg-white flex flex-col">
-            <div className="border-b p-4 flex items-center gap-2">
+            <div className=" p-4 flex items-center gap-2">
                 <div className="flex items-center justify-center gap-1">
                     <img src="./noteblock.png" alt="" className="h-6 w-6 align-middle"/>
                     <h1 className="text-black text-xl leading-[2rem] ml-1"
@@ -344,7 +344,7 @@ export const Sidebar: React.FC = () => {
             )}
 
             <div className="flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-500">
-                <span>NOTES</span>
+                <span className="text-md">Notes</span>
                 <div className="relative">
                     <button
                         ref={buttonRef}
