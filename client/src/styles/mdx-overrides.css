@@ -1,0 +1,20 @@
+/* --- Hide ANY inline codeblock toolbar UI injected by MDXEditor --- */
+
+/* toolbars that live inside the editor DOM */
+.mdxeditor-codeblock-toolbar,
+[data-mde-codeblock-toolbar],
+[data-testid="codeblock-toolbar"] {
+    display: none !important;
+}
+
+/* Radix popover portals that contain the codeblock toolbar (rendered in <body>) */
+[data-radix-popper-content-wrapper] .mdxeditor-codeblock-toolbar,
+[data-radix-popper-content-wrapper] [data-mde-codeblock-toolbar],
+[data-radix-popper-content-wrapper] [data-testid="codeblock-toolbar"] {
+    display: none !important;
+}
+
+/* Keep gutters off even if a theme re-adds them */
+[data-nb-codeblock] .cm-gutters {
+    display: none !important;
+}
