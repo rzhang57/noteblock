@@ -29,18 +29,6 @@
   }
 }
 
-[data-nb-codeblock] .cm-editor .mdxeditor-codeblock-toolbar,
-[data-nb-codeblock] .cm-editor [data-mde-codeblock-toolbar],
-[data-nb-codeblock] .cm-editor [data-radix-popper-content-wrapper] {
-  display: none !important;
-}
-
-/* Belt & suspenders: make sure line numbers stay off */
-[data-nb-codeblock] .cm-gutters {
-  display: none !important;
-}
-
-
 @font-face {
   font-family: 'Minecraft';
   src: url('./assets/fonts/MinecraftRegular-Bmg3.otf') format('opentype');

@@ -11,24 +11,15 @@ import {
     type CodeBlockEditorDescriptor
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
-
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {NoteService} from "@/services/NoteService.ts";
 import {useState, useRef, useEffect, useMemo, useRef as useDomRef} from "react";
 import type {Block, TextContent} from "@/types/Note.ts";
-
-/* ---------------- CodeMirror 6 (bare) ---------------- */
 import {EditorState, Compartment} from "@codemirror/state";
 import {EditorView, keymap, drawSelection, highlightActiveLine} from "@codemirror/view";
 import {defaultKeymap, history, historyKeymap, indentWithTab} from "@codemirror/commands";
 import {indentOnInput, bracketMatching, syntaxHighlighting, defaultHighlightStyle} from "@codemirror/language";
 import {closeBrackets, closeBracketsKeymap} from "@codemirror/autocomplete";
-
-/* ---- Languages (install as needed) ----
-   npm i @codemirror/lang-javascript @codemirror/lang-python @codemirror/lang-java \
-         @codemirror/lang-go @codemirror/lang-html @codemirror/lang-css @codemirror/lang-sql \
-         @codemirror/lang-cpp
-*/
 import {javascript} from "@codemirror/lang-javascript";
 import {python} from "@codemirror/lang-python";
 import {java} from "@codemirror/lang-java";
@@ -37,8 +28,8 @@ import {html} from "@codemirror/lang-html";
 import {css} from "@codemirror/lang-css";
 import {sql} from "@codemirror/lang-sql";
 import {cpp} from "@codemirror/lang-cpp";
+import {TbCopy, TbCopyCheckFilled} from "react-icons/tb";
 
-/* ---------- Small language picker (controls this block) ---------- */
 function LanguagePicker({
                             value,
                             onChange,
@@ -53,10 +44,9 @@ function LanguagePicker({
             value={value ?? "text"}
             onChange={(e) => onChange(e.target.value)}
             style={{
-                background: "#1e1e1e",
-                color: "#ddd",
+                background: "#eaeaea",
+                color: "#444444",
                 border: "1px solid #333",
-                borderRadius: 6,
                 padding: "4px 8px",
                 fontSize: 12
             }}
@@ -132,20 +122,19 @@ function BareCodeMirror({code, language, onChange}: BareEditorProps) {
                 // theme: darker bg, brighter foreground, no line numbers
                 EditorView.theme({
                     "&": {
-                        backgroundColor: "#0f141c",
-                        color: "#f2f4f8",
+                        backgroundColor: "#f5f5f5",
+                        color: "#1f1f1f",
                         fontFamily:
                             "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
                         fontSize: "14px",
-                        borderRadius: "8px"
                     },
                     ".cm-gutters": {display: "none !important"},
-                    ".cm-content": {caretColor: "#ffffff"},
-                    ".cm-cursor": {borderLeftColor: "#ffffff"},
+                    ".cm-content": {caretColor: "#444444"},
+                    ".cm-cursor": {borderLeftColor: "#444444"},
                     ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-                        backgroundColor: "#ffffff"
+                        backgroundColor: "#c9c9c9"
                     }
-                }, {dark: true}),
+                }, {dark: false}),
 
                 // language lives in a compartment, so we can swap it without losing the rest
                 langCompartment.of(langExtensionFor(language))
@@ -168,7 +157,6 @@ function BareCodeMirror({code, language, onChange}: BareEditorProps) {
         };
     }, []);
 
-    // Keep editor in sync if external code changes
     useEffect(() => {
         const view = viewRef.current;
         if (!view) return;
@@ -178,7 +166,6 @@ function BareCodeMirror({code, language, onChange}: BareEditorProps) {
         }
     }, [code]);
 
-    // ✅ Only reconfigure the language compartment (do NOT reconfigure everything)
     useEffect(() => {
         const view = viewRef.current;
         if (!view) return;
@@ -190,8 +177,6 @@ function BareCodeMirror({code, language, onChange}: BareEditorProps) {
     return <div ref={host}/>;
 }
 
-
-/* ---------- Headered editor that connects to MDX via context ---------- */
 function HeaderedBareEditor({
                                 code,
                                 language,
@@ -202,19 +187,18 @@ function HeaderedBareEditor({
     languageMap: Record<string, string>;
 }) {
     const {setCode, setLanguage} = useCodeBlockEditorContext();
+    const [copied, setCopied] = useState(false);
 
     return (
         <div
             data-nb-codeblock
             style={{
-                borderRadius: 10,
                 overflow: "hidden",
                 border: "1px solid #333",
-                background: "#141414",
+                background: "#ffffff",
                 margin: "1rem 0"
             }}
         >
-            {/* Header */}
             <div
                 style={{
                     display: "flex",
@@ -222,27 +206,35 @@ function HeaderedBareEditor({
                     justifyContent: "space-between",
                     gap: 8,
                     padding: "8px 10px",
-                    background: "#0f0f0f",
+                    background: "#d3d3d3",
                     borderBottom: "1px solid #2a2a2a"
                 }}
             >
                 <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                    <span style={{fontSize: 12, color: "#aaa"}}>Language:</span>
+                    <span style={{fontSize: 12, color: "#444444"}}>Language:</span>
                     <LanguagePicker value={language} options={languageMap} onChange={(v) => setLanguage(v)}/>
                 </div>
                 <button
-                    onClick={() => navigator.clipboard.writeText(code)}
+                    onClick={async () => {
+                        await navigator.clipboard.writeText(code);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 3000);
+                    }}
                     style={{
                         fontSize: 12,
-                        color: "#ddd",
-                        background: "#1e1e1e",
+                        color: "#444444",
+                        background: "#eaeaea",
                         border: "1px solid #333",
-                        borderRadius: 6,
                         padding: "4px 8px",
-                        cursor: "pointer"
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6
                     }}
                 >
-                    Copy
+                    {copied ? <TbCopyCheckFilled style={{marginRight: 4}}/> :
+                        <TbCopy style={{marginRight: 4}}/>}
+                    {copied ? "Copied" : "Copy"}
                 </button>
             </div>
 
@@ -254,7 +246,6 @@ function HeaderedBareEditor({
     );
 }
 
-/* ---------- Descriptor that uses our editor (no MDX CM toolbar!) ---------- */
 const bareDescriptor = (languageMap: Record<string, string>): CodeBlockEditorDescriptor => ({
     priority: 100, // keep ours on remounts/language changes
     match: () => true,
@@ -315,18 +306,16 @@ export function TextBlock({block}: { block: Block }) {
         setContent((prev) => prev + codeBlockMarkdown);
     };
 
-    // your languages (unchanged)
     const languageMap = useMemo(
         () => ({
             text: "Plain text",
-            ts: "TypeScript",
             python: "Python",
+            ts: "TypeScript",
             js: "JavaScript",
             java: "Java",
             go: "Go",
             cpp: "C++",
             c: "C",
-            csharp: "C#",
             html: "HTML",
             css: "CSS",
             sql: "SQL"
@@ -348,13 +337,10 @@ export function TextBlock({block}: { block: Block }) {
                     linkPlugin(),
                     quotePlugin(),
 
-                    // Use ONLY codeBlockPlugin with our descriptor
                     codeBlockPlugin({
                         defaultCodeBlockLanguage: "text",
                         codeBlockEditorDescriptors: [bareDescriptor(languageMap)]
                     }),
-
-                    // No codeMirrorPlugin here — we provide our own CM editor now.
 
                     imagePlugin({
                         imageUploadHandler: imageUploadHandler,
