@@ -8,7 +8,10 @@ import {
     codeBlockPlugin,
     imagePlugin,
     useCodeBlockEditorContext,
-    type CodeBlockEditorDescriptor
+    type CodeBlockEditorDescriptor,
+    realmPlugin,
+    createRootEditorSubscription$,
+    $isCodeBlockNode
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
 import {useNoteContext} from "@/context/NoteContext.tsx";
@@ -29,6 +32,23 @@ import {css} from "@codemirror/lang-css";
 import {sql} from "@codemirror/lang-sql";
 import {cpp} from "@codemirror/lang-cpp";
 import {TbCopy, TbCopyCheckFilled} from "react-icons/tb";
+import {
+    $getNodeByKey,
+    $getRoot,
+    $isElementNode,
+    ElementNode,
+    $createParagraphNode,
+    $createTextNode,
+    $getSelection,
+    $isRangeSelection,
+    type RangeSelection
+} from "lexical";
+import {
+    KEY_BACKSPACE_COMMAND,
+    KEY_ARROW_UP_COMMAND,
+    KEY_ARROW_DOWN_COMMAND,
+    COMMAND_PRIORITY_CRITICAL
+} from "lexical";
 
 function LanguagePicker({
                             value,
@@ -60,11 +80,12 @@ function LanguagePicker({
     );
 }
 
-/* ---------- Our bare CodeMirror editor (no MDXEditor toolbar) ---------- */
 type BareEditorProps = {
     code: string;
     language?: string;
     onChange: (next: string) => void;
+    onExitUp?: () => void;
+    onExitDown?: () => void;
 };
 
 function langExtensionFor(key?: string) {
@@ -89,9 +110,8 @@ function langExtensionFor(key?: string) {
             return sql();
         case "c":
         case "cpp":
-            return cpp(); // good enough for C/C++
+            return cpp();
         case "csharp":
-            // No official CM6 lang; fall back to plain highlighting
             return [];
         case "text":
         default:
@@ -99,7 +119,7 @@ function langExtensionFor(key?: string) {
     }
 }
 
-function BareCodeMirror({code, language, onChange}: BareEditorProps) {
+function BareCodeMirror({code, language, onChange, onExitUp, onExitDown}: BareEditorProps) {
     const host = useDomRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const langCompartment = useRef(new Compartment()).current;
@@ -118,25 +138,63 @@ function BareCodeMirror({code, language, onChange}: BareEditorProps) {
                 bracketMatching(),
                 closeBrackets(),
                 syntaxHighlighting(defaultHighlightStyle),
-
-                // theme: darker bg, brighter foreground, no line numbers
-                EditorView.theme({
-                    "&": {
-                        backgroundColor: "#f5f5f5",
-                        color: "#1f1f1f",
-                        fontFamily:
-                            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-                        fontSize: "14px",
+                keymap.of([
+                    {
+                        key: "ArrowUp",
+                        run: (view) => {
+                            const head = view.state.selection.main.head;
+                            const line = view.state.doc.lineAt(head);
+                            if (head === line.from) {
+                                view.dom.blur();
+                                onExitUp?.();
+                                return true;
+                            }
+                            return false;
+                        }
                     },
-                    ".cm-gutters": {display: "none !important"},
-                    ".cm-content": {caretColor: "#444444"},
-                    ".cm-cursor": {borderLeftColor: "#444444"},
-                    ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-                        backgroundColor: "#c9c9c9"
+                    {
+                        key: "ArrowDown",
+                        run: (view) => {
+                            const head = view.state.selection.main.head;
+                            const line = view.state.doc.lineAt(head);
+                            if (head === line.to && head === view.state.doc.length) {
+                                view.dom.blur();
+                                onExitDown?.();
+                                return true;
+                            }
+                            return false;
+                        }
+                    },
+                    {
+                        key: "Backspace",
+                        run: (view) => {
+                            if (view.state.selection.main.from === 0) {
+                                view.dom.blur();
+                                onExitUp?.();
+                                return true;
+                            }
+                            return false;
+                        }
                     }
-                }, {dark: false}),
-
-                // language lives in a compartment, so we can swap it without losing the rest
+                ]),
+                EditorView.theme(
+                    {
+                        "&": {
+                            backgroundColor: "#f5f5f5",
+                            color: "#1f1f1f",
+                            fontFamily:
+                                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                            fontSize: "14px"
+                        },
+                        ".cm-gutters": {display: "none !important"},
+                        ".cm-content": {caretColor: "#444444"},
+                        ".cm-cursor": {borderLeftColor: "#444444"},
+                        ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
+                            backgroundColor: "#c9c9c9"
+                        }
+                    },
+                    {dark: false}
+                ),
                 langCompartment.of(langExtensionFor(language))
             ]
         });
@@ -186,8 +244,55 @@ function HeaderedBareEditor({
     language?: string;
     languageMap: Record<string, string>;
 }) {
-    const {setCode, setLanguage} = useCodeBlockEditorContext();
+    const {setCode, setLanguage, parentEditor, lexicalNode} = useCodeBlockEditorContext();
     const [copied, setCopied] = useState(false);
+
+    // TODO: fix moving caret from codeblock back to main text
+    function moveCaretBeforeBlock() {
+        // 1. blur the codemirror dom
+        const cm = document.querySelector('[data-nb-codeblock] .cm-editor') as HTMLElement | null;
+        cm?.blur();
+
+        // 2. update lexical selection
+        parentEditor.update(() => {
+            const node = $getNodeByKey(lexicalNode.getKey());
+            if (!node) return;
+
+            const prev = node.getPreviousSibling();
+            if (prev) {
+                if ($isElementNode(prev as ElementNode)) (prev as ElementNode).selectEnd();
+                else (prev as any).select?.();
+            } else {
+                $getRoot().selectStart();
+            }
+        });
+
+        // 3. return focus to Lexical after DOM update
+        requestAnimationFrame(() => parentEditor.focus());
+    }
+
+    function moveCaretAfterBlock() {
+        const cm = document.querySelector('[data-nb-codeblock] .cm-editor') as HTMLElement | null;
+        cm?.blur();
+
+        parentEditor.update(() => {
+            const node = $getNodeByKey(lexicalNode.getKey());
+            if (!node) return;
+
+            const next = node.getNextSibling();
+            if (next) {
+                if ($isElementNode(next as ElementNode)) (next as ElementNode).selectStart();
+                else (next as any).select?.();
+            } else {
+                const root = $getRoot();
+                const p = $createParagraphNode().append($createTextNode(""));
+                root.append(p);
+                p.selectStart();
+            }
+        });
+
+        requestAnimationFrame(() => parentEditor.focus());
+    }
 
     return (
         <div
@@ -232,30 +337,135 @@ function HeaderedBareEditor({
                         gap: 6
                     }}
                 >
-                    {copied ? <TbCopyCheckFilled style={{marginRight: 4}}/> :
-                        <TbCopy style={{marginRight: 4}}/>}
+                    {copied ? <TbCopyCheckFilled style={{marginRight: 4}}/> : <TbCopy style={{marginRight: 4}}/>}
                     {copied ? "Copied" : "Copy"}
                 </button>
             </div>
 
-            {/* Editor */}
             <div style={{padding: 10}}>
-                <BareCodeMirror code={code} language={language} onChange={setCode}/>
+                <BareCodeMirror
+                    code={code}
+                    language={language}
+                    onChange={setCode}
+                    onExitUp={moveCaretBeforeBlock}
+                    onExitDown={moveCaretAfterBlock}
+                />
             </div>
         </div>
     );
 }
 
 const bareDescriptor = (languageMap: Record<string, string>): CodeBlockEditorDescriptor => ({
-    priority: 100, // keep ours on remounts/language changes
+    priority: 100,
     match: () => true,
-    Editor: (p: any) => (
-        <HeaderedBareEditor
-            code={p.code}
-            language={p.language}
-            languageMap={languageMap}
-        />
-    )
+    Editor: (p: any) => <HeaderedBareEditor code={p.code} language={p.language} languageMap={languageMap}/>
+});
+
+function isAtStartOfTopParagraph() {
+    const sel = $getSelection();
+    if (!$isRangeSelection(sel) || !sel.isCollapsed()) return false;
+    const range = sel as RangeSelection;
+    const anchor = range.anchor;
+
+    const top = anchor.getNode().getTopLevelElementOrThrow();
+    if (top.getType() !== "paragraph") return false;
+
+    let cursorBefore = 0;
+    let child = top.getFirstChild();
+    const anchorNode = anchor.getNode();
+    while (child && child !== anchorNode) {
+        const size =
+            (child as any).getTextContentSize?.() ??
+            ((child as any).getTextContent?.() || "").length;
+        cursorBefore += size;
+        child = child.getNextSibling();
+    }
+    return cursorBefore === 0 && anchor.offset === 0;
+}
+
+function isAtEndOfTopParagraph() {
+    const sel = $getSelection();
+    if (!$isRangeSelection(sel) || !sel.isCollapsed()) return false;
+    const range = sel as RangeSelection;
+    const anchor = range.anchor;
+
+    const top = anchor.getNode().getTopLevelElementOrThrow();
+    if (top.getType() !== "paragraph") return false;
+
+    let total = 0;
+    let before = 0;
+    let child = top.getFirstChild();
+    const anchorNode = anchor.getNode();
+
+    while (child) {
+        const size =
+            (child as any).getTextContentSize?.() ??
+            ((child as any).getTextContent?.() || "").length;
+        total += size;
+        if (child === anchorNode) before = total - size + anchor.offset;
+        child = child.getNextSibling();
+    }
+    return before === total;
+}
+
+const keyboardTravelPlugin = realmPlugin({
+    init(realm) {
+        realm.pub(createRootEditorSubscription$, (editor) => {
+            const unBackspace = editor.registerCommand(
+                KEY_BACKSPACE_COMMAND,
+                () => {
+                    if (!isAtStartOfTopParagraph()) return false;
+                    const sel = $getSelection() as RangeSelection;
+                    const top = sel.anchor.getNode().getTopLevelElementOrThrow();
+                    const prev = top.getPreviousSibling();
+                    if (prev && $isCodeBlockNode(prev)) {
+                        (prev as any).select();
+                        return true;
+                    }
+                    return false;
+                },
+                COMMAND_PRIORITY_CRITICAL
+            );
+
+            const unUp = editor.registerCommand(
+                KEY_ARROW_UP_COMMAND,
+                () => {
+                    if (!isAtStartOfTopParagraph()) return false;
+                    const sel = $getSelection() as RangeSelection;
+                    const top = sel.anchor.getNode().getTopLevelElementOrThrow();
+                    const prev = top.getPreviousSibling();
+                    if (prev && $isCodeBlockNode(prev)) {
+                        (prev as any).select();
+                        return true;
+                    }
+                    return false;
+                },
+                COMMAND_PRIORITY_CRITICAL
+            );
+
+            const unDown = editor.registerCommand(
+                KEY_ARROW_DOWN_COMMAND,
+                () => {
+                    if (!isAtEndOfTopParagraph()) return false;
+                    const sel = $getSelection() as RangeSelection;
+                    const top = sel.anchor.getNode().getTopLevelElementOrThrow();
+                    const next = top.getNextSibling();
+                    if (next && $isCodeBlockNode(next)) {
+                        (next as any).select();
+                        return true;
+                    }
+                    return false;
+                },
+                COMMAND_PRIORITY_CRITICAL
+            );
+
+            return () => {
+                unBackspace();
+                unUp();
+                unDown();
+            };
+        });
+    }
 });
 
 export function TextBlock({block}: { block: Block }) {
@@ -300,6 +510,7 @@ export function TextBlock({block}: { block: Block }) {
         }
     };
 
+    // TODO: when in code block, put caret inside instead of to next line
     const insertCodeBlock = () => {
         const currentContent = content;
         const codeBlockMarkdown = currentContent.endsWith("\n") ? "```\n\n```\n" : "\n```\n\n```\n";
@@ -336,12 +547,11 @@ export function TextBlock({block}: { block: Block }) {
                     listsPlugin(),
                     linkPlugin(),
                     quotePlugin(),
-
                     codeBlockPlugin({
                         defaultCodeBlockLanguage: "text",
                         codeBlockEditorDescriptors: [bareDescriptor(languageMap)]
                     }),
-
+                    keyboardTravelPlugin(),
                     imagePlugin({
                         imageUploadHandler: imageUploadHandler,
                         EditImageToolbar: () => null
