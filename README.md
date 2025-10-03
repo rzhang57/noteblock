@@ -1,10 +1,10 @@
 # noteblock
 
-desktop note-taking made intuitive
+desktop note-taking
 
-## tech stack
+## stack
 
-- **backend**: Go, Gin, GORM, SQLite
+- **backend services**: Go, Gin, GORM, SQLite
 - **frontend**: TypeScript, React, Electron, Konva.js
 - **misc**: Ollama
 
@@ -13,12 +13,12 @@ desktop note-taking made intuitive
 - custom, local-first, performative file system
 - modular block system - blocks currently support live markdown editing/rendering, blank canvas drawings, and images w/ annotations
 - privacy-first AI features through local LLMs via Ollama
+- user-based cloud sync-service for seamless access to notes across devices, on and offline
 
 ## incoming features
 
-- user-based cloud sync-service for seamless access to notes across devices, on and offline (in progress)
 - new block types and 3rd party integrations
-- plugin framework that allows users to create their own block types
+- open source plugin framework that allows users to create their own block types
 
 ## getting started
 
