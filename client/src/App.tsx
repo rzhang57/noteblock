@@ -2,15 +2,26 @@ import './App.css'
 import {Sidebar} from "./components/Sidebar";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {MainContentPanel} from "@/components/ContentPanel.tsx";
+import {useState} from "react";
 
 export default function App() {
 
     const {selectedNoteId} = useNoteContext();
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     return (
         <div className="h-screen w-full bg-white flex flex-col">
             <div className="flex flex-1 overflow-hidden">
-                <Sidebar/>
+                <div
+                    className={`transition-all duration-300 ${sidebarOpen ? "w-64" : "w-12"} overflow-hidden relative`}>
+                    <Sidebar/>
+                    <button
+                        onClick={() => setSidebarOpen((open) => !open)}
+                        aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                    >
+                        {sidebarOpen ? "<" : ">"}
+                    </button>
+                </div>
                 <div className="flex-1 flex flex-col overflow-hidden">
                     <div className="flex-1 overflow-auto p-6">
                         {selectedNoteId ? (
