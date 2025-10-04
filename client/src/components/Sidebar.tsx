@@ -77,6 +77,7 @@ export const Sidebar: React.FC = () => {
     const [root, setRoot] = useState<Folder | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [showAddMenu, setShowAddMenu] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const {selectedNoteId, setSelectedNoteId, setNoteTitle, noteTitle} = useNoteContext();
     const buttonRef = useRef<HTMLButtonElement | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
@@ -291,7 +292,8 @@ export const Sidebar: React.FC = () => {
 
     if (!root) {
         return (
-            <aside className="flex items-center justify-center h-full w-64 border-r bg-white">
+            <aside
+                className={`flex items-center justify-center h-full border-r bg-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
                 <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-gray-900 animate-spin"
                      aria-label="Loading"></div>
                 <span className="sr-only">Loading</span>
@@ -299,31 +301,63 @@ export const Sidebar: React.FC = () => {
         );
     }
 
+    if (isCollapsed) {
+        return (
+            <aside
+                className="h-full w-16 border-r bg-white flex flex-col items-center py-4 transition-all duration-300">
+                <button
+                    onClick={() => setIsCollapsed(false)}
+                    className="p-2 hover:bg-gray-100 rounded group relative"
+                    aria-label="Expand sidebar"
+                >
+                    <img src="./noteblock.png" alt="" className="h-8 w-8"/>
+                    <span
+                        className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none">
+                        Expand sidebar
+                    </span>
+                </button>
+            </aside>
+        );
+    }
+
     if (root.children.length === 0 && root.notes.length === 0) {
         return (
-            <>
-                <div className="border-b p-4 flex items-center gap-2 h-full w-64 border-r bg-white flex flex-col">
-                    <div className="flex items-center justify-center gap-3">
+            <div className="h-full w-64 border-r bg-white flex flex-col transition-all duration-300">
+                <div className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
                         <img src="./noteblock.png" alt="" className="h-8 w-8 align-middle"/>
                         <h1 className="text-black text-3xl leading-[2rem] ml-1"
                             style={{fontFamily: 'Minecraft'}}>noteblock</h1>
                     </div>
-                    <SidebarEmptyState createTemporaryNote={createTemporaryNote}
-                                       createTemporaryFolder={createTemporaryFolder}/>
+                    <button
+                        onClick={() => setIsCollapsed(true)}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        aria-label="Collapse sidebar"
+                    >
+                        <X className="w-4 h-4"/>
+                    </button>
                 </div>
-            </>
-
-        )
+                <SidebarEmptyState createTemporaryNote={createTemporaryNote}
+                                   createTemporaryFolder={createTemporaryFolder}/>
+            </div>
+        );
     }
 
     return (
-        <aside className="h-full w-64 border-r bg-white flex flex-col">
-            <div className=" p-4 flex items-center gap-2">
-                <div className="flex items-center justify-center gap-1">
+        <aside className="h-full w-64 border-r bg-white flex flex-col transition-all duration-300">
+            <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-1">
                     <img src="./noteblock.png" alt="" className="h-6 w-6 align-middle"/>
                     <h1 className="text-black text-xl leading-[2rem] ml-1"
                         style={{fontFamily: 'Minecraft'}}>noteblock</h1>
                 </div>
+                <button
+                    onClick={() => setIsCollapsed(true)}
+                    className="p-1 hover:bg-gray-100 rounded"
+                    aria-label="Collapse sidebar"
+                >
+                    <X className="w-4 h-4"/>
+                </button>
             </div>
 
             {moveError && (
