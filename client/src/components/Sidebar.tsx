@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from "react";
-import {AlertCircle, FileText, FolderPlus, Plus, X} from "lucide-react";
+import {AlertCircle, FileText, FolderPlus, Plus, X, PanelLeftClose, PanelLeftOpen} from "lucide-react";
 import {FolderTreeItem} from "./FolderTreeItem";
 import {FolderService} from "@/services/FolderService";
 import type {Folder} from "@/services/FolderService";
@@ -304,13 +304,17 @@ export const Sidebar: React.FC = () => {
     if (isCollapsed) {
         return (
             <aside
-                className="h-full w-16 border-r bg-white flex flex-col items-center py-4 transition-all duration-300">
+                className="h-full w-16 border-r bg-white flex flex-col items-center py-4">
                 <button
                     onClick={() => setIsCollapsed(false)}
-                    className="p-2 hover:bg-gray-100 rounded group relative"
+                    className="p-2 hover:bg-gray-100 rounded group relative cursor-pointer"
                     aria-label="Expand sidebar"
                 >
-                    <img src="./noteblock.png" alt="" className="h-8 w-8"/>
+                    <img src="./noteblock.png" alt=""
+                         className="h-6 w-6 group-hover:opacity-0 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"/>
+                    <PanelLeftOpen
+                        className="h-6 w-6 text-gray-600"
+                    />
                     <span
                         className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none">
                         Expand sidebar
@@ -322,19 +326,19 @@ export const Sidebar: React.FC = () => {
 
     if (root.children.length === 0 && root.notes.length === 0) {
         return (
-            <div className="h-full w-64 border-r bg-white flex flex-col transition-all duration-300">
+            <div className="h-full w-64 border-r bg-white flex flex-col">
                 <div className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <img src="./noteblock.png" alt="" className="h-8 w-8 align-middle"/>
-                        <h1 className="text-black text-3xl leading-[2rem] ml-1"
+                        <img src="./noteblock.png" alt="" className="h-6 w-6 align-middle"/>
+                        <h1 className="text-black text-xl leading-[2rem] ml-1"
                             style={{fontFamily: 'Minecraft'}}>noteblock</h1>
                     </div>
                     <button
                         onClick={() => setIsCollapsed(true)}
-                        className="p-1 hover:bg-gray-100 rounded"
+                        className="p-1 hover:bg-gray-100 rounded cursor-pointer"
                         aria-label="Collapse sidebar"
                     >
-                        <X className="w-4 h-4"/>
+                        <PanelLeftClose className="w-6 h-6 text-gray-600"/>
                     </button>
                 </div>
                 <SidebarEmptyState createTemporaryNote={createTemporaryNote}
@@ -344,19 +348,17 @@ export const Sidebar: React.FC = () => {
     }
 
     return (
-        <aside className="h-full w-64 border-r bg-white flex flex-col transition-all duration-300">
+        <aside className="h-full w-64 border-r bg-white flex flex-col">
             <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-1">
                     <img src="./noteblock.png" alt="" className="h-6 w-6 align-middle"/>
-                    <h1 className="text-black text-xl leading-[2rem] ml-1"
-                        style={{fontFamily: 'Minecraft'}}>noteblock</h1>
                 </div>
                 <button
                     onClick={() => setIsCollapsed(true)}
-                    className="p-1 hover:bg-gray-100 rounded"
+                    className="p-1 hover:bg-gray-100 rounded cursor-pointer"
                     aria-label="Collapse sidebar"
                 >
-                    <X className="w-4 h-4"/>
+                    <PanelLeftClose className="w-6 h-6 text-gray-600"/>
                 </button>
             </div>
 
