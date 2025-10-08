@@ -12,6 +12,8 @@ memory
 
 noteblock-local-service/data/
 
+noteblock-local-service/bin/
+
 dist
 
 node_modules
