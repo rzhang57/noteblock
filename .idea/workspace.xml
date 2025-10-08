@@ -8,6 +8,7 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/components/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/Sidebar.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/noteblock-cloud-service/internal/server/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/server/server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/noteblock-local-service/bin/noteblock-server.exe" beforeDir="false" afterPath="$PROJECT_DIR$/noteblock-local-service/bin/noteblock-server.exe" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -95,7 +96,7 @@
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
     &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Ryan/Documents/GitHub/noteblock/assets/icons&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Ryan/Downloads/byteboard-tester&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.standard&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.stylelint&quot;: &quot;true&quot;,
@@ -327,7 +328,9 @@
       <workItem from="1759532501858" duration="1565000" />
       <workItem from="1759601042692" duration="580000" />
       <workItem from="1759604155298" duration="558000" />
-      <workItem from="1759607631312" duration="3321000" />
+      <workItem from="1759607631312" duration="5786000" />
+      <workItem from="1759621704271" duration="29000" />
+      <workItem from="1759897761864" duration="650000" />
     </task>
     <servers />
   </component>

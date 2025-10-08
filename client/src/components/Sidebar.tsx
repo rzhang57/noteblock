@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {AlertCircle, FileText, FolderPlus, Plus, X, PanelLeftClose, PanelLeftOpen} from "lucide-react";
 import {FolderTreeItem} from "./FolderTreeItem";
 import {FolderService} from "@/services/FolderService";
