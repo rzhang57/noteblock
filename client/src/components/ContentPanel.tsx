@@ -19,7 +19,6 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import {SortableBlock} from "@/components/blocks/SortableBlock.tsx";
-import {CanvasBlock} from "@/components/blocks/block_types/CanvasBlock.tsx";
 import {DocumentTextIcon, RectangleGroupIcon} from '@heroicons/react/24/outline';
 import {ExcalidrawBlock} from "@/components/blocks/block_types/ExcalidrawBlock.tsx";
 
@@ -323,22 +322,14 @@ export function MainContentPanel() {
                                             case "canvas":
                                                 return (
                                                     <div className="flex justify-center">
-                                                        <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
-                                                            <CanvasBlock block={block}/>
-                                                        </SortableBlock>
+                                                        <div className="w-full max-w-6xl">
+                                                            <SortableBlock blockId={block.id}
+                                                                           onDelete={handleDeleteBlock}>
+                                                                <ExcalidrawBlock block={block}/>
+                                                            </SortableBlock>
+                                                        </div>
                                                     </div>
                                                 );
-                                            // TODO: Replace when excalidraw integration is done
-                                            // return (
-                                            //     <div className="flex justify-center">
-                                            //         <div className="w-full max-w-6xl">
-                                            //             <SortableBlock blockId={block.id}
-                                            //                            onDelete={handleDeleteBlock}>
-                                            //                 <ExcalidrawBlock block={block}/>
-                                            //             </SortableBlock>
-                                            //         </div>
-                                            //     </div>
-                                            // );
                                             default:
                                                 return (
                                                     <div className="text-red-600">
@@ -356,9 +347,7 @@ export function MainContentPanel() {
 
                     <DragOverlay>
                         {activeBlock?.type === "text" && <TextBlock block={activeBlock}/>}
-                        {activeBlock?.type === "canvas" && <CanvasBlock block={activeBlock}/>}
-                        {/* TODO: uncomment when excalidraw integration is done */}
-                        {/*{activeBlock?.type === "canvas" && <ExcalidrawBlock block={activeBlock}/>}*/}
+                        {activeBlock?.type === "canvas" && <ExcalidrawBlock block={activeBlock}/>}
                     </DragOverlay>
                 </DndContext>
             </div>

@@ -5,13 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e8a2b7e3-4e62-4bce-aa45-89f39c77be53" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/client/src/components/blocks/block_types/ExcalidrawBlock.tsx" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/model/CloudBlock.go" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/model/CloudFolder.go" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/model/CloudNote.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/client/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/src/components/ContentPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/ContentPanel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/blocks/block_types/ExcalidrawBlock.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/blocks/block_types/ExcalidrawBlock.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/noteblock-cloud-service/internal/server/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/server/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -340,7 +339,7 @@
       <workItem from="1760563647025" duration="2219000" />
       <workItem from="1760684719015" duration="720000" />
       <workItem from="1760812440543" duration="24000" />
-      <workItem from="1760812530781" duration="2695000" />
+      <workItem from="1760812530781" duration="5153000" />
     </task>
     <servers />
   </component>
