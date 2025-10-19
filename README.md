@@ -5,20 +5,21 @@ desktop note-taking
 ## stack
 
 - **backend services**: Go, Gin, GORM, SQLite
-- **frontend**: TypeScript, React, Electron, Konva.js
+- **frontend**: TypeScript, React, Electron
 - **misc**: Ollama
 
 ## currently includes
 
-- custom, local-first, performative file system
-- modular block system - blocks currently support live markdown editing/rendering, blank canvas drawings, and images w/ annotations
-- privacy-first AI features through local LLMs via Ollama
+- custom, local-first, performative, file system
+- modular block system - blocks currently support live markdown editing/rendering, blank canvas drawings, image annotations
+- free, privacy-first AI features through local LLMs via Ollama integration
 - user-based cloud sync-service for seamless access to notes across devices, on and offline
 
 ## incoming features
 
 - new block types and 3rd party integrations
 - open source plugin framework that allows users to create their own block types
+- PDF ingestion pipeline for lecture slides
 
 ## getting started
 
