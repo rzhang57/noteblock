@@ -75,7 +75,20 @@ const AddMenu: React.FC<{
 
 export const Sidebar: React.FC = () => {
     const [root, setRoot] = useState<Folder | null>(null);
-    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const [expanded, setExpanded] = useState<Set<string>>(() => {
+        const storedExpanded = localStorage.getItem('sidebarExpanded');
+        if (storedExpanded) {
+            try {
+                const parsed = JSON.parse(storedExpanded);
+                if (Array.isArray(parsed)) {
+                    return new Set(parsed);
+                }
+            } catch (e) {
+                console.error("Failed to parse expanded state from localStorage", e);
+            }
+        }
+        return new Set();
+    });
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const {selectedNoteId, setSelectedNoteId, setNoteTitle, noteTitle} = useNoteContext();
@@ -83,11 +96,18 @@ export const Sidebar: React.FC = () => {
     const [moveError, setMoveError] = useState<string | null>(null);
     const isInitialMount = useRef(true);
 
+    const refreshRoot = async () => {
+        const refreshed = await FolderService.getFolder('root');
+        setRoot(refreshed);
+    };
+
     useEffect(() => {
         (async () => {
             const rootFolder = await FolderService.getFolder("root");
             setRoot(rootFolder);
-            setExpanded(new Set([rootFolder.id]));
+            if (expanded.size === 0) {
+                setExpanded(new Set([rootFolder.id]));
+            }
         })();
     }, []);
 
@@ -99,10 +119,12 @@ export const Sidebar: React.FC = () => {
         refreshRoot();
     }, [noteTitle]);
 
-    const refreshRoot = async () => {
-        const refreshed = await FolderService.getFolder('root');
-        setRoot(refreshed);
-    };
+    useEffect(() => {
+        if (expanded.size > 0) {
+            localStorage.setItem('sidebarExpanded', JSON.stringify(Array.from(expanded)));
+        }
+    }, [expanded]);
+
 
     const toggleFolder = (id: string) => {
         setExpanded(prev => {
