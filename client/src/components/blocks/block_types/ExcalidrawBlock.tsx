@@ -12,77 +12,105 @@ interface ExcalidrawBlockProps {
 }
 
 interface ExcalidrawContent {
-    elements: OrderedExcalidrawElement[];
+    elements: readonly OrderedExcalidrawElement[];
     appState?: Partial<AppState>;
     files?: BinaryFiles;
 }
 
 export const ExcalidrawBlock: React.FC<ExcalidrawBlockProps> = ({block}) => {
     const {selectedNoteId} = useNoteContext();
-    const [initialData, setInitialData] = useState<ExcalidrawContent | null>(null);
+    const [excalidrawState, setExcalidrawState] = useState<ExcalidrawContent | null>(null);
     const saveTimeout = useRef<number | null>(null);
+    const [layoutKey, setLayoutKey] = useState(0);
+    const hasUnsavedChanges = useRef(false);
+    const latestContentRef = useRef<ExcalidrawContent | null>(null);
+
+    const saveContent = useCallback(async (content: ExcalidrawContent | null) => {
+        if (!selectedNoteId || !content || !hasUnsavedChanges.current) return;
+
+        try {
+            await NoteService.updateBlock(selectedNoteId, block.id, {
+                type: "canvas",
+                content: content,
+            });
+            hasUnsavedChanges.current = false;
+        } catch (error) {
+            console.error('Error saving Excalidraw data:', error);
+        }
+    }, [selectedNoteId, block.id]);
 
     useEffect(() => {
+        const handleLayoutChange = () => {
+            setTimeout(() => {
+                setLayoutKey(prev => prev + 1);
+            }, 350);
+        };
+
+        window.addEventListener('resize', handleLayoutChange);
+        window.addEventListener('sidebarToggle', handleLayoutChange);
+
+        return () => {
+            window.removeEventListener('resize', handleLayoutChange);
+            window.removeEventListener('sidebarToggle', handleLayoutChange);
+        };
+    }, []);
+
+    useEffect(() => {
+        let data: ExcalidrawContent;
         if (block.content) {
             try {
-                const data = block.content as unknown as ExcalidrawContent;
-
-                setInitialData({
-                    elements: data.elements || [],
-                    appState: data.appState || {},
-                    files: data.files || {},
-                });
+                data = block.content as unknown as ExcalidrawContent;
             } catch (error) {
                 console.error('Error loading Excalidraw data:', error);
-                setInitialData({
-                    elements: [],
-                    appState: {},
-                    files: {},
-                });
+                data = {elements: [], appState: {}, files: {}};
             }
         } else {
-            setInitialData({
-                elements: [],
-                appState: {},
-                files: {},
-            });
+            data = {elements: [], appState: {}, files: {}};
         }
+        setExcalidrawState(data);
+        latestContentRef.current = data;
+        hasUnsavedChanges.current = false;
     }, [block.content]);
 
+    useEffect(() => {
+        // Cleanup function to save on unmount
+        return () => {
+            if (saveTimeout.current) {
+                clearTimeout(saveTimeout.current);
+            }
+            saveContent(latestContentRef.current);
+        };
+    }, [saveContent]);
+
     const handleChange = useCallback((elements: readonly OrderedExcalidrawElement[], appState: AppState, files: BinaryFiles) => {
-        if (!selectedNoteId) return;
+        const currentContent: ExcalidrawContent = {
+            elements: elements,
+            appState: {
+                viewBackgroundColor: appState.viewBackgroundColor,
+                currentItemRoundness: appState.currentItemRoundness,
+                currentItemStrokeWidth: appState.currentItemStrokeWidth,
+            },
+            files: files,
+        };
+        setExcalidrawState(currentContent);
+        latestContentRef.current = currentContent;
+        hasUnsavedChanges.current = true;
 
         if (saveTimeout.current) {
             clearTimeout(saveTimeout.current);
         }
 
-        saveTimeout.current = window.setTimeout(async () => {
-            try {
-                // Send as object, backend will stringify it
-                await NoteService.updateBlock(selectedNoteId, block.id, {
-                    type: "canvas",
-                    content: {
-                        elements: elements,
-                        appState: {
-                            viewBackgroundColor: appState.viewBackgroundColor,
-                            currentItemRoundness: appState.currentItemRoundness,
-                            currentItemStrokeWidth: appState.currentItemStrokeWidth,
-                            // Don't save collaborators or other runtime state
-                        },
-                        files: files,
-                    },
-                });
-            } catch (error) {
-                console.error('Error saving Excalidraw data:', error);
-            }
+        saveTimeout.current = window.setTimeout(() => {
+            saveContent(currentContent);
         }, 1000);
-    }, [selectedNoteId, block.id]);
+    }, [saveContent]);
 
     return (
         <div style={{height: "800px", width: "100%", backgroundColor: "white"}}>
-            {initialData && (
+            {excalidrawState && (
                 <Excalidraw
-                    initialData={initialData}
+                    key={layoutKey}
+                    initialData={excalidrawState}
                     onChange={handleChange}
                 />
             )}

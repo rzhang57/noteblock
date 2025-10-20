@@ -290,6 +290,13 @@ export const Sidebar: React.FC = () => {
         }
     };
 
+    const handleCollapse = (collapsed: boolean) => {
+        setIsCollapsed(collapsed);
+        setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('sidebarToggle'));
+        }, 0);
+    };
+
     if (!root) {
         return (
             <aside
@@ -306,7 +313,7 @@ export const Sidebar: React.FC = () => {
             <aside
                 className="h-full w-16 border-r bg-white flex flex-col items-center py-4">
                 <button
-                    onClick={() => setIsCollapsed(false)}
+                    onClick={() => handleCollapse(false)}
                     className="p-2 hover:bg-gray-100 rounded group relative cursor-pointer"
                     aria-label="Expand sidebar"
                 >
@@ -334,7 +341,7 @@ export const Sidebar: React.FC = () => {
                             style={{fontFamily: 'Minecraft'}}>noteblock</h1>
                     </div>
                     <button
-                        onClick={() => setIsCollapsed(true)}
+                        onClick={() => handleCollapse(true)}
                         className="p-1 hover:bg-gray-100 rounded cursor-pointer"
                         aria-label="Collapse sidebar"
                     >
@@ -354,7 +361,7 @@ export const Sidebar: React.FC = () => {
                     <img src="./noteblock.png" alt="" className="h-6 w-6 align-middle"/>
                 </div>
                 <button
-                    onClick={() => setIsCollapsed(true)}
+                    onClick={() => handleCollapse(true)}
                     className="p-1 hover:bg-gray-100 rounded cursor-pointer"
                     aria-label="Collapse sidebar"
                 >
