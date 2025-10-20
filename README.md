@@ -76,3 +76,5 @@ or manually build:
 > npx electron-builder --win
 > # macOS (must run on a Mac)
 > npx electron-builder --mac
+
+find installer for given OS under `./dist`
