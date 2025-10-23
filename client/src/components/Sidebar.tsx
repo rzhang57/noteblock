@@ -223,6 +223,7 @@ export const Sidebar: React.FC = () => {
                 await NoteService.deleteNote(item.id);
             }
             await refreshRoot();
+            setSelectedNoteId(null);
         } catch (err) {
             console.error("Failed to delete item:", err);
         }
