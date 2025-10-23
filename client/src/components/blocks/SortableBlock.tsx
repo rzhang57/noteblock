@@ -21,6 +21,7 @@ export const SortableBlock = ({blockId, children, onDelete}: SortableBlockProps)
         transform: CSS.Transform.toString(transform),
         transition: isDragging ? 'none' : (transform ? 'transform 200ms ease' : undefined),
         opacity: isDragging ? 0 : 1,
+        height: isDragging ? '60px' : 'auto',
     };
 
     const handleDelete = () => {

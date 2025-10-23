@@ -69,15 +69,6 @@ function InsertionDivider({onAdd, visibleWithoutHover}: {
                             <RectangleGroupIcon className="h-4 w-4 text-gray-500"/>
                             Canvas
                         </button>
-                        {/* TODO: vaulted until furhter work is done for this block type (plan is to merge with canvas potentially)*/}
-                        {/*<button*/}
-                        {/*    onClick={() => onAdd("image")}*/}
-                        {/*    className="px-2 py-1 border border-gray-300 bg-white hover:bg-gray-50 text-[11px] font-medium text-gray-700 shadow-sm inline-flex items-center gap-1"*/}
-                        {/*    title="Add image block"*/}
-                        {/*>*/}
-                        {/*    <PhotoIcon className="h-4 w-4 text-gray-500"/>*/}
-                        {/*    Image*/}
-                        {/*</button>*/}
                     </div>
                 </div>
             </div>
@@ -99,6 +90,15 @@ export function MainContentPanel() {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
+
+    useEffect(() => {
+        if (activeBlock && note) {
+            const updatedBlock = note.blocks.find(b => b.id === activeBlock.id);
+            if (updatedBlock) {
+                setActiveBlock({...updatedBlock});
+            }
+        }
+    }, [note?.blocks]);
 
     useEffect(() => {
         setLoading(true);
@@ -227,7 +227,7 @@ export function MainContentPanel() {
     if (loading) {
         return (
             <div className="flex justify-center items-center p-6">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                <div className="animate-spin h-8 w-8 border-b-2 border-gray-900"></div>
             </div>
         );
     }
@@ -346,8 +346,32 @@ export function MainContentPanel() {
                     </SortableContext>
 
                     <DragOverlay>
-                        {activeBlock?.type === "text" && <TextBlock block={activeBlock}/>}
-                        {activeBlock?.type === "canvas" && <ExcalidrawBlock block={activeBlock}/>}
+                        {activeBlock && (
+                            <div className="border-2 border-blue-300 bg-white shadow-lg p-4 opacity-90">
+                                <div className="flex items-center gap-3">
+                                    {activeBlock.type === "text" && (
+                                        <>
+                                            <DocumentTextIcon className="h-8 w-8 text-gray-600 flex-shrink-0"/>
+                                            <div>
+                                                <div className="font-medium text-gray-700">Text Block</div>
+                                                <div className="text-sm text-gray-500">
+                                                    ...
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                    {activeBlock.type === "canvas" && (
+                                        <>
+                                            <RectangleGroupIcon className="h-8 w-8 text-gray-600 flex-shrink-0"/>
+                                            <div>
+                                                <div className="font-medium text-gray-700">Canvas Block</div>
+                                                <div className="text-sm text-gray-500">Excalidraw drawing</div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </DragOverlay>
                 </DndContext>
             </div>
