@@ -13,7 +13,7 @@ export interface ImageContent {
     data?: Record<string, any>;
 }
 
-export type BlockContent = CanvasContent | TextContent | ImageContent;
+export type BlockContent = CanvasContent | TextContent;
 
 export interface Block {
     id: string;

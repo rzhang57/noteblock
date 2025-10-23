@@ -6,12 +6,6 @@ import (
 	"time"
 )
 
-const (
-	BlockTypeText   = "text"
-	BlockTypeCanvas = "canvas"
-	BlockTypeImage  = "image"
-)
-
 type Block struct {
 	ID        string `gorm:"type:uuid;primaryKey"`
 	NoteID    string `gorm:"type:uuid;not null;index"`
