@@ -19,3 +19,7 @@ dist
 node_modules
 
 noteblock-local-service/uploads
+
+.idea
+
+.DS_Store

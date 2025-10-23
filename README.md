@@ -45,6 +45,12 @@ try before it's released to the public:
 > npm run dev
 
 ## access pre-release distributions
+use bash build script:
+
+> ```bash 
+> bash scripts/build-prerelease.sh
+
+or manually build:
 
 > ```bash
 > cd noteblock-local-service
@@ -70,3 +76,5 @@ try before it's released to the public:
 > npx electron-builder --win
 > # macOS (must run on a Mac)
 > npx electron-builder --mac
+
+find installer for given OS under `./dist`
