@@ -9,7 +9,8 @@
       <change afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/model/CloudFolder.go" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/model/CloudNote.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/src/components/blocks/block_types/TextBlock.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/blocks/block_types/TextBlock.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/ContentPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/ContentPanel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/blocks/block_types/TextBlock.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/blocks/block_types/Textblock/TextBlock.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/noteblock-cloud-service/internal/server/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/server/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -134,11 +135,11 @@
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\client\src\components\blocks\block_types\Textblock" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\assets\icons" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\client\src\assets\fonts" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\client\src\components\blocks\block_types" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock" />
-      <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\server\internal" />
     </key>
   </component>
   <component name="RunManager" selected="Go Build.go build server/cmd/noteblock">
@@ -344,7 +345,7 @@
       <workItem from="1761163715205" duration="2424000" />
       <workItem from="1761204915655" duration="1889000" />
       <workItem from="1761268463398" duration="511000" />
-      <workItem from="1761286675280" duration="1983000" />
+      <workItem from="1761286675280" duration="4217000" />
     </task>
     <servers />
   </component>

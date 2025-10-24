@@ -31,7 +31,7 @@ import {html} from "@codemirror/lang-html";
 import {css} from "@codemirror/lang-css";
 import {sql} from "@codemirror/lang-sql";
 import {cpp} from "@codemirror/lang-cpp";
-import {TbCopy, TbCopyCheckFilled} from "react-icons/tb";
+import {TbCopy, TbCopyCheckFilled, TbTrash} from "react-icons/tb";
 import {
     $getNodeByKey,
     $getRoot,
@@ -145,7 +145,6 @@ function BareCodeMirror({code, language, onChange, onExitUp, onExitDown}: BareEd
                             const head = view.state.selection.main.head;
                             const line = view.state.doc.lineAt(head);
                             if (head === line.from) {
-                                view.dom.blur();
                                 onExitUp?.();
                                 return true;
                             }
@@ -158,7 +157,6 @@ function BareCodeMirror({code, language, onChange, onExitUp, onExitDown}: BareEd
                             const head = view.state.selection.main.head;
                             const line = view.state.doc.lineAt(head);
                             if (head === line.to && head === view.state.doc.length) {
-                                view.dom.blur();
                                 onExitDown?.();
                                 return true;
                             }
@@ -169,7 +167,6 @@ function BareCodeMirror({code, language, onChange, onExitUp, onExitDown}: BareEd
                         key: "Backspace",
                         run: (view) => {
                             if (view.state.selection.main.from === 0) {
-                                view.dom.blur();
                                 onExitUp?.();
                                 return true;
                             }
@@ -177,6 +174,20 @@ function BareCodeMirror({code, language, onChange, onExitUp, onExitDown}: BareEd
                         }
                     }
                 ]),
+                EditorView.domEventHandlers({
+                    paste: (event) => {
+                        event.stopPropagation();
+                        return false;
+                    },
+                    cut: (event) => {
+                        event.stopPropagation();
+                        return false;
+                    },
+                    copy: (event) => {
+                        event.stopPropagation();
+                        return false;
+                    }
+                }),
                 EditorView.theme(
                     {
                         "&": {
@@ -209,6 +220,10 @@ function BareCodeMirror({code, language, onChange, onExitUp, onExitDown}: BareEd
         });
 
         viewRef.current = view;
+
+        const contentElement = view.contentDOM;
+        (contentElement as any).cmView = {view};
+
         return () => {
             view.destroy();
             viewRef.current = null;
@@ -246,6 +261,65 @@ function HeaderedBareEditor({
 }) {
     const {setCode, setLanguage, parentEditor, lexicalNode} = useCodeBlockEditorContext();
     const [copied, setCopied] = useState(false);
+    const [isSelected, setIsSelected] = useState(false);
+
+    useEffect(() => {
+        return parentEditor.registerUpdateListener(({editorState}) => {
+            editorState.read(() => {
+                const selection = $getSelection();
+                if (!$isRangeSelection(selection)) {
+                    setIsSelected(false);
+                    return;
+                }
+
+                const nodes = selection.getNodes();
+                const nodeKey = lexicalNode.getKey();
+
+                const selected = nodes.some(node => {
+                    let current = node;
+                    while (current) {
+                        if (current.getKey() === nodeKey) return true;
+                        const parent = current.getParent();
+                        if (!parent) break;
+                        current = parent;
+                    }
+                    return false;
+                });
+
+                setIsSelected(selected);
+            });
+        });
+    }, [parentEditor, lexicalNode]);
+
+    const deleteCodeBlock = useCallback(() => {
+        parentEditor.update(() => {
+            const node = $getNodeByKey(lexicalNode.getKey());
+            if (!node) return;
+
+            // Select the next sibling or create a paragraph if none exists
+            const next = node.getNextSibling();
+            if (next) {
+                if ($isElementNode(next as ElementNode)) (next as ElementNode).selectStart();
+                else (next as any).select?.();
+            } else {
+                const prev = node.getPreviousSibling();
+                if (prev) {
+                    if ($isElementNode(prev as ElementNode)) (prev as ElementNode).selectEnd();
+                    else (prev as any).select?.();
+                } else {
+                    const root = $getRoot();
+                    const p = $createParagraphNode().append($createTextNode(""));
+                    root.append(p);
+                    p.selectStart();
+                }
+            }
+
+            // Remove the code block node
+            node.remove();
+        });
+
+        requestAnimationFrame(() => parentEditor.focus());
+    }, [parentEditor, lexicalNode]);
 
     const moveCaretBeforeBlock = useCallback(() => {
         const cm = document.querySelector('[data-nb-codeblock] .cm-editor') as HTMLElement | null;
@@ -295,9 +369,11 @@ function HeaderedBareEditor({
             data-nb-codeblock
             style={{
                 overflow: "hidden",
-                border: "1px solid #333",
+                border: isSelected ? "2px solid #2383e2" : "1px solid #333",
                 background: "#ffffff",
-                margin: "1rem 0"
+                margin: "1rem 0",
+                boxShadow: isSelected ? "0 0 0 1px #2383e2" : "none",
+                transition: "border-color 0.1s, box-shadow 0.1s"
             }}
         >
             <div
@@ -307,35 +383,60 @@ function HeaderedBareEditor({
                     justifyContent: "space-between",
                     gap: 8,
                     padding: "8px 10px",
-                    background: "#d3d3d3",
-                    borderBottom: "1px solid #2a2a2a"
+                    background: isSelected ? "#d4e5f7" : "#d3d3d3",
+                    borderBottom: "1px solid #2a2a2a",
+                    transition: "background-color 0.1s"
                 }}
             >
                 <div style={{display: "flex", alignItems: "center", gap: 8}}>
                     <span style={{fontSize: 12, color: "#444444"}}>Language:</span>
                     <LanguagePicker value={language} options={languageMap} onChange={(v) => setLanguage(v)}/>
                 </div>
-                <button
-                    onClick={async () => {
-                        await navigator.clipboard.writeText(code);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 3000);
-                    }}
-                    style={{
-                        fontSize: 12,
-                        color: "#444444",
-                        background: "#eaeaea",
-                        border: "1px solid #333",
-                        padding: "4px 8px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6
-                    }}
-                >
-                    {copied ? <TbCopyCheckFilled style={{marginRight: 4}}/> : <TbCopy style={{marginRight: 4}}/>}
-                    {copied ? "Copied" : "Copy"}
-                </button>
+                <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                    <button
+                        onClick={async () => {
+                            await navigator.clipboard.writeText(code);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 3000);
+                        }}
+                        style={{
+                            fontSize: 12,
+                            color: "#444444",
+                            background: "#eaeaea",
+                            border: "1px solid #333",
+                            padding: "4px 8px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6
+                        }}
+                    >
+                        {copied ? <TbCopyCheckFilled style={{marginRight: 4}}/> : <TbCopy style={{marginRight: 4}}/>}
+                        {copied ? "Copied" : "Copy"}
+                    </button>
+                    <button
+                        onClick={deleteCodeBlock}
+                        style={{
+                            fontSize: 14,
+                            color: "#666666",
+                            background: "transparent",
+                            border: "none",
+                            padding: "4px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            transition: "color 0.2s"
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.color = "#dc3545";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.color = "#666666";
+                        }}
+                    >
+                        <TbTrash/>
+                    </button>
+                </div>
             </div>
 
             <div style={{padding: 10}}>
@@ -415,7 +516,20 @@ const keyboardTravelPlugin = realmPlugin({
                     const top = sel.anchor.getNode().getTopLevelElementOrThrow();
                     const prev = top.getPreviousSibling();
                     if (prev && $isCodeBlockNode(prev)) {
-                        (prev as any).select();
+                        requestAnimationFrame(() => {
+                            const codeBlockKey = prev.getKey();
+                            const cmEditor = document.querySelector(
+                                `[data-lexical-decorator="true"][data-node-key="${codeBlockKey}"] .cm-content`
+                            ) as HTMLElement;
+                            if (cmEditor) {
+                                cmEditor.focus();
+                                const view = (cmEditor as any).cmView?.view;
+                                if (view) {
+                                    const pos = view.state.doc.length;
+                                    view.dispatch({selection: {anchor: pos, head: pos}});
+                                }
+                            }
+                        });
                         return true;
                     }
                     return false;
@@ -431,7 +545,20 @@ const keyboardTravelPlugin = realmPlugin({
                     const top = sel.anchor.getNode().getTopLevelElementOrThrow();
                     const prev = top.getPreviousSibling();
                     if (prev && $isCodeBlockNode(prev)) {
-                        (prev as any).select();
+                        requestAnimationFrame(() => {
+                            const codeBlockKey = prev.getKey();
+                            const cmEditor = document.querySelector(
+                                `[data-lexical-decorator="true"][data-node-key="${codeBlockKey}"] .cm-content`
+                            ) as HTMLElement;
+                            if (cmEditor) {
+                                cmEditor.focus();
+                                const view = (cmEditor as any).cmView?.view;
+                                if (view) {
+                                    const pos = view.state.doc.length;
+                                    view.dispatch({selection: {anchor: pos, head: pos}});
+                                }
+                            }
+                        });
                         return true;
                     }
                     return false;
@@ -447,7 +574,19 @@ const keyboardTravelPlugin = realmPlugin({
                     const top = sel.anchor.getNode().getTopLevelElementOrThrow();
                     const next = top.getNextSibling();
                     if (next && $isCodeBlockNode(next)) {
-                        (next as any).select();
+                        requestAnimationFrame(() => {
+                            const codeBlockKey = next.getKey();
+                            const cmEditor = document.querySelector(
+                                `[data-lexical-decorator="true"][data-node-key="${codeBlockKey}"] .cm-content`
+                            ) as HTMLElement;
+                            if (cmEditor) {
+                                cmEditor.focus();
+                                const view = (cmEditor as any).cmView?.view;
+                                if (view) {
+                                    view.dispatch({selection: {anchor: 0, head: 0}});
+                                }
+                            }
+                        });
                         return true;
                     }
                     return false;
@@ -478,7 +617,6 @@ export function TextBlock({block}: { block: Block }) {
         contentRef.current = content;
     }, [content]);
 
-    // Auto-save with debouncing
     useEffect(() => {
         if (!selectedNoteId) return;
 

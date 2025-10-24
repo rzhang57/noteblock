@@ -2,7 +2,7 @@ import {useEffect, useState, Fragment} from "react";
 import {useNoteContext} from "@/context/NoteContext";
 import {NoteService} from "@/services/NoteService";
 import type {Block, Note} from "@/types/Note.ts";
-import {TextBlock} from "@/components/blocks/block_types/TextBlock.tsx";
+import {TextBlock} from "@/components/blocks/block_types/Textblock/TextBlock.tsx";
 import {
     DndContext,
     closestCenter,
