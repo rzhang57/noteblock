@@ -16,7 +16,7 @@ import {
 import "@mdxeditor/editor/style.css";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {NoteService} from "@/services/NoteService.ts";
-import {useState, useRef, useEffect, useMemo, useRef as useDomRef} from "react";
+import {useState, useRef, useEffect, useMemo, useRef as useDomRef, useCallback} from "react";
 import type {Block, TextContent} from "@/types/Note.ts";
 import {EditorState, Compartment} from "@codemirror/state";
 import {EditorView, keymap, drawSelection, highlightActiveLine} from "@codemirror/view";
@@ -247,13 +247,10 @@ function HeaderedBareEditor({
     const {setCode, setLanguage, parentEditor, lexicalNode} = useCodeBlockEditorContext();
     const [copied, setCopied] = useState(false);
 
-    // TODO: fix moving caret from codeblock back to main text
-    function moveCaretBeforeBlock() {
-        // 1. blur the codemirror dom
+    const moveCaretBeforeBlock = useCallback(() => {
         const cm = document.querySelector('[data-nb-codeblock] .cm-editor') as HTMLElement | null;
         cm?.blur();
 
-        // 2. update lexical selection
         parentEditor.update(() => {
             const node = $getNodeByKey(lexicalNode.getKey());
             if (!node) return;
@@ -267,11 +264,10 @@ function HeaderedBareEditor({
             }
         });
 
-        // 3. return focus to Lexical after DOM update
         requestAnimationFrame(() => parentEditor.focus());
-    }
+    }, [parentEditor, lexicalNode]);
 
-    function moveCaretAfterBlock() {
+    const moveCaretAfterBlock = useCallback(() => {
         const cm = document.querySelector('[data-nb-codeblock] .cm-editor') as HTMLElement | null;
         cm?.blur();
 
@@ -292,7 +288,7 @@ function HeaderedBareEditor({
         });
 
         requestAnimationFrame(() => parentEditor.focus());
-    }
+    }, [parentEditor, lexicalNode]);
 
     return (
         <div
@@ -475,34 +471,55 @@ export function TextBlock({block}: { block: Block }) {
         const textContent = block.content as TextContent;
         return textContent.text ?? "";
     });
+    const contentRef = useRef(content);
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        const handleGlobalKeyDown = (e: KeyboardEvent) => {
-            if (e.ctrlKey && e.shiftKey && e.key === "`") {
-                e.preventDefault();
-                insertCodeBlock();
-            }
-            if (e.ctrlKey && e.key === "k") {
-                e.preventDefault();
-                insertCodeBlock();
-            }
-        };
-        document.addEventListener("keydown", handleGlobalKeyDown);
-        return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+        contentRef.current = content;
     }, [content]);
 
-    async function imageUploadHandler(image: File) {
-        return await NoteService.uploadImage(image);
+    // Auto-save with debouncing
+    useEffect(() => {
+        if (!selectedNoteId) return;
+
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+
+        saveTimeoutRef.current = setTimeout(async () => {
+            const dbTextContent = block.content as TextContent;
+            if (content !== dbTextContent.text) {
+                try {
+                    await NoteService.updateBlock(selectedNoteId, block.id, {
+                        type: block.type,
+                        content: {text: content}
+                    });
+                } catch (err) {
+                    console.error("Failed to save block:", err);
+                }
+            }
+        }, 500); // Save 500ms after typing stops
+
+        return () => {
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+        };
+    }, [content, selectedNoteId, block.id, block.type]);
+
+    const handleChange = (newContent: string) => {
+        setContent(newContent);
     }
 
     const handleBlur = async () => {
         if (!selectedNoteId) return;
         const dbTextContent = block.content as TextContent;
-        if (content !== dbTextContent.text) {
+        const currentContent = contentRef.current; // Use ref instead of state
+        if (currentContent !== dbTextContent.text) {
             try {
                 await NoteService.updateBlock(selectedNoteId, block.id, {
                     type: block.type,
-                    content: {text: content}
+                    content: {text: currentContent}
                 });
             } catch (err) {
                 console.error("Failed to save block:", err);
@@ -510,12 +527,9 @@ export function TextBlock({block}: { block: Block }) {
         }
     };
 
-    // TODO: when in code block, put caret inside instead of to next line
-    const insertCodeBlock = () => {
-        const currentContent = content;
-        const codeBlockMarkdown = currentContent.endsWith("\n") ? "```\n\n```\n" : "\n```\n\n```\n";
-        setContent((prev) => prev + codeBlockMarkdown);
-    };
+    async function imageUploadHandler(image: File) {
+        return await NoteService.uploadImage(image);
+    }
 
     const languageMap = useMemo(
         () => ({
@@ -539,7 +553,7 @@ export function TextBlock({block}: { block: Block }) {
             <MDXEditor
                 ref={editorRef}
                 markdown={content}
-                onChange={setContent}
+                onChange={handleChange}
                 onBlur={handleBlur}
                 className="mdxeditor"
                 plugins={[

@@ -9,6 +9,7 @@
       <change afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/model/CloudFolder.go" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/model/CloudNote.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/components/blocks/block_types/TextBlock.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/components/blocks/block_types/TextBlock.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/noteblock-cloud-service/internal/server/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/server/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -343,7 +344,7 @@
       <workItem from="1761163715205" duration="2424000" />
       <workItem from="1761204915655" duration="1889000" />
       <workItem from="1761268463398" duration="511000" />
-      <workItem from="1761286675280" duration="1202000" />
+      <workItem from="1761286675280" duration="1983000" />
     </task>
     <servers />
   </component>
