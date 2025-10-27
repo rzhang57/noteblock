@@ -296,7 +296,6 @@ function HeaderedBareEditor({
             const node = $getNodeByKey(lexicalNode.getKey());
             if (!node) return;
 
-            // Select the next sibling or create a paragraph if none exists
             const next = node.getNextSibling();
             if (next) {
                 if ($isElementNode(next as ElementNode)) (next as ElementNode).selectStart();
@@ -314,7 +313,6 @@ function HeaderedBareEditor({
                 }
             }
 
-            // Remove the code block node
             node.remove();
         });
 
@@ -636,7 +634,7 @@ export function TextBlock({block}: { block: Block }) {
                     console.error("Failed to save block:", err);
                 }
             }
-        }, 500); // Save 500ms after typing stops
+        }, 500);
 
         return () => {
             if (saveTimeoutRef.current) {
@@ -652,7 +650,7 @@ export function TextBlock({block}: { block: Block }) {
     const handleBlur = async () => {
         if (!selectedNoteId) return;
         const dbTextContent = block.content as TextContent;
-        const currentContent = contentRef.current; // Use ref instead of state
+        const currentContent = contentRef.current;
         if (currentContent !== dbTextContent.text) {
             try {
                 await NoteService.updateBlock(selectedNoteId, block.id, {
