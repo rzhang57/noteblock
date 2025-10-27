@@ -48,10 +48,12 @@ export const ExcalidrawBlock: React.FC<ExcalidrawBlockProps> = ({block}) => {
 
         window.addEventListener('resize', handleLayoutChange);
         window.addEventListener('sidebarToggle', handleLayoutChange);
+        window.addEventListener('blockUnfocused', handleLayoutChange);
 
         return () => {
             window.removeEventListener('resize', handleLayoutChange);
             window.removeEventListener('sidebarToggle', handleLayoutChange);
+            window.addEventListener('blockUnfocused', handleLayoutChange);
         };
     }, []);
 

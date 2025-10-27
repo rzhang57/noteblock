@@ -610,6 +610,26 @@ export function TextBlock({block}: { block: Block }) {
     });
     const contentRef = useRef(content);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const previouslyFocused = useRef(false);
+
+    useEffect(() => {
+        const editor = editorRef.current?.getEditorState?.()?.editor;
+        if (!editor) return;
+
+        // @ts-ignore
+        return editor.registerUpdateListener(({editorState}) => {
+            editorState.read(() => {
+                const selection = $getSelection();
+                const hasFocus = $isRangeSelection(selection) && selection.getNodes().length > 0;
+
+                if (!hasFocus && previouslyFocused.current) {
+                    window.dispatchEvent(new CustomEvent('blockUnfocused'));
+                }
+
+                previouslyFocused.current = hasFocus;
+            });
+        });
+    }, []);
 
     useEffect(() => {
         contentRef.current = content;
