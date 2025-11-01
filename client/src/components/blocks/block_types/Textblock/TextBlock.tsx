@@ -120,7 +120,7 @@ function BareCodeMirror({code, language, onChange, onExitUp}: BareEditorProps) {
         const startState = EditorState.create({
             doc: code,
             extensions: [
-                keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap, ...closeBracketsKeymap]),
+                keymap.of([...historyKeymap, indentWithTab, ...defaultKeymap, ...closeBracketsKeymap]),
                 history(),
                 drawSelection(),
                 highlightActiveLine(),
@@ -151,6 +151,12 @@ function BareCodeMirror({code, language, onChange, onExitUp}: BareEditorProps) {
                     },
                     copy: (event) => {
                         event.stopPropagation();
+                        return false;
+                    },
+                    keydown: (event) => {
+                        if ((event.metaKey || event.ctrlKey) && (event.key === 'z' || event.key === 'Z')) {
+                            event.stopPropagation();
+                        }
                         return false;
                     }
                 }),
