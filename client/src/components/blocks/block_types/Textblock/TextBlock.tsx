@@ -9,9 +9,6 @@ import {
     imagePlugin,
     useCodeBlockEditorContext,
     type CodeBlockEditorDescriptor,
-    realmPlugin,
-    createRootEditorSubscription$,
-    $isCodeBlockNode
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
 import {useNoteContext} from "@/context/NoteContext.tsx";
@@ -41,13 +38,6 @@ import {
     $createTextNode,
     $getSelection,
     $isRangeSelection,
-    type RangeSelection
-} from "lexical";
-import {
-    KEY_BACKSPACE_COMMAND,
-    KEY_ARROW_UP_COMMAND,
-    KEY_ARROW_DOWN_COMMAND,
-    COMMAND_PRIORITY_CRITICAL
 } from "lexical";
 
 function LanguagePicker({
@@ -119,7 +109,7 @@ function langExtensionFor(key?: string) {
     }
 }
 
-function BareCodeMirror({code, language, onChange, onExitUp, onExitDown}: BareEditorProps) {
+function BareCodeMirror({code, language, onChange, onExitUp}: BareEditorProps) {
     const host = useDomRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const langCompartment = useRef(new Compartment()).current;
@@ -139,30 +129,6 @@ function BareCodeMirror({code, language, onChange, onExitUp, onExitDown}: BareEd
                 closeBrackets(),
                 syntaxHighlighting(defaultHighlightStyle),
                 keymap.of([
-                    {
-                        key: "ArrowUp",
-                        run: (view) => {
-                            const head = view.state.selection.main.head;
-                            const line = view.state.doc.lineAt(head);
-                            if (head === line.from) {
-                                onExitUp?.();
-                                return true;
-                            }
-                            return false;
-                        }
-                    },
-                    {
-                        key: "ArrowDown",
-                        run: (view) => {
-                            const head = view.state.selection.main.head;
-                            const line = view.state.doc.lineAt(head);
-                            if (head === line.to && head === view.state.doc.length) {
-                                onExitDown?.();
-                                return true;
-                            }
-                            return false;
-                        }
-                    },
                     {
                         key: "Backspace",
                         run: (view) => {
@@ -223,6 +189,12 @@ function BareCodeMirror({code, language, onChange, onExitUp, onExitDown}: BareEd
 
         const contentElement = view.contentDOM;
         (contentElement as any).cmView = {view};
+
+        // Auto-focus the editor on mount
+        requestAnimationFrame(() => {
+            view.focus();
+            view.dispatch({selection: {anchor: 0, head: 0}});
+        });
 
         return () => {
             view.destroy();
@@ -339,29 +311,6 @@ function HeaderedBareEditor({
         requestAnimationFrame(() => parentEditor.focus());
     }, [parentEditor, lexicalNode]);
 
-    const moveCaretAfterBlock = useCallback(() => {
-        const cm = document.querySelector('[data-nb-codeblock] .cm-editor') as HTMLElement | null;
-        cm?.blur();
-
-        parentEditor.update(() => {
-            const node = $getNodeByKey(lexicalNode.getKey());
-            if (!node) return;
-
-            const next = node.getNextSibling();
-            if (next) {
-                if ($isElementNode(next as ElementNode)) (next as ElementNode).selectStart();
-                else (next as any).select?.();
-            } else {
-                const root = $getRoot();
-                const p = $createParagraphNode().append($createTextNode(""));
-                root.append(p);
-                p.selectStart();
-            }
-        });
-
-        requestAnimationFrame(() => parentEditor.focus());
-    }, [parentEditor, lexicalNode]);
-
     return (
         <div
             data-nb-codeblock
@@ -443,7 +392,6 @@ function HeaderedBareEditor({
                     language={language}
                     onChange={setCode}
                     onExitUp={moveCaretBeforeBlock}
-                    onExitDown={moveCaretAfterBlock}
                 />
             </div>
         </div>
@@ -454,151 +402,6 @@ const bareDescriptor = (languageMap: Record<string, string>): CodeBlockEditorDes
     priority: 100,
     match: () => true,
     Editor: (p: any) => <HeaderedBareEditor code={p.code} language={p.language} languageMap={languageMap}/>
-});
-
-function isAtStartOfTopParagraph() {
-    const sel = $getSelection();
-    if (!$isRangeSelection(sel) || !sel.isCollapsed()) return false;
-    const range = sel as RangeSelection;
-    const anchor = range.anchor;
-
-    const top = anchor.getNode().getTopLevelElementOrThrow();
-    if (top.getType() !== "paragraph") return false;
-
-    let cursorBefore = 0;
-    let child = top.getFirstChild();
-    const anchorNode = anchor.getNode();
-    while (child && child !== anchorNode) {
-        const size =
-            (child as any).getTextContentSize?.() ??
-            ((child as any).getTextContent?.() || "").length;
-        cursorBefore += size;
-        child = child.getNextSibling();
-    }
-    return cursorBefore === 0 && anchor.offset === 0;
-}
-
-function isAtEndOfTopParagraph() {
-    const sel = $getSelection();
-    if (!$isRangeSelection(sel) || !sel.isCollapsed()) return false;
-    const range = sel as RangeSelection;
-    const anchor = range.anchor;
-
-    const top = anchor.getNode().getTopLevelElementOrThrow();
-    if (top.getType() !== "paragraph") return false;
-
-    let total = 0;
-    let before = 0;
-    let child = top.getFirstChild();
-    const anchorNode = anchor.getNode();
-
-    while (child) {
-        const size =
-            (child as any).getTextContentSize?.() ??
-            ((child as any).getTextContent?.() || "").length;
-        total += size;
-        if (child === anchorNode) before = total - size + anchor.offset;
-        child = child.getNextSibling();
-    }
-    return before === total;
-}
-
-const keyboardTravelPlugin = realmPlugin({
-    init(realm) {
-        realm.pub(createRootEditorSubscription$, (editor) => {
-            const unBackspace = editor.registerCommand(
-                KEY_BACKSPACE_COMMAND,
-                () => {
-                    if (!isAtStartOfTopParagraph()) return false;
-                    const sel = $getSelection() as RangeSelection;
-                    const top = sel.anchor.getNode().getTopLevelElementOrThrow();
-                    const prev = top.getPreviousSibling();
-                    if (prev && $isCodeBlockNode(prev)) {
-                        requestAnimationFrame(() => {
-                            const codeBlockKey = prev.getKey();
-                            const cmEditor = document.querySelector(
-                                `[data-lexical-decorator="true"][data-node-key="${codeBlockKey}"] .cm-content`
-                            ) as HTMLElement;
-                            if (cmEditor) {
-                                cmEditor.focus();
-                                const view = (cmEditor as any).cmView?.view;
-                                if (view) {
-                                    const pos = view.state.doc.length;
-                                    view.dispatch({selection: {anchor: pos, head: pos}});
-                                }
-                            }
-                        });
-                        return true;
-                    }
-                    return false;
-                },
-                COMMAND_PRIORITY_CRITICAL
-            );
-
-            const unUp = editor.registerCommand(
-                KEY_ARROW_UP_COMMAND,
-                () => {
-                    if (!isAtStartOfTopParagraph()) return false;
-                    const sel = $getSelection() as RangeSelection;
-                    const top = sel.anchor.getNode().getTopLevelElementOrThrow();
-                    const prev = top.getPreviousSibling();
-                    if (prev && $isCodeBlockNode(prev)) {
-                        requestAnimationFrame(() => {
-                            const codeBlockKey = prev.getKey();
-                            const cmEditor = document.querySelector(
-                                `[data-lexical-decorator="true"][data-node-key="${codeBlockKey}"] .cm-content`
-                            ) as HTMLElement;
-                            if (cmEditor) {
-                                cmEditor.focus();
-                                const view = (cmEditor as any).cmView?.view;
-                                if (view) {
-                                    const pos = view.state.doc.length;
-                                    view.dispatch({selection: {anchor: pos, head: pos}});
-                                }
-                            }
-                        });
-                        return true;
-                    }
-                    return false;
-                },
-                COMMAND_PRIORITY_CRITICAL
-            );
-
-            const unDown = editor.registerCommand(
-                KEY_ARROW_DOWN_COMMAND,
-                () => {
-                    if (!isAtEndOfTopParagraph()) return false;
-                    const sel = $getSelection() as RangeSelection;
-                    const top = sel.anchor.getNode().getTopLevelElementOrThrow();
-                    const next = top.getNextSibling();
-                    if (next && $isCodeBlockNode(next)) {
-                        requestAnimationFrame(() => {
-                            const codeBlockKey = next.getKey();
-                            const cmEditor = document.querySelector(
-                                `[data-lexical-decorator="true"][data-node-key="${codeBlockKey}"] .cm-content`
-                            ) as HTMLElement;
-                            if (cmEditor) {
-                                cmEditor.focus();
-                                const view = (cmEditor as any).cmView?.view;
-                                if (view) {
-                                    view.dispatch({selection: {anchor: 0, head: 0}});
-                                }
-                            }
-                        });
-                        return true;
-                    }
-                    return false;
-                },
-                COMMAND_PRIORITY_CRITICAL
-            );
-
-            return () => {
-                unBackspace();
-                unUp();
-                unDown();
-            };
-        });
-    }
 });
 
 export function TextBlock({block}: { block: Block }) {
@@ -721,7 +524,6 @@ export function TextBlock({block}: { block: Block }) {
                         defaultCodeBlockLanguage: "text",
                         codeBlockEditorDescriptors: [bareDescriptor(languageMap)]
                     }),
-                    keyboardTravelPlugin(),
                     imagePlugin({
                         imageUploadHandler: imageUploadHandler,
                         EditImageToolbar: () => null
