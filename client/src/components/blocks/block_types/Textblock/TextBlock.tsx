@@ -140,20 +140,6 @@ function BareCodeMirror({code, language, onChange, onExitUp}: BareEditorProps) {
                         }
                     }
                 ]),
-                EditorView.domEventHandlers({
-                    paste: (event) => {
-                        event.stopPropagation();
-                        return false;
-                    },
-                    cut: (event) => {
-                        event.stopPropagation();
-                        return false;
-                    },
-                    copy: (event) => {
-                        event.stopPropagation();
-                        return false;
-                    }
-                }),
                 EditorView.theme(
                     {
                         "&": {
