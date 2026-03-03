@@ -1,4 +1,4 @@
-import {restClient} from "./RestClient";
+import {localIpcClient} from "./LocalIpcClient";
 import type {Note} from "@/types/Note.ts";
 
 export interface Folder {
@@ -33,18 +33,18 @@ export interface FolderMoveRequest {
 export const FolderService = {
 
     async createFolder(request: FolderCreateRequest): Promise<Folder> {
-        return restClient.post<Folder>("/folders", request);
+        return localIpcClient.folder.create(request);
     },
 
     async getFolder(id: string): Promise<Folder> {
-        return restClient.get<Folder>(`/folders/${id}`);
+        return localIpcClient.folder.get(id);
     },
 
     async updateFolder(request: FolderUpdateRequest | FolderMoveRequest | FolderRenameRequest): Promise<Folder> {
-        return restClient.put<Folder>("/folders", request);
+        return localIpcClient.folder.update(request);
     },
 
     async deleteFolder(id: string): Promise<void> {
-        return restClient.delete<void>(`/folders/${id}`);
+        await localIpcClient.folder.delete(id);
     },
 };

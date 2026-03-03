@@ -1,4 +1,4 @@
-import {restClient} from "./RestClient";
+import {localIpcClient} from "./LocalIpcClient";
 import type {Block, Note} from "@/types/Note.ts";
 
 export interface NoteCreateRequest {
@@ -26,44 +26,54 @@ export interface BlockUpdateRequest {
 
 export const NoteService = {
     async getNote(id: string): Promise<Note> {
-        return restClient.get<Note>(`/notes/${id}`);
+        return localIpcClient.note.get(id);
     },
 
     async createNote(request: NoteCreateRequest): Promise<Note> {
-        return restClient.post<Note>("/notes", request);
+        return localIpcClient.note.create(request);
     },
 
     async updateNote(request: NoteUpdateRequest): Promise<Note> {
-        return restClient.put<Note>(`/notes/${request.id}`, {
+        return localIpcClient.note.update({
+            id: request.id,
             title: request.title,
             folder_id: request.folder_id,
-            blocks: request.blocks
+            blocks: request.blocks?.map((block) => ({
+                id: block.id,
+                index: block.index,
+            })),
         });
     },
 
     async deleteNote(id: string): Promise<void> {
-        return restClient.delete<void>(`/notes/${id}`);
+        await localIpcClient.note.delete(id);
     },
 
     async createBlock(noteId: string, request: BlockCreateRequest): Promise<Block> {
-        return restClient.post<Block>(`/notes/${noteId}/blocks`, request);
+        return localIpcClient.block.create(noteId, request);
     },
 
     async updateBlock(noteId: string, blockId: string, request: BlockUpdateRequest): Promise<Block> {
-        return restClient.put<Block>(`/notes/${noteId}/blocks/${blockId}`, request);
+        return localIpcClient.block.update(noteId, blockId, request);
     },
 
     async deleteBlock(noteId: string, blockId: string): Promise<void> {
-        return restClient.delete<void>(`/notes/${noteId}/blocks/${blockId}`);
+        await localIpcClient.block.delete(noteId, blockId);
     },
 
     async uploadImage(image: File): Promise<string> {
-        const formData = new FormData();
-        formData.append('image', image);
-        const response = await restClient.post<{ url: string }>('/upload', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
+        const bytes = new Uint8Array(await image.arrayBuffer());
+        let binary = "";
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode(...chunk);
+        }
+        const dataBase64 = btoa(binary);
+
+        const response = await localIpcClient.asset.uploadImage({
+            filename: image.name,
+            data_base64: dataBase64,
         });
         return response.url;
     }

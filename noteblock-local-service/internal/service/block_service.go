@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 	"os"
+	"path/filepath"
 	"server/internal/model"
 )
 
@@ -18,10 +19,15 @@ func (s *BlockService) SaveImage(file *multipart.FileHeader) (string, error) {
 	newImageUuid := uuid.NewString()
 	imageName := newImageUuid + "_" + file.Filename
 
-	fsPath := "uploads/images/" + imageName
-	publicPath := "/uploads/images/" + imageName
+	basePath := os.Getenv("NOTE_DB_PATH")
+	if basePath == "" {
+		basePath = "data"
+	}
+	imagesDir := filepath.Join(basePath, "uploads", "images")
+	fsPath := filepath.Join(imagesDir, imageName)
+	publicPath := "noteblock-image:///" + imageName
 
-	if err := os.MkdirAll("uploads/images", os.ModePerm); err != nil {
+	if err := os.MkdirAll(imagesDir, os.ModePerm); err != nil {
 		return "", err
 	}
 
@@ -42,6 +48,27 @@ func (s *BlockService) SaveImage(file *multipart.FileHeader) (string, error) {
 	}
 
 	return publicPath, nil
+}
+
+func (s *BlockService) SaveImageBytes(fileName string, data []byte) (string, error) {
+	newImageUuid := uuid.NewString()
+	imageName := newImageUuid + "_" + fileName
+
+	basePath := os.Getenv("NOTE_DB_PATH")
+	if basePath == "" {
+		basePath = "data"
+	}
+	imagesDir := filepath.Join(basePath, "uploads", "images")
+	if err := os.MkdirAll(imagesDir, os.ModePerm); err != nil {
+		return "", err
+	}
+
+	fsPath := filepath.Join(imagesDir, imageName)
+	if err := os.WriteFile(fsPath, data, 0o644); err != nil {
+		return "", err
+	}
+
+	return "noteblock-image:///" + imageName, nil
 }
 
 // TODO: for non-plugin blocks, we can assert type and json content fields by unmarshalling before storing

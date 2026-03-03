@@ -23,3 +23,6 @@ noteblock-local-service/uploads
 .idea
 
 .DS_Store
+
+client/.env
+client/.env.local

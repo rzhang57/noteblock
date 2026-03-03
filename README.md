@@ -11,6 +11,7 @@ desktop note-taking
 ## currently includes
 
 - custom, local-first, performative, file system
+  - primary actions performed flow through local go binary over ipc (json) through electron main process, retroactively synced to centralized server for storage
 - modular block system - blocks currently support live markdown editing/rendering, blank canvas drawings, image annotations
 - free, privacy-first AI features through local LLMs via Ollama integration
 - user-based cloud sync-service for seamless access to notes across devices, on and offline
@@ -30,19 +31,32 @@ try before it's released to the public:
 > ```bash
 > git clone https://github.com/rzhang57/noteblock
 
-### run backend (go)
-
->```bash
-> cd server
-> go mod tidy
-> go run main.go
-
 ### run frontend (electron)
 
 > ```bash
-> cd client
 > npm install
 > npm run dev
+
+`npm run dev` first rebuilds the local go ipc binary, then starts vite + electron.
+
+## environment setup
+
+frontend cloud/auth calls use `client/.env` for pointing to correct server.
+
+```bash
+cd client
+cp .env.example .env
+```
+
+set this value in `client/.env`:
+
+```bash
+VITE_CLOUD_API_BASE_URL=http://localhost:8080
+```
+
+notes:
+- local note/folder/block operations use ipc and do not require this url
+- this url is for cloud/auth/sync http endpoints used by `RestClient`
 
 ## access pre-release distributions
 use bash build script:
@@ -78,3 +92,27 @@ or manually build:
 > npx electron-builder --mac
 
 find installer for given OS under `./dist`
+
+recommended build command from repo root:
+
+```bash
+npm run build
+```
+
+this runs the client build from `client/` and then runs `electron-builder` from repo root.
+
+## tests
+
+run ipc integration tests for the local go service:
+
+```bash
+cd noteblock-local-service
+go test ./internal/ipc -v
+```
+
+run frontend service/preload tests:
+
+```bash
+cd client
+npm test
+```

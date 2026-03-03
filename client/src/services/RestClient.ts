@@ -1,7 +1,7 @@
 import axios, {type AxiosRequestConfig, type AxiosResponse } from "axios";
 
 const axiosInstance = axios.create({
-    baseURL: "http://localhost:7474/api",
+    baseURL: import.meta.env.VITE_CLOUD_API_BASE_URL ?? "",
     timeout: 10000,
     headers: {
         "Content-Type": "application/json",

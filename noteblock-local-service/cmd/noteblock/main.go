@@ -1,9 +1,9 @@
 package main
 
 import (
-	"server/internal/api"
+	"os"
 	"server/internal/db"
-	"server/internal/routes"
+	"server/internal/ipc"
 	"server/internal/service"
 )
 
@@ -15,14 +15,6 @@ func main() {
 	fSvc := &service.FolderService{DB: dbConn, NoteService: nSvc}
 	bSvc := &service.BlockService{DB: dbConn}
 
-	// handlers - controllers
-	fHandler := &api.FolderHandler{Svc: fSvc}
-	nHandler := &api.NoteHandler{Svc: nSvc, BlockSvc: bSvc}
-	bHandler := &api.BlockHandler{Svc: bSvc}
-
-	r := routes.Setup(fHandler, nHandler, bHandler)
-	err := r.Run(":7474")
-	if err != nil {
-		return
-	}
+	server := ipc.NewServer(nSvc, fSvc, bSvc)
+	_ = server.Run(os.Stdin, os.Stdout)
 }
