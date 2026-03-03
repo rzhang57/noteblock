@@ -1,5 +1,21 @@
 # React + TypeScript + Vite
 
+## environment setup
+
+this frontend reads cloud/auth api base url from vite env.
+
+copy the example file and set your backend url:
+
+```bash
+cp .env.example .env
+```
+
+```bash
+VITE_CLOUD_API_BASE_URL=http://localhost:8080
+```
+
+local note/folder/block flows use electron+ipc and do not use this value.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

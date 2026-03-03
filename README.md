@@ -37,6 +37,25 @@ try before it's released to the public:
 > npm install
 > npm run dev
 
+## environment setup
+
+frontend cloud/auth calls use `client/.env` for pointing to correct server.
+
+```bash
+cd client
+cp .env.example .env
+```
+
+set this value in `client/.env`:
+
+```bash
+VITE_CLOUD_API_BASE_URL=http://localhost:8080
+```
+
+notes:
+- local note/folder/block operations use ipc and do not require this url
+- this url is for cloud/auth/sync http endpoints used by `RestClient`
+
 ## access pre-release distributions
 use bash build script:
 
