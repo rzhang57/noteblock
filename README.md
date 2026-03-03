@@ -37,6 +37,8 @@ try before it's released to the public:
 > npm install
 > npm run dev
 
+`npm run dev` first rebuilds the local go ipc binary, then starts vite + electron.
+
 ## environment setup
 
 frontend cloud/auth calls use `client/.env` for pointing to correct server.
@@ -90,6 +92,14 @@ or manually build:
 > npx electron-builder --mac
 
 find installer for given OS under `./dist`
+
+recommended build command from repo root:
+
+```bash
+npm run build
+```
+
+this runs the client build from `client/` and then runs `electron-builder` from repo root.
 
 ## tests
 
