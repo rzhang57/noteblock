@@ -5,6 +5,8 @@
   "author": "Ryan",
   "main": "electron/main.js",
   "scripts": {
+    "predev": "node scripts/build-local-service.cjs",
+    "build:local-service": "node scripts/build-local-service.cjs",
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:electron\"",
     "dev:client": "cd client && npm run dev",
     "dev:electron": "wait-on tcp:5173 && electron .",

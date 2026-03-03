@@ -5,11 +5,32 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e8a2b7e3-4e62-4bce-aa45-89f39c77be53" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/AGENTS.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/services/FolderService.test.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/services/LocalIpcClient.test.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/services/LocalIpcClient.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/services/NoteService.test.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/src/types/electron-api.d.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/electron/preload.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/electron/preload.test.ts" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/model/CloudBlock.go" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/model/CloudFolder.go" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/model/CloudNote.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/noteblock-local-service/internal/ipc/server.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/noteblock-local-service/internal/ipc/server_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/build-local-service.cjs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/client/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/services/FolderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/services/FolderService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/services/NoteService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/services/NoteService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/src/services/RestClient.ts" beforeDir="false" afterPath="$PROJECT_DIR$/client/src/services/RestClient.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/electron/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/electron/main.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/noteblock-cloud-service/internal/server/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/noteblock-cloud-service/internal/server/server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/noteblock-local-service/cmd/noteblock/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/noteblock-local-service/cmd/noteblock/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/noteblock-local-service/internal/service/block_service.go" beforeDir="false" afterPath="$PROJECT_DIR$/noteblock-local-service/internal/service/block_service.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,6 +85,9 @@
   <component name="KubernetesApiProvider">{
   &quot;isMigrated&quot;: true
 }</component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="fq8aeotg" />
+  </component>
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="CurrentFile" />
   </component>
@@ -136,11 +160,11 @@
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\client\src\services" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\client\src\components\blocks\block_types\Textblock" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\assets\icons" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\client\src\assets\fonts" />
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\client\src\components\blocks\block_types" />
-      <recent name="C:\Users\Ryan\Documents\GitHub\noteblock" />
     </key>
   </component>
   <component name="RunManager" selected="Go Build.go build server/cmd/noteblock">
@@ -355,6 +379,10 @@
       <workItem from="1762026063470" duration="728000" />
       <workItem from="1762048982577" duration="11000" />
       <workItem from="1762057773900" duration="621000" />
+      <workItem from="1762663712249" duration="832000" />
+      <workItem from="1767484384663" duration="722000" />
+      <workItem from="1767503895125" duration="570000" />
+      <workItem from="1772499076127" duration="3250000" />
     </task>
     <servers />
   </component>
@@ -379,8 +407,26 @@
   <component name="VgoProject">
     <settings-migrated>true</settings-migrated>
   </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/client/src/services/NoteService.ts</url>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
     <select />
+  </component>
+  <component name="github-copilot-workspace">
+    <instructionFileLocations>
+      <option value=".github/instructions" />
+    </instructionFileLocations>
+    <promptFileLocations>
+      <option value=".github/prompts" />
+    </promptFileLocations>
   </component>
 </project>

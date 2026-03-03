@@ -8,9 +8,15 @@ desktop note-taking
 - **frontend**: TypeScript, React, Electron
 - **misc**: Ollama
 
+## architecture
+
+- local app data flows through a local go binary over json ipc, brokered by electron main/preload
+- cloud/auth/sync endpoints still use rest/http from the client service layer where needed
+
 ## currently includes
 
 - custom, local-first, performative, file system
+  - primary actions performed flow through local go binary over ipc (json) through electron main process, retroactively synced to centralized server for storage
 - modular block system - blocks currently support live markdown editing/rendering, blank canvas drawings, image annotations
 - free, privacy-first AI features through local LLMs via Ollama integration
 - user-based cloud sync-service for seamless access to notes across devices, on and offline
@@ -30,17 +36,9 @@ try before it's released to the public:
 > ```bash
 > git clone https://github.com/rzhang57/noteblock
 
-### run backend (go)
-
->```bash
-> cd server
-> go mod tidy
-> go run main.go
-
 ### run frontend (electron)
 
 > ```bash
-> cd client
 > npm install
 > npm run dev
 
@@ -78,3 +76,19 @@ or manually build:
 > npx electron-builder --mac
 
 find installer for given OS under `./dist`
+
+## tests
+
+run ipc integration tests for the local go service:
+
+```bash
+cd noteblock-local-service
+go test ./internal/ipc -v
+```
+
+run frontend service/preload tests:
+
+```bash
+cd client
+npm test
+```
