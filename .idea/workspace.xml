@@ -145,13 +145,22 @@
       <recent name="C:\Users\Ryan\Documents\GitHub\noteblock\client\src\components\blocks\block_types" />
     </key>
   </component>
-  <component name="RunManager" selected="Go Build.go build server/cmd/noteblock">
+  <component name="RunManager" selected="Spring Boot.NoteblockappApplication">
     <configuration default="true" type="GoApplicationRunConfiguration" factoryName="Go Application">
       <working_directory value="$PROJECT_DIR$" />
       <go_parameters value="-i" />
       <kind value="FILE" />
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="GoTestRunConfiguration" factoryName="Go Test">
+      <working_directory value="$PROJECT_DIR$" />
+      <go_parameters value="-i" />
+      <kind value="DIRECTORY" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
       <method v="2" />
     </configuration>
     <configuration name="go build noteblock-cloud-service/cmd/api" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
@@ -172,15 +181,6 @@
       <filePath value="$PROJECT_DIR$/noteblock-local-service/cmd/noteblock/main.go" />
       <method v="2" />
     </configuration>
-    <configuration default="true" type="GoTestRunConfiguration" factoryName="Go Test">
-      <working_directory value="$PROJECT_DIR$" />
-      <go_parameters value="-i" />
-      <kind value="DIRECTORY" />
-      <directory value="$PROJECT_DIR$" />
-      <filePath value="$PROJECT_DIR$" />
-      <framework value="gotest" />
-      <method v="2" />
-    </configuration>
     <configuration name="NoteblockappApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
       <module name="server" />
       <option name="SPRING_BOOT_MAIN_CLASS" value="com.noteblock.server.NoteblockappApplication" />
@@ -195,14 +195,10 @@
       </method>
     </configuration>
     <list>
-      <item itemvalue="Go Build.go build noteblock-cloud-service/cmd/api" />
-      <item itemvalue="Go Build.go build server/cmd/noteblock" />
       <item itemvalue="Spring Boot.NoteblockappApplication" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Build.go build server/cmd/noteblock" />
-        <item itemvalue="Go Build.go build noteblock-cloud-service/cmd/api" />
         <item itemvalue="Spring Boot.NoteblockappApplication" />
       </list>
     </recent_temporary>
