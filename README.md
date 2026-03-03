@@ -8,11 +8,6 @@ desktop note-taking
 - **frontend**: TypeScript, React, Electron
 - **misc**: Ollama
 
-## architecture
-
-- local app data flows through a local go binary over json ipc, brokered by electron main/preload
-- cloud/auth/sync endpoints still use rest/http from the client service layer where needed
-
 ## currently includes
 
 - custom, local-first, performative, file system
