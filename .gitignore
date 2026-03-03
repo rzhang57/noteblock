@@ -13,6 +13,8 @@ memory
 noteblock-local-service/data/
 
 noteblock-local-service/bin/
+noteblock-local-service/noteblock.exe
+noteblock-local-service/noteblock
 
 dist
 
