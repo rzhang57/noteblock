@@ -227,7 +227,7 @@ export function MainContentPanel() {
     if (loading) {
         return (
             <div className="flex justify-center items-center p-6">
-                <div className="animate-spin h-8 w-8 border-b-2 border-gray-900"></div>
+                <div className="animate-spin h-8 w-8 rounded-full border-2 border-gray-200 border-t-gray-900"></div>
             </div>
         );
     }
@@ -312,9 +312,11 @@ export function MainContentPanel() {
                                             case "text":
                                                 return (
                                                     <div className="flex justify-center">
-                                                        <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
-                                                            <TextBlock block={block}/>
-                                                        </SortableBlock>
+                                                        <div className="w-full max-w-6xl">
+                                                            <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
+                                                                <TextBlock block={block}/>
+                                                            </SortableBlock>
+                                                        </div>
                                                     </div>
                                                 );
                                             case "image":

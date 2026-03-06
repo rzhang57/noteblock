@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.parse.bot)",
+      "WebFetch(domain:parse.bot)"
+    ]
+  }
+}

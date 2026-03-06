@@ -494,7 +494,7 @@ export function TextBlock({block}: { block: Block }) {
     );
 
     return (
-        <div className="p-2 bg-white w-[834px]">
+        <div className="p-2 bg-white w-full">
             <MDXEditor
                 ref={editorRef}
                 markdown={content}

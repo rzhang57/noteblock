@@ -172,10 +172,16 @@ function createWindow() {
         win.setMenu(null)
     }
 
-    const indexPath = path.join(__dirname, "../client/dist/index.html")
-    win.loadFile(indexPath).catch((err) => {
-        console.error("Failed to load index.html:", err)
-    })
+    if (app.isPackaged) {
+        const indexPath = path.join(__dirname, "../client/dist/index.html")
+        win.loadFile(indexPath).catch((err) => {
+            console.error("Failed to load index.html:", err)
+        })
+    } else {
+        win.loadURL("http://localhost:5173").catch((err) => {
+            console.error("Failed to load dev server:", err)
+        })
+    }
 }
 
 app.whenReady().then(() => {
