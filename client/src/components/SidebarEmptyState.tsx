@@ -8,8 +8,8 @@ interface SidebarEmptyStateProps {
 
 export default function SidebarEmptyState({createTemporaryNote, createTemporaryFolder}: SidebarEmptyStateProps) {
     return (
-        <aside className="h-full w-64 border-r bg-white flex flex-col justify-center">
-            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="flex-1 flex flex-col justify-center">
+            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
                 <div
                     className="w-12 h-12 border-2 border-gray-400 flex items-center justify-center mb-4">
                     <FolderIcon className="w-6 h-6 text-gray-400"/>
@@ -37,5 +37,5 @@ export default function SidebarEmptyState({createTemporaryNote, createTemporaryF
                     </Button>
                 </div>
             </div>
-        </aside>)
+        </div>)
 }

@@ -187,13 +187,13 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                     onDrop={handleDrop}
                     onClick={() => !isRenaming && onToggle(item.id)}
                     className={cn(
-                        "group flex items-center justify-between py-1 px-2 hover:bg-gray-100 cursor-pointer select-none",
+                        "group flex items-center justify-between py-1 px-2 hover:bg-gray-100 cursor-pointer select-none overflow-hidden",
                         isDragOver && "bg-blue-50 border-2 border-blue-300 border-dashed"
                     )}
                     style={{paddingLeft: baseIndent + 8}}
                 >
-                    <div className="flex items-center flex-1">
-                        <div className="w-4 flex items-center justify-center">
+                    <div className="flex items-center flex-1 min-w-0">
+                        <div className="w-4 shrink-0 flex items-center justify-center">
                             {hasChildren ? (
                                 open ? (
                                     <ChevronDown className="w-3 h-3 text-gray-500"/>
@@ -205,11 +205,11 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                             )}
                         </div>
 
-                        <div className="flex items-center gap-2 flex-1">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
                             {open ? (
-                                <FolderOpen className="w-4 h-4 text-gray-800"/>
+                                <FolderOpen className="w-4 h-4 shrink-0 text-gray-800"/>
                             ) : (
-                                <FolderIcon className="w-4 h-4 text-gray-800"/>
+                                <FolderIcon className="w-4 h-4 shrink-0 text-gray-800"/>
                             )}
                             {isRenaming ? (
                                 <InlineRename
@@ -299,13 +299,13 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                 }
             }}
             className={cn(
-                "group flex items-center justify-between py-1 px-2 gap-2 cursor-pointer hover:bg-gray-100 select-none",
+                "group flex items-center justify-between py-1 px-2 gap-2 cursor-pointer hover:bg-gray-100 select-none overflow-hidden",
                 active && "bg-gray-100 text-gray-900 font-medium",
             )}
             style={{paddingLeft: baseIndent + 24}}
         >
-            <div className="flex items-center gap-2 flex-1">
-                <FileText className="w-4 h-4 text-gray-600"/>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+                <FileText className="w-4 h-4 shrink-0 text-gray-600"/>
                 {isRenaming ? (
                     <InlineRename
                         initialValue={item.title}
