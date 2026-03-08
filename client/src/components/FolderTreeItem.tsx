@@ -185,6 +185,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
+                    onContextMenu={(e) => e.stopPropagation()}
                     onClick={() => !isRenaming && onToggle(item.id)}
                     className={cn(
                         "group flex items-center justify-between py-1 px-2 hover:bg-gray-100 cursor-pointer select-none overflow-hidden",
@@ -292,6 +293,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
         <div
             draggable={!isRenaming}
             onDragStart={handleDragStart}
+            onContextMenu={(e) => e.stopPropagation()}
             onClick={() => {
                 if (!isRenaming) {
                     setSelectedNoteId(item.id)

@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:www.parse.bot)",
-      "WebFetch(domain:parse.bot)"
+      "WebFetch(domain:parse.bot)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd:*)"
     ]
   }
 }

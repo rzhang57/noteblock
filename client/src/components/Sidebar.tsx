@@ -9,6 +9,57 @@ import {useNoteContext} from "@/context/NoteContext.tsx";
 import {Alert, AlertDescription} from "@/components/ui/alert.tsx";
 import SidebarEmptyState from "@/components/SidebarEmptyState.tsx";
 
+const SidebarContextMenu: React.FC<{
+    x: number;
+    y: number;
+    onClose: () => void;
+    onNewNote: () => void;
+    onNewFolder: () => void;
+}> = ({x, y, onClose, onNewNote, onNewFolder}) => {
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClick = () => onClose();
+        const handleContextMenu = () => onClose();
+        document.addEventListener('mousedown', handleClick);
+        document.addEventListener('contextmenu', handleContextMenu);
+        return () => {
+            document.removeEventListener('mousedown', handleClick);
+            document.removeEventListener('contextmenu', handleContextMenu);
+        };
+    }, [onClose]);
+
+    const handle = (action: () => void) => {
+        action();
+        onClose();
+    };
+
+    return (
+        <div
+            ref={menuRef}
+            className="fixed bg-white border border-gray-200 rounded-md shadow-md py-1 z-50 min-w-[160px]"
+            style={{top: y, left: x}}
+            onMouseDown={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.preventDefault()}
+        >
+            <button
+                onClick={() => handle(onNewNote)}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-100"
+            >
+                <FileText className="w-4 h-4"/>
+                New Note
+            </button>
+            <button
+                onClick={() => handle(onNewFolder)}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-100"
+            >
+                <FolderPlus className="w-4 h-4"/>
+                New Folder
+            </button>
+        </div>
+    );
+};
+
 const AddMenu: React.FC<{
     open: boolean;
     onClose: () => void;
@@ -95,6 +146,7 @@ export const Sidebar: React.FC = () => {
         return new Set();
     });
     const [showAddMenu, setShowAddMenu] = useState(false);
+    const [contextMenu, setContextMenu] = useState<{x: number; y: number} | null>(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
         const stored = localStorage.getItem('sidebarWidth');
@@ -380,6 +432,45 @@ export const Sidebar: React.FC = () => {
         document.addEventListener('mouseup', onMouseUp);
     };
 
+    const handleCollapsedDragStart = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const collapsedWidth = 40;
+
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+
+        const onMouseMove = (e: MouseEvent) => {
+            const newWidth = Math.max(collapsedWidth, Math.min(MAX_WIDTH, collapsedWidth + (e.clientX - startX)));
+            sidebarWidthRef.current = newWidth;
+            setSidebarWidth(newWidth);
+            if (newWidth >= COLLAPSE_THRESHOLD) {
+                setIsCollapsed(false);
+            }
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            if (sidebarWidthRef.current < COLLAPSE_THRESHOLD) {
+                setIsCollapsed(true);
+                sidebarWidthRef.current = lastExpandedWidthRef.current;
+                setSidebarWidth(lastExpandedWidthRef.current);
+            } else {
+                lastExpandedWidthRef.current = sidebarWidthRef.current;
+                localStorage.setItem('sidebarWidth', String(sidebarWidthRef.current));
+                setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('sidebarToggle'));
+                }, 0);
+            }
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
+
     if (!root) {
         return (
             <aside
@@ -394,7 +485,7 @@ export const Sidebar: React.FC = () => {
 
     if (isCollapsed) {
         return (
-            <aside className="h-full w-10 border-r bg-white flex flex-col items-center py-3">
+            <aside className="h-full w-10 border-r bg-white flex flex-col items-center py-3 relative shrink-0">
                 <button
                     onClick={() => handleCollapse(false)}
                     className="p-1.5 hover:bg-gray-100 rounded group relative cursor-pointer"
@@ -406,6 +497,10 @@ export const Sidebar: React.FC = () => {
                         Expand sidebar
                     </span>
                 </button>
+                <div
+                    className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-blue-400/40 transition-colors z-20"
+                    onMouseDown={handleCollapsedDragStart}
+                />
             </aside>
         );
     }
@@ -493,7 +588,23 @@ export const Sidebar: React.FC = () => {
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-1.5">
+            {contextMenu && (
+                <SidebarContextMenu
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    onClose={() => setContextMenu(null)}
+                    onNewNote={() => createTemporaryNote(null)}
+                    onNewFolder={() => createTemporaryFolder(null)}
+                />
+            )}
+
+            <div
+                className="flex-1 overflow-y-auto overflow-x-hidden p-1.5"
+                onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenu({x: e.clientX, y: e.clientY});
+                }}
+            >
                 {root.children?.map(child => (
                     <FolderTreeItem
                         key={child.id}
