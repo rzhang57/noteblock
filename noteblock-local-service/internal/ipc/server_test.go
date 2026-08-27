@@ -1,9 +1,11 @@
 package ipc
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"gorm.io/driver/sqlite"
@@ -165,5 +167,37 @@ func TestIPCServer_UnknownMethod(t *testing.T) {
 	})
 	if res.Error == nil || res.Error.Code != "METHOD_NOT_FOUND" {
 		t.Fatalf("expected METHOD_NOT_FOUND, got: %+v", res.Error)
+	}
+}
+
+func TestIPCServer_HandlerPanicIsContainedAndServerKeepsServing(t *testing.T) {
+	s := setupTestServer(t)
+	s.handlers["test.panic"] = func(Request) Response {
+		panic("boom")
+	}
+
+	in := strings.NewReader(
+		`{"id":"1","method":"test.panic","params":{}}` + "\n" +
+			`{"id":"2","method":"folder.get","params":{"id":"root"}}` + "\n")
+	var out bytes.Buffer
+
+	if err := s.Run(in, &out); err != nil {
+		t.Fatalf("Run returned error after handler panic: %v", err)
+	}
+
+	dec := json.NewDecoder(&out)
+	var panicRes, nextRes Response
+	if err := dec.Decode(&panicRes); err != nil {
+		t.Fatalf("failed to decode panic response: %v", err)
+	}
+	if err := dec.Decode(&nextRes); err != nil {
+		t.Fatalf("no response to the request after the panic: %v", err)
+	}
+
+	if panicRes.ID != "1" || panicRes.Error == nil || panicRes.Error.Code != "INTERNAL" {
+		t.Fatalf("expected INTERNAL error for id=1, got %+v", panicRes)
+	}
+	if nextRes.ID != "2" || nextRes.Error != nil {
+		t.Fatalf("expected the request after the panic to succeed, got %+v", nextRes)
 	}
 }

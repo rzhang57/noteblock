@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"server/internal/db"
 	"server/internal/ipc"
@@ -16,5 +17,8 @@ func main() {
 	bSvc := &service.BlockService{DB: dbConn}
 
 	server := ipc.NewServer(nSvc, fSvc, bSvc)
-	_ = server.Run(os.Stdin, os.Stdout)
+	if err := server.Run(os.Stdin, os.Stdout); err != nil {
+		// stderr: stdout is the IPC protocol.
+		log.Fatalf("ipc server terminated: %v", err)
+	}
 }
