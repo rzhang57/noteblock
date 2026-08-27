@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"io"
-	"mime/multipart"
 	"os"
 	"path/filepath"
 	"server/internal/model"
@@ -13,41 +11,6 @@ import (
 
 type BlockService struct {
 	DB *gorm.DB
-}
-
-func (s *BlockService) SaveImage(file *multipart.FileHeader) (string, error) {
-	newImageUuid := uuid.NewString()
-	imageName := newImageUuid + "_" + file.Filename
-
-	basePath := os.Getenv("NOTE_DB_PATH")
-	if basePath == "" {
-		basePath = "data"
-	}
-	imagesDir := filepath.Join(basePath, "uploads", "images")
-	fsPath := filepath.Join(imagesDir, imageName)
-	publicPath := "noteblock-image:///" + imageName
-
-	if err := os.MkdirAll(imagesDir, os.ModePerm); err != nil {
-		return "", err
-	}
-
-	dst, err := os.Create(fsPath)
-	if err != nil {
-		return "", err
-	}
-	defer dst.Close()
-
-	src, err := file.Open()
-	if err != nil {
-		return "", err
-	}
-	defer src.Close()
-
-	if _, err = io.Copy(dst, src); err != nil {
-		return "", err
-	}
-
-	return publicPath, nil
 }
 
 func (s *BlockService) SaveImageBytes(fileName string, data []byte) (string, error) {
