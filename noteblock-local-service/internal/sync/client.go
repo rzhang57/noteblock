@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -28,7 +29,9 @@ type Client struct {
 
 func NewClient(baseURL string) *Client {
 	return &Client{
-		BaseURL: baseURL,
+		// A trailing slash would build "//sync", which Gin does not route, and the only
+		// symptom is a bare 404 that points nowhere near the env var at fault.
+		BaseURL: strings.TrimRight(baseURL, "/"),
 		HTTP:    &http.Client{Timeout: 30 * time.Second},
 	}
 }

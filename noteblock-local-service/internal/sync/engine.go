@@ -77,15 +77,9 @@ func (e *Engine) Pass(ctx context.Context) error {
 		return err
 	}
 
-	if outgoing.IsEmpty() && cursors.LastPulledServer != "" {
-		return e.pull(ctx, cursors, scanStart)
-	}
-
+	// Always exchange, even with nothing to push: the pull is how this device learns
+	// whether the other one has news.
 	return e.exchange(ctx, cursors, outgoing, scanStart)
-}
-
-func (e *Engine) pull(ctx context.Context, cursors Cursors, scanStart time.Time) error {
-	return e.exchange(ctx, cursors, Changes{}, scanStart)
 }
 
 func (e *Engine) exchange(ctx context.Context, cursors Cursors, outgoing Changes, scanStart time.Time) error {

@@ -19,12 +19,22 @@ func utcNow() time.Time {
 
 // Open is the single place the connection is configured, so tests cannot drift from production.
 func Open(dbPath string) (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{NowFunc: utcNow})
+	// Pragmas belong in the DSN, not an Exec: they are per-connection, and an Exec only
+	// configures whichever pooled connection happened to serve it.
+	dsn := dbPath + "?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000"
+
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{NowFunc: utcNow})
 	if err != nil {
 		return nil, err
 	}
 
-	db.Exec("PRAGMA foreign_keys = ON")
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	// SQLite takes one writer at a time, and the sync goroutine now writes alongside the
+	// IPC loop. One connection serialises them instead of letting them race to SQLITE_BUSY.
+	sqlDB.SetMaxOpenConns(1)
 
 	if err := Migrate(db, Migrations); err != nil {
 		return nil, err

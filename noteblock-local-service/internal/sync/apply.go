@@ -9,6 +9,13 @@ import (
 // GORM stamps that column itself on Save, which would make every pulled record look newer
 // than the copy it came from and bounce it straight back on the next pass.
 func Apply(tx *gorm.DB, incoming Changes) error {
+	// The server returns records in server-write order, which says nothing about parentage:
+	// a child can arrive before the parent it points at. Deferring the check to COMMIT keeps
+	// the constraint without demanding an order the payload cannot promise.
+	if err := tx.Exec("PRAGMA defer_foreign_keys = ON").Error; err != nil {
+		return err
+	}
+
 	for _, folder := range incoming.Folders {
 		if err := applyFolder(tx, folder); err != nil {
 			return err
