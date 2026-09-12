@@ -13,6 +13,7 @@ var Migrations = []Migration{
 	{ID: "0003_tombstones", Up: tombstones},
 	{ID: "0004_sync_state", Up: syncState},
 	{ID: "0005_drop_root_folder", Up: dropRootFolder, RebuildsTables: true},
+	{ID: "0006_image_uploads", Up: imageUploads},
 }
 
 // Mirrors what AutoMigrate had already created, so an existing database adopts the ledger untouched.
@@ -162,4 +163,12 @@ func dropRootFolder(tx *gorm.DB) error {
 	}
 
 	return nil
+}
+
+// The only record that an image file exists has been a string inside a block's json, so a
+// deleted block orphans its file forever. This is also what stops a sync re-uploading it.
+func imageUploads(tx *gorm.DB) error {
+	return tx.Exec(
+		"CREATE TABLE IF NOT EXISTS `image_uploads` (`filename` text,`uploaded_at` datetime,PRIMARY KEY (`filename`))",
+	).Error
 }
