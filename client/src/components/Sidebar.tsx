@@ -8,6 +8,7 @@ import type {Note} from "@/types/Note.ts";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {Alert, AlertDescription} from "@/components/ui/alert.tsx";
 import SidebarEmptyState from "@/components/SidebarEmptyState.tsx";
+import {SidebarBrand} from "@/components/SidebarBrand.tsx";
 
 const SidebarContextMenu: React.FC<{
     x: number;
@@ -37,21 +38,21 @@ const SidebarContextMenu: React.FC<{
     return (
         <div
             ref={menuRef}
-            className="fixed bg-white border border-gray-200 rounded-md shadow-md py-1 z-50 min-w-[160px]"
+            className="surface-pop fixed rounded-lg p-1 z-50 min-w-[170px]"
             style={{top: y, left: x}}
             onMouseDown={(e) => e.stopPropagation()}
             onContextMenu={(e) => e.preventDefault()}
         >
             <button
                 onClick={() => handle(onNewNote)}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-100"
+                className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[13px] text-ink transition-colors duration-150 hover:bg-accent"
             >
                 <FileText className="w-4 h-4"/>
                 New Note
             </button>
             <button
                 onClick={() => handle(onNewFolder)}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-100"
+                className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[13px] text-ink transition-colors duration-150 hover:bg-accent"
             >
                 <FolderPlus className="w-4 h-4"/>
                 New Folder
@@ -97,7 +98,7 @@ const AddMenu: React.FC<{
     return (
         <div
             ref={menuRef}
-            className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-md py-1 z-50 min-w-[160px]"
+            className="surface-pop absolute right-0 top-full mt-1.5 rounded-lg p-1 z-50 min-w-[170px]"
             onClick={(e) => e.stopPropagation()}
         >
             <button
@@ -105,7 +106,7 @@ const AddMenu: React.FC<{
                     e.stopPropagation();
                     handleAction(onNewNote);
                 }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-100"
+                className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[13px] text-ink transition-colors duration-150 hover:bg-accent"
             >
                 <FileText className="w-4 h-4"/>
                 New Note
@@ -115,7 +116,7 @@ const AddMenu: React.FC<{
                     e.stopPropagation();
                     handleAction(onNewFolder);
                 }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-gray-100"
+                className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[13px] text-ink transition-colors duration-150 hover:bg-accent"
             >
                 <FolderPlus className="w-4 h-4"/>
                 New Folder
@@ -474,9 +475,9 @@ export const Sidebar: React.FC = () => {
     if (!root) {
         return (
             <aside
-                className="flex items-center justify-center h-full border-r bg-white"
+                className="flex items-center justify-center h-full bg-sidebar"
                 style={{width: isCollapsed ? 40 : sidebarWidth}}>
-                <div className="h-4 w-4 rounded-full border-2 border-gray-300 border-t-gray-900 animate-spin"
+                <div className="h-4 w-4 rounded-full border-2 border-rule border-t-ink-muted animate-spin"
                      aria-label="Loading"></div>
                 <span className="sr-only">Loading</span>
             </aside>
@@ -485,20 +486,20 @@ export const Sidebar: React.FC = () => {
 
     if (isCollapsed) {
         return (
-            <aside className="h-full w-10 border-r bg-white flex flex-col items-center py-3 relative shrink-0">
+            <aside className="h-full w-10 bg-sidebar flex flex-col items-center py-3 relative shrink-0">
                 <button
                     onClick={() => handleCollapse(false)}
-                    className="p-1.5 hover:bg-gray-100 rounded group relative cursor-pointer"
+                    className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors duration-150 group relative cursor-pointer"
                     aria-label="Expand sidebar"
                 >
                     <img src="./noteblock.png" alt="" className="h-5 w-5"/>
                     <span
-                        className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none z-50">
+                        className="absolute left-full ml-2 px-2 py-1 bg-ink text-primary-foreground text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none z-50">
                         Expand sidebar
                     </span>
                 </button>
                 <div
-                    className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-blue-400/40 transition-colors z-20"
+                    className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-ink/10 transition-colors duration-150 z-20"
                     onMouseDown={handleCollapsedDragStart}
                 />
             </aside>
@@ -507,26 +508,22 @@ export const Sidebar: React.FC = () => {
 
     if (root.children.length === 0 && root.notes.length === 0) {
         return (
-            <div className="h-full border-r bg-white flex flex-col relative shrink-0"
+            <div className="h-full bg-sidebar flex flex-col relative shrink-0"
                  style={{width: sidebarWidth}}>
-                <div className="px-3 py-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <img src="./noteblock.png" alt="" className="h-5 w-5 shrink-0"/>
-                        <h1 className="text-black text-base leading-none truncate"
-                            style={{fontFamily: 'Minecraft'}}>noteblock</h1>
-                    </div>
+                <div className="px-3 py-2.5 flex items-center justify-between">
+                    <SidebarBrand/>
                     <button
                         onClick={() => handleCollapse(true)}
-                        className="p-1 hover:bg-gray-100 rounded cursor-pointer shrink-0"
+                        className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer shrink-0"
                         aria-label="Collapse sidebar"
                     >
-                        <ChevronLeft className="w-4 h-4 text-gray-400"/>
+                        <ChevronLeft className="w-4 h-4"/>
                     </button>
                 </div>
                 <SidebarEmptyState createTemporaryNote={createTemporaryNote}
                                    createTemporaryFolder={createTemporaryFolder}/>
                 <div
-                    className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-black/20 transition-colors z-20"
+                    className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-ink/10 transition-colors duration-150 z-20"
                     onMouseDown={handleDragStart}
                 />
             </div>
@@ -534,12 +531,10 @@ export const Sidebar: React.FC = () => {
     }
 
     return (
-        <aside className="h-full border-r bg-white flex flex-col relative shrink-0"
+        <aside className="h-full bg-sidebar flex flex-col relative shrink-0"
                style={{width: sidebarWidth}}>
-            <div className="px-3 py-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <img src="./noteblock.png" alt="" className="h-5 w-5"/>
-                </div>
+            <div className="px-3 py-2.5 flex items-center justify-between">
+                <SidebarBrand/>
                 <div className="flex items-center gap-0.5">
                     <div className="relative">
                         <button
@@ -548,10 +543,10 @@ export const Sidebar: React.FC = () => {
                                 e.stopPropagation();
                                 setShowAddMenu(v => !v);
                             }}
-                            className="p-1 rounded hover:bg-gray-100 cursor-pointer"
+                            className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer"
                             aria-label="New note or folder"
                         >
-                            <Plus className="w-3.5 h-3.5 text-gray-500"/>
+                            <Plus className="w-3.5 h-3.5"/>
                         </button>
                         <AddMenu
                             open={showAddMenu}
@@ -563,10 +558,10 @@ export const Sidebar: React.FC = () => {
                     </div>
                     <button
                         onClick={() => handleCollapse(true)}
-                        className="p-1 rounded hover:bg-gray-100 cursor-pointer"
+                        className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer"
                         aria-label="Collapse sidebar"
                     >
-                        <ChevronLeft className="w-4 h-4 text-gray-400"/>
+                        <ChevronLeft className="w-4 h-4"/>
                     </button>
                 </div>
             </div>
@@ -579,7 +574,7 @@ export const Sidebar: React.FC = () => {
                             <span>{moveError}</span>
                             <button
                                 onClick={() => setMoveError(null)}
-                                className="ml-2 hover:bg-red-200 rounded p-1"
+                                className="ml-2 hover:bg-destructive/20 rounded p-1"
                             >
                                 <X className="h-3 w-3"/>
                             </button>
@@ -599,7 +594,7 @@ export const Sidebar: React.FC = () => {
             )}
 
             <div
-                className="flex-1 overflow-y-auto overflow-x-hidden p-1.5"
+                className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 pt-0.5"
                 onContextMenu={(e) => {
                     e.preventDefault();
                     setContextMenu({x: e.clientX, y: e.clientY});
@@ -643,7 +638,7 @@ export const Sidebar: React.FC = () => {
                 ))}
             </div>
             <div
-                className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-blue-400/40 transition-colors z-20"
+                className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-ink/10 transition-colors duration-150 z-20"
                 onMouseDown={handleDragStart}
             />
         </aside>
