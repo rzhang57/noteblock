@@ -1,0 +1,111 @@
+package sync
+
+import (
+	"gorm.io/gorm"
+	"server/internal/model"
+)
+
+// Apply writes whatever the server returned, keeping each record's incoming updated_at.
+// GORM stamps that column itself on Save, which would make every pulled record look newer
+// than the copy it came from and bounce it straight back on the next pass.
+func Apply(tx *gorm.DB, incoming Changes) error {
+	for _, folder := range incoming.Folders {
+		if err := applyFolder(tx, folder); err != nil {
+			return err
+		}
+	}
+
+	for _, note := range incoming.Notes {
+		if err := applyNote(tx, note); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func applyFolder(tx *gorm.DB, doc FolderDocument) error {
+	if doc.ID == RootFolderID {
+		return nil
+	}
+
+	var existing []model.Folder
+	if err := tx.Unscoped().Where("id = ?", doc.ID).Limit(1).Find(&existing).Error; err != nil {
+		return err
+	}
+
+	columns := map[string]any{
+		"name":       doc.Name,
+		"parent_id":  doc.ParentID,
+		"user_id":    doc.UserID,
+		"updated_at": doc.UpdatedAt.UTC(),
+		"deleted_at": doc.DeletedAt,
+	}
+
+	if len(existing) == 0 {
+		columns["id"] = doc.ID
+		columns["created_at"] = doc.UpdatedAt.UTC()
+		return tx.Model(&model.Folder{}).Create(columns).Error
+	}
+	if !doc.UpdatedAt.After(existing[0].UpdatedAt) {
+		return nil
+	}
+
+	return tx.Unscoped().Model(&model.Folder{}).Where("id = ?", doc.ID).UpdateColumns(columns).Error
+}
+
+func applyNote(tx *gorm.DB, doc NoteDocument) error {
+	var existing []model.Note
+	if err := tx.Unscoped().Where("id = ?", doc.ID).Limit(1).Find(&existing).Error; err != nil {
+		return err
+	}
+
+	columns := map[string]any{
+		"title":      doc.Title,
+		"folder_id":  doc.FolderID,
+		"user_id":    doc.UserID,
+		"updated_at": doc.UpdatedAt.UTC(),
+		"deleted_at": doc.DeletedAt,
+	}
+
+	if len(existing) == 0 {
+		columns["id"] = doc.ID
+		columns["created_at"] = doc.UpdatedAt.UTC()
+		if err := tx.Model(&model.Note{}).Create(columns).Error; err != nil {
+			return err
+		}
+		return replaceBlocks(tx, doc)
+	}
+	if !doc.UpdatedAt.After(existing[0].UpdatedAt) {
+		return nil
+	}
+
+	if err := tx.Unscoped().Model(&model.Note{}).Where("id = ?", doc.ID).UpdateColumns(columns).Error; err != nil {
+		return err
+	}
+
+	return replaceBlocks(tx, doc)
+}
+
+// The whole block set moves as one unit, so a block missing from the document is a delete.
+func replaceBlocks(tx *gorm.DB, doc NoteDocument) error {
+	if err := tx.Where("note_id = ?", doc.ID).Delete(&model.Block{}).Error; err != nil {
+		return err
+	}
+
+	for _, block := range doc.Blocks {
+		row := model.Block{
+			ID:      block.ID,
+			NoteID:  doc.ID,
+			UserID:  doc.UserID,
+			Type:    block.Type,
+			Index:   block.Index,
+			Content: string(block.Content),
+		}
+		if err := tx.Create(&row).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

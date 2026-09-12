@@ -38,6 +38,8 @@ func SaveCursors(tx *gorm.DB, c Cursors) error {
 // ChangedSince reads Unscoped so tombstones are included; they are the only record that a
 // delete happened. A nil since means everything.
 func (s *Store) ChangedSince(since *time.Time) (Changes, error) {
+	since = normalise(since)
+
 	folders, err := s.changedFolders(since)
 	if err != nil {
 		return Changes{}, err
@@ -129,6 +131,18 @@ func (s *Store) changedNotes(since *time.Time) ([]NoteDocument, error) {
 	}
 
 	return docs, nil
+}
+
+// Timestamps are stored UTC and SQLite compares them lexically, so a cursor carrying a
+// local offset would match the wrong rows.
+func normalise(since *time.Time) *time.Time {
+	if since == nil {
+		return nil
+	}
+
+	utc := since.UTC()
+
+	return &utc
 }
 
 func deletedAt(d gorm.DeletedAt) *time.Time {

@@ -63,7 +63,7 @@ func (s *BlockService) CreateNewBlock(noteID string, blockType string, index int
 
 // The sync scan reads notes.updated_at, so block writes have to advance it too.
 func touchNote(tx *gorm.DB, noteID string) error {
-	return tx.Model(&model.Note{}).Where("id = ?", noteID).Update("updated_at", time.Now()).Error
+	return tx.Model(&model.Note{}).Where("id = ?", noteID).Update("updated_at", time.Now().UTC()).Error
 }
 
 // TODO: for non-plugin blocks, we can assert type and json content fields by unmarshalling before storing
