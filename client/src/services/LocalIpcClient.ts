@@ -1,3 +1,5 @@
+import type {BlockType} from "@/types/Note";
+
 export const localIpcClient = {
     folder: {
         create(payload: { name: string; parent_id: string | null }) {
@@ -28,10 +30,10 @@ export const localIpcClient = {
         },
     },
     block: {
-        create(noteId: string, payload: { type: "text" | "canvas" | "image"; index: number; content: unknown }) {
+        create(noteId: string, payload: { type: BlockType; index: number; content: unknown }) {
             return window.noteblock.local.block.create(noteId, payload)
         },
-        update(noteId: string, blockId: string, payload: { type: "text" | "canvas" | "image"; content: unknown }) {
+        update(noteId: string, blockId: string, payload: { type: BlockType; content: unknown }) {
             return window.noteblock.local.block.update(noteId, blockId, payload)
         },
         delete(noteId: string, blockId: string) {
