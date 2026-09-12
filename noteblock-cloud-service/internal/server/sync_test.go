@@ -232,3 +232,30 @@ func docsOf(docs ...map[string]any) []model.JSONB {
 	}
 	return out
 }
+
+// GORM's Save() issues Updates with Select("*"), so the zero CreatedAt of a freshly built
+// struct overwrites the stored one. Nothing else in this suite reads created_at.
+func TestAnLwwUpdateKeepsTheOriginalCreatedAt(t *testing.T) {
+	s, r := newSyncServer(t)
+
+	early := time.Now()
+	postSync(t, r, syncRequest{Notes: docsOf(noteDoc("n1", "original", early))})
+
+	var created time.Time
+	if err := s.gorm.Model(&model.CloudNote{}).Where("id = ?", "n1").Pluck("created_at", &created).Error; err != nil {
+		t.Fatalf("read created_at: %v", err)
+	}
+	if created.IsZero() {
+		t.Fatal("created_at was never set on insert")
+	}
+
+	postSync(t, r, syncRequest{Notes: docsOf(noteDoc("n1", "newer", early.Add(time.Minute)))})
+
+	var after time.Time
+	if err := s.gorm.Model(&model.CloudNote{}).Where("id = ?", "n1").Pluck("created_at", &after).Error; err != nil {
+		t.Fatalf("re-read created_at: %v", err)
+	}
+	if !after.Equal(created) {
+		t.Errorf("created_at = %v after an update, want the original %v", after, created)
+	}
+}
