@@ -12,6 +12,7 @@ var Migrations = []Migration{
 	{ID: "0001_baseline", Up: baseline},
 	{ID: "0002_user_ownership", Up: userOwnership},
 	{ID: "0003_tombstones", Up: tombstones},
+	{ID: "0004_sync_state", Up: syncState},
 }
 
 // Mirrors what AutoMigrate had already created, so an existing database adopts the ledger untouched.
@@ -86,6 +87,23 @@ func userOwnership(tx *gorm.DB) error {
 			"UPDATE `"+table+"` SET `user_id` = ? WHERE `user_id` IS NULL",
 			model.LocalUserID,
 		).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// last_pushed_local is a local clock value and last_pulled_server an opaque server token;
+// they live in different clock domains and are never compared.
+func syncState(tx *gorm.DB) error {
+	stmts := []string{
+		"CREATE TABLE IF NOT EXISTS `sync_states` (`id` integer PRIMARY KEY CHECK (`id` = 1),`last_pushed_local` datetime,`last_pulled_server` text)",
+		"INSERT OR IGNORE INTO `sync_states` (`id`, `last_pushed_local`, `last_pulled_server`) VALUES (1, NULL, '')",
+	}
+
+	for _, stmt := range stmts {
+		if err := tx.Exec(stmt).Error; err != nil {
 			return err
 		}
 	}
