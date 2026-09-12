@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  client:
+    name: Client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - name: Type check
+        run: npx tsc -b
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  lint:
+    name: Client lint
+    runs-on: ubuntu-latest
+    # Non-blocking until the pre-existing no-explicit-any errors are cleared.
+    # Flip this to a failing step once they are.
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+
+  local-service:
+    name: Local service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: noteblock-local-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: noteblock-local-service/go.sum
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go build ./cmd/noteblock
+
+  cloud-service:
+    name: Cloud service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: noteblock-cloud-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: noteblock-cloud-service/go.sum
+      - run: go vet ./...
+      - name: Unit tests
+        run: go test ./cmd/... ./internal/model ./internal/server
+      - name: Database integration tests
+        run: go test ./internal/database
