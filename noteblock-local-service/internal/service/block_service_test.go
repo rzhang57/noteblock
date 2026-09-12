@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"server/internal/db"
 	"server/internal/model"
@@ -15,7 +14,7 @@ import (
 func newServiceTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	conn, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "test.sqlite")), &gorm.Config{NowFunc: db.NowUTC})
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.sqlite"))
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}
@@ -24,13 +23,6 @@ func newServiceTestDB(t *testing.T) *gorm.DB {
 			sqlDB.Close()
 		}
 	})
-
-	// InitDb enables foreign keys; the suite matches it so constraints behave as in production.
-	conn.Exec("PRAGMA foreign_keys = ON")
-
-	if err := db.Migrate(conn, db.Migrations); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
 
 	return conn
 }
