@@ -1,6 +1,6 @@
 export {}
 
-type BlockType = "text" | "canvas" | "image"
+import type {BlockType} from "./Note"
 
 declare global {
     interface Window {

@@ -1,5 +1,5 @@
 import {localIpcClient} from "./LocalIpcClient";
-import type {Block, Note} from "@/types/Note.ts";
+import type {Block, BlockType, Note} from "@/types/Note.ts";
 
 export interface NoteCreateRequest {
     title: string;
@@ -14,13 +14,13 @@ export interface NoteUpdateRequest {
 }
 
 export interface BlockCreateRequest {
-    type: "text" | "canvas" | "image";
+    type: BlockType;
     index: number;
-    content: string;
+    content: unknown;
 }
 
 export interface BlockUpdateRequest {
-    type: "text" | "canvas" | "image";
+    type: BlockType;
     content: Record<any, any>;
 }
 

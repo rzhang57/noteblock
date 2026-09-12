@@ -19,61 +19,14 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import {SortableBlock} from "@/components/blocks/SortableBlock.tsx";
+import {InsertionPoint, type InsertKind} from "@/components/blocks/InsertionPoint.tsx";
 import {DocumentTextIcon, RectangleGroupIcon} from '@heroicons/react/24/outline';
 import {ExcalidrawBlock} from "@/components/blocks/block_types/ExcalidrawBlock.tsx";
+import {CodeBlock} from "@/components/blocks/block_types/CodeBlock.tsx";
+import {ImageBlock} from "@/components/blocks/block_types/ImageBlock.tsx";
 
-async function createBlock(type: "text" | "canvas" | "image", noteId: string, index: number): Promise<Block> {
-    const blockRequest = {
-        type: type,
-        index,
-        content: ""
-    };
-
-    return await NoteService.createBlock(noteId, blockRequest);
-}
-
-function InsertionDivider({onAdd, visibleWithoutHover}: {
-    onAdd: (type: "text" | "canvas" | "image") => void,
-    visibleWithoutHover?: boolean
-}) {
-    return (
-        <div className="relative group h-0">
-            <div className="absolute inset-x-0 top-0 -translate-y-1/2 h-8 cursor-pointer"/>
-            <div
-                className={`absolute inset-x-0 top-0 -translate-y-1/2 border-t transition-colors duration-150 pointer-events-none ${
-                    visibleWithoutHover
-                        ? 'border-gray-200'
-                        : 'border-transparent group-hover:border-gray-200'
-                }`}
-            />
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                <div className={`transition-opacity duration-150 ${
-                    visibleWithoutHover
-                        ? 'opacity-100'
-                        : 'opacity-0 group-hover:opacity-100'
-                }`}>
-                    <div className="flex gap-1">
-                        <button
-                            onClick={() => onAdd("text")}
-                            className="px-2 py-1 border border-gray-300 bg-white hover:bg-gray-50 text-[11px] font-medium text-gray-700 shadow-sm inline-flex items-center gap-1"
-                            title="Add text block"
-                        >
-                            <DocumentTextIcon className="h-4 w-4 text-gray-500"/>
-                            Text
-                        </button>
-                        <button
-                            onClick={() => onAdd("canvas")}
-                            className="px-2 py-1 border border-gray-300 bg-white hover:bg-gray-50 text-[11px] font-medium text-gray-700 shadow-sm inline-flex items-center gap-1"
-                            title="Add canvas block"
-                        >
-                            <RectangleGroupIcon className="h-4 w-4 text-gray-500"/>
-                            Canvas
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+async function createBlock(kind: InsertKind, noteId: string, index: number): Promise<Block> {
+    return await NoteService.createBlock(noteId, {type: kind, index, content: ""});
 }
 
 export function MainContentPanel() {
@@ -83,9 +36,11 @@ export function MainContentPanel() {
     const [activeBlock, setActiveBlock] = useState<Block | null>(null);
     const [editingTitle, setEditingTitle] = useState(false);
     const [localNoteTitle, setLocalNoteTitle] = useState(noteTitle);
+    const [spawnedBlockId, setSpawnedBlockId] = useState<string | null>(null);
 
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        // the drag handle is also the actions menu trigger, so a press that never moves must stay a click
+        useSensor(PointerSensor, {activationConstraint: {distance: 4}}),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
@@ -127,10 +82,11 @@ export function MainContentPanel() {
         );
     }, [selectedNoteId]);
 
-    const handleAddBlockAt = async (type: "text" | "canvas" | "image", index: number) => {
+    const handleAddBlockAt = async (kind: InsertKind, index: number) => {
         if (!note || !selectedNoteId) return;
         try {
-            const created = await createBlock(type, selectedNoteId, index);
+            const created = await createBlock(kind, selectedNoteId, index);
+            setSpawnedBlockId(created.id);
             const fetched = await NoteService.getNote(selectedNoteId);
             const blocksSorted = [...fetched.blocks].sort((a, b) => a.index - b.index);
 
@@ -159,7 +115,7 @@ export function MainContentPanel() {
 
             setNote({...fetched, blocks: blocksWithNewIndices});
         } catch (err) {
-            console.error(`Failed to add ${type} block at index ${index}:`, err);
+            console.error(`Failed to add ${kind} block at index ${index}:`, err);
         }
     };
 
@@ -172,6 +128,69 @@ export function MainContentPanel() {
             setNote(updatedNote);
         } catch (error) {
             console.error('Error deleting block:', error);
+        }
+    };
+
+    const handleAddImageBlock = async (url: string, index: number) => {
+        if (!note || !selectedNoteId) return;
+        try {
+            const created = await NoteService.createBlock(selectedNoteId, {
+                type: "image",
+                index,
+                content: {url, strokes: []}
+            });
+            setSpawnedBlockId(created.id);
+
+            const fetched = await NoteService.getNote(selectedNoteId);
+            const others = fetched.blocks
+                .filter(b => b.id !== created.id)
+                .sort((a, b) => a.index - b.index);
+            const at = Math.max(0, Math.min(index, others.length));
+            const ordered = [...others.slice(0, at), created, ...others.slice(at)]
+                .map((b, i) => ({...b, index: i}));
+
+            await NoteService.updateNote({
+                id: selectedNoteId,
+                title: fetched.title,
+                folder_id: fetched.folder_id,
+                blocks: ordered
+            });
+            setNote({...fetched, blocks: ordered});
+        } catch (err) {
+            console.error("Failed to add image block:", err);
+        }
+    };
+
+    const handleDuplicateBlock = async (blockId: string) => {
+        if (!note || !selectedNoteId) return;
+        const source = note.blocks.find(b => b.id === blockId);
+        if (!source) return;
+
+        try {
+            const created = await NoteService.createBlock(selectedNoteId, {
+                type: source.type,
+                index: source.index + 1,
+                content: source.content
+            });
+            setSpawnedBlockId(created.id);
+
+            const fetched = await NoteService.getNote(selectedNoteId);
+            const others = fetched.blocks
+                .filter(b => b.id !== created.id)
+                .sort((a, b) => a.index - b.index);
+            const at = others.findIndex(b => b.id === blockId) + 1;
+            const ordered = [...others.slice(0, at), created, ...others.slice(at)]
+                .map((b, i) => ({...b, index: i}));
+
+            await NoteService.updateNote({
+                id: selectedNoteId,
+                title: fetched.title,
+                folder_id: fetched.folder_id,
+                blocks: ordered
+            });
+            setNote({...fetched, blocks: ordered});
+        } catch (err) {
+            console.error("Failed to duplicate block:", err);
         }
     };
 
@@ -221,13 +240,13 @@ export function MainContentPanel() {
     };
 
     if (!selectedNoteId) {
-        return <div className="p-6 text-gray-500">No note selected</div>;
+        return <div className="editor-col py-10 text-ink-muted">No note selected</div>;
     }
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center p-6">
-                <div className="animate-spin h-8 w-8 rounded-full border-2 border-gray-200 border-t-gray-900"></div>
+            <div className="flex items-center justify-center p-10">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-rule border-t-ink-muted"></div>
             </div>
         );
     }
@@ -255,31 +274,30 @@ export function MainContentPanel() {
         }
     }
 
+    const titleClasses = "w-full bg-transparent text-[30px] font-semibold leading-tight tracking-[-0.022em] text-ink";
+
     return (
         note && noteTitle && (
-            <div className="p-6 space-y-4">
-                <div className="flex justify-center pb-2">
-                    <div className="w-full max-w-3xl text-left" onClick={() => !editingTitle && setEditingTitle(true)}>
-                        {editingTitle ? (
-                            <input
-                                className="text-xl font-semibold text-gray-800 bg-white focus:outline-none px-4 py-2 border-2 border-gray-200 w-full"
-                                style={{boxShadow: "0 2px 8px rgba(0,0,0,0.06)", background: "#fff"}}
-                                value={localNoteTitle !== null ? localNoteTitle : noteTitle}
-                                onChange={e => setLocalNoteTitle(e.target.value)}
-                                onKeyDown={e => {
-                                    if (e.key === "Enter") {
-                                        tryUpdateTitle(localNoteTitle ? localNoteTitle : "");
-                                    }
-                                }}
-                                onBlur={() => {
-                                    setEditingTitle(false)
-                                }}
-                                autoFocus
-                            />
-                        ) : (
-                            <h1 className="text-xl font-semibold text-gray-800">{noteTitle}</h1>
-                        )}
-                    </div>
+            <div className="pb-2 pt-10">
+                <div className="editor-col mb-0.5" onClick={() => !editingTitle && setEditingTitle(true)}>
+                    {editingTitle ? (
+                        <input
+                            className={`${titleClasses} border-0 p-0 focus:outline-none`}
+                            value={localNoteTitle !== null ? localNoteTitle : noteTitle}
+                            onChange={e => setLocalNoteTitle(e.target.value)}
+                            onKeyDown={e => {
+                                if (e.key === "Enter") {
+                                    tryUpdateTitle(localNoteTitle ? localNoteTitle : "");
+                                }
+                            }}
+                            onBlur={() => {
+                                setEditingTitle(false)
+                            }}
+                            autoFocus
+                        />
+                    ) : (
+                        <h1 className={`${titleClasses} cursor-text`}>{noteTitle}</h1>
+                    )}
                 </div>
 
                 <DndContext
@@ -292,86 +310,71 @@ export function MainContentPanel() {
                         items={sortedBlocks.map(block => block.id)}
                         strategy={verticalListSortingStrategy}
                     >
-                        <div className="space-y-2 flex flex-col w-full">
-                            {sortedBlocks.length === 0 && (
-                                <>
-                                    <div className="flex flex-col items-center pb-4">
-                                        <p className="text-center text-gray-500 mb-4">Begin your note by adding your
-                                            first
-                                            block below.</p>
-                                    </div>
-                                    <InsertionDivider onAdd={(type) => handleAddBlockAt(type, 0)}
-                                                      visibleWithoutHover={true}/>
-                                </>
-
+                        <div className="flex w-full flex-col">
+                            {sortedBlocks.length === 0 ? (
+                                <div className="editor-col">
+                                    <p className="mb-2 text-[15px] text-ink-faint">
+                                        Start writing, or add a block below.
+                                    </p>
+                                    <InsertionPoint onAdd={(kind) => handleAddBlockAt(kind, 0)} persistent/>
+                                </div>
+                            ) : (
+                                <div className="editor-col py-1.5">
+                                    <InsertionPoint onAdd={(kind) => handleAddBlockAt(kind, 0)}/>
+                                </div>
                             )}
+
                             {sortedBlocks.map((block: Block, i: number) => (
                                 <Fragment key={block.id}>
-                                    {(() => {
-                                        switch (block.type) {
-                                            case "text":
-                                                return (
-                                                    <div className="flex justify-center">
-                                                        <div className="w-full max-w-6xl">
-                                                            <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}>
-                                                                <TextBlock block={block}/>
-                                                            </SortableBlock>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            case "image":
-                                                return <p>image</p>;
-                                            case "canvas":
-                                                return (
-                                                    <div className="flex justify-center">
-                                                        <div className="w-full max-w-6xl">
-                                                            <SortableBlock blockId={block.id}
-                                                                           onDelete={handleDeleteBlock}>
-                                                                <ExcalidrawBlock block={block}/>
-                                                            </SortableBlock>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            default:
-                                                return (
-                                                    <div className="text-red-600">
-                                                        Unknown block type: {block.type}
-                                                    </div>
-                                                );
-                                        }
-                                    })()}
-                                    <InsertionDivider onAdd={(type) => handleAddBlockAt(type, i + 1)}/>
+                                    <div className="editor-col">
+                                        <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}
+                                                       onDuplicate={handleDuplicateBlock}
+                                                       showBoundary={block.type === "text"}>
+                                            {block.type === "text" && (
+                                                <TextBlock
+                                                    block={block}
+                                                    onSpawnCodeBlock={() => handleAddBlockAt("code", i + 1)}
+                                                    onSpawnImageBlock={(url) => handleAddImageBlock(url, i + 1)}
+                                                />
+                                            )}
+                                            {block.type === "code" && <CodeBlock block={block} autoFocus={block.id === spawnedBlockId}/>}
+                                            {block.type === "canvas" && <ExcalidrawBlock block={block}/>}
+                                            {block.type === "image" && <ImageBlock block={block}/>}
+                                            {!["text", "canvas", "image", "code"].includes(block.type) && (
+                                                <div className="text-destructive">
+                                                    Unknown block type: {block.type}
+                                                </div>
+                                            )}
+                                        </SortableBlock>
+                                    </div>
+                                    <div className="editor-col py-1.5">
+                                        <InsertionPoint onAdd={(kind) => handleAddBlockAt(kind, i + 1)}/>
+                                    </div>
                                 </Fragment>
                             ))}
-                            <div className="h-[40vh]"/>
+
+                            <div
+                                className="h-[35vh] cursor-text"
+                                onClick={() => handleAddBlockAt("text", sortedBlocks.length)}
+                            />
                         </div>
                     </SortableContext>
 
                     <DragOverlay>
                         {activeBlock && (
-                            <div className="border-2 border-blue-300 bg-white shadow-lg p-4 opacity-90">
-                                <div className="flex items-center gap-3">
-                                    {activeBlock.type === "text" && (
-                                        <>
-                                            <DocumentTextIcon className="h-8 w-8 text-gray-600 flex-shrink-0"/>
-                                            <div>
-                                                <div className="font-medium text-gray-700">Text Block</div>
-                                                <div className="text-sm text-gray-500">
-                                                    ...
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                    {activeBlock.type === "canvas" && (
-                                        <>
-                                            <RectangleGroupIcon className="h-8 w-8 text-gray-600 flex-shrink-0"/>
-                                            <div>
-                                                <div className="font-medium text-gray-700">Canvas Block</div>
-                                                <div className="text-sm text-gray-500">Excalidraw drawing</div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
+                            <div className="surface-pop flex items-center gap-3 rounded-lg px-4 py-3">
+                                {activeBlock.type === "text" && (
+                                    <>
+                                        <DocumentTextIcon className="h-5 w-5 flex-shrink-0 text-ink-muted"/>
+                                        <div className="text-[13px] font-medium text-ink">Text block</div>
+                                    </>
+                                )}
+                                {activeBlock.type === "canvas" && (
+                                    <>
+                                        <RectangleGroupIcon className="h-5 w-5 flex-shrink-0 text-ink-muted"/>
+                                        <div className="text-[13px] font-medium text-ink">Canvas block</div>
+                                    </>
+                                )}
                             </div>
                         )}
                     </DragOverlay>

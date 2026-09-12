@@ -28,3 +28,6 @@ noteblock-local-service/uploads
 
 client/.env
 client/.env.local
+
+# Playwright MCP scratch output
+.playwright-mcp/
