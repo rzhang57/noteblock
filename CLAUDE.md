@@ -123,7 +123,7 @@ Known friction, so it is not rediscovered every time:
   earlier edits (including any typing done by hand in that tab).
 
 ## Common Pitfalls and Self-improvement
-- **Local binary freshness matters.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`. A stale binary means you are debugging code that is no longer on disk. Use root `npm run dev` or `npm run build:local-service` first.
+- **Go binary freshness matters.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)` and `noteblock-cloud-service/bin/cloud-api(.exe)`. A stale binary means you are debugging code that is no longer on disk. Use root `npm run dev` or `npm run build:services` first.
 - **`gofmt -l` reports every Go file on Windows.** This is a CRLF artifact, not real formatting drift — git normalizes line endings on commit. Do not "fix" it; the resulting whole-file diffs bury the real change. Verify formatting with `gofmt -d <file>` and check whether the diff is anything other than `^M`.
 - **Preserve a file's existing line endings when scripting edits.** Tools that rewrite a CRLF file as LF turn a three-line change into a whole-file diff.
 - `block.update` can race with UI autosave after block deletion/reorder; `NOT_FOUND` here is often benign and is deliberately swallowed in `electron/main.js`, not a fatal sync issue.

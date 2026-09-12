@@ -2,17 +2,29 @@ package ipc
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"server/internal/service"
 )
 
+// Flusher is the sync engine, kept as an interface so the ipc package does not depend on it
+// and so a build with sync switched off simply has none.
+type Flusher interface {
+	Pass(ctx context.Context) error
+}
+
 type Server struct {
 	noteSvc   *service.NoteService
 	folderSvc *service.FolderService
 	blockSvc  *service.BlockService
+	flusher   Flusher
 	handlers  map[string]handlerFn
+}
+
+func (s *Server) SetFlusher(f Flusher) {
+	s.flusher = f
 }
 
 func NewServer(noteSvc *service.NoteService, folderSvc *service.FolderService, blockSvc *service.BlockService) *Server {
