@@ -13,6 +13,7 @@ import (
 // and so a build with sync switched off simply has none.
 type Flusher interface {
 	Pass(ctx context.Context) error
+	Focus(ctx context.Context, noteID string)
 }
 
 type Server struct {

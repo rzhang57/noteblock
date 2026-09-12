@@ -61,6 +61,10 @@ export const NoteService = {
         await localIpcClient.block.delete(noteId, blockId);
     },
 
+    async focus(noteId: string | null): Promise<void> {
+        await localIpcClient.sync.focus(noteId);
+    },
+
     async uploadImage(image: File): Promise<string> {
         const bytes = new Uint8Array(await image.arrayBuffer());
         let binary = "";
