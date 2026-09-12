@@ -25,3 +25,20 @@ func (s *Server) syncFlush(req Request) Response {
 
 	return Response{ID: req.ID, Result: map[string]any{"synced": true}}
 }
+
+// Returns immediately. Blocking here would stall the sequential loop, so a slow network would
+// freeze editing — the opposite of what local-first is for.
+func (s *Server) syncFocus(req Request) Response {
+	var body struct {
+		NoteID string `json:"note_id"`
+	}
+	if err := parseParams(req.Params, &body); err != nil {
+		return rpcErr(req.ID, "BAD_REQUEST", "Invalid params")
+	}
+
+	if s.flusher != nil {
+		s.flusher.Focus(context.Background(), body.NoteID)
+	}
+
+	return Response{ID: req.ID, Result: map[string]any{"note_id": body.NoteID}}
+}

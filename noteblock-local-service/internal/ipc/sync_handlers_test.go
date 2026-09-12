@@ -7,8 +7,13 @@ import (
 )
 
 type stubFlusher struct {
-	calls int
-	err   error
+	calls   int
+	err     error
+	focused string
+}
+
+func (f *stubFlusher) Focus(_ context.Context, noteID string) {
+	f.focused = noteID
 }
 
 func (f *stubFlusher) Pass(context.Context) error {
@@ -56,5 +61,30 @@ func TestSyncFlushIsHarmlessWhenSyncIsOff(t *testing.T) {
 	}
 	if res.Result.(map[string]any)["synced"] != false {
 		t.Errorf("result = %v, want synced false", res.Result)
+	}
+}
+
+func TestSyncFocusTellsTheEngineWhatIsOnScreen(t *testing.T) {
+	srv := setupTestServer(t)
+	flusher := &stubFlusher{}
+	srv.SetFlusher(flusher)
+
+	res := srv.handle(Request{ID: "1", Method: "sync.focus", Params: mustRaw(t, map[string]any{"note_id": "n-42"})})
+
+	if res.Error != nil {
+		t.Fatalf("sync.focus failed: %+v", res.Error)
+	}
+	if flusher.focused != "n-42" {
+		t.Errorf("focused note = %q, want n-42", flusher.focused)
+	}
+}
+
+func TestSyncFocusIsHarmlessWhenSyncIsOff(t *testing.T) {
+	srv := setupTestServer(t)
+
+	res := srv.handle(Request{ID: "1", Method: "sync.focus", Params: mustRaw(t, map[string]any{"note_id": "n-42"})})
+
+	if res.Error != nil {
+		t.Fatalf("sync.focus errored with no engine configured: %+v", res.Error)
 	}
 }

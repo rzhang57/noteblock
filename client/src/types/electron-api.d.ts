@@ -24,6 +24,9 @@ declare global {
                     update: (noteId: string, blockId: string, payload: { type: BlockType; content: unknown }) => Promise<any>
                     delete: (noteId: string, blockId: string) => Promise<any>
                 }
+                sync: {
+                    focus: (noteId: string | null) => Promise<{ note_id: string }>
+                }
                 asset: {
                     uploadImage: (payload: { filename: string; data_base64: string }) => Promise<{ url: string }>
                 }

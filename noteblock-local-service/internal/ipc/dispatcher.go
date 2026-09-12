@@ -23,6 +23,7 @@ func (s *Server) buildHandlers() map[string]handlerFn {
 		"block.delete":      s.blockDelete,
 		"asset.uploadImage": s.assetUpload,
 		"sync.flush":        s.syncFlush,
+		"sync.focus":        s.syncFocus,
 	}
 }
 
