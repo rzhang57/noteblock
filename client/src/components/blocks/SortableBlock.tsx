@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState, type ReactNode} from "react";
 import {useSortable} from '@dnd-kit/sortable';
 import {CSS} from '@dnd-kit/utilities';
-import {GripVertical, Trash2, Copy} from 'lucide-react';
+import {GripVertical, Trash2, Copy, MoreHorizontal} from 'lucide-react';
 
 interface SortableBlockProps {
     blockId: string;
@@ -63,21 +63,29 @@ export const SortableBlock = ({blockId, children, onDelete, onDuplicate, showBou
 
             <div
                 ref={gutterRef}
-                className="absolute left-0 top-1 z-20 flex -translate-x-8 items-start opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
+                className="absolute left-0 top-1 z-20 flex flex-col -translate-x-9 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
             >
                 <button
                     {...attributes}
                     {...listeners}
-                    onClick={() => setMenuOpen(v => !v)}
                     className="flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-ink-faint transition-colors duration-150 hover:bg-accent hover:text-ink-muted active:cursor-grabbing"
-                    title="Drag to move, click for actions"
-                    aria-label="Block actions"
+                    title="Drag to move"
+                    aria-label="Drag block"
                 >
                     <GripVertical size={16}/>
                 </button>
 
+                <button
+                    onClick={() => setMenuOpen(v => !v)}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-ink-faint transition-colors duration-150 hover:bg-accent hover:text-ink-muted"
+                    title="Block actions"
+                    aria-label="Block actions"
+                >
+                    <MoreHorizontal size={15}/>
+                </button>
+
                 {menuOpen && (
-                    <div className="surface-pop absolute left-0 top-7 w-40 rounded-lg p-1">
+                    <div className="surface-pop absolute left-0 top-14 w-40 rounded-lg p-1">
                         <button
                             onClick={() => act(onDuplicate)}
                             className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-ink transition-colors duration-150 hover:bg-accent"
@@ -96,8 +104,8 @@ export const SortableBlock = ({blockId, children, onDelete, onDuplicate, showBou
                 )}
             </div>
 
-            <div className={`rounded-md px-2 py-0.5 transition-shadow duration-150 ${
-                showBoundary ? "group-hover:shadow-[0_6px_10px_-10px_rgb(0_0_0/0.55)]" : ""
+            <div className={`rounded-xl px-3 py-1 transition-shadow duration-150 ${
+                showBoundary ? "group-hover:shadow-[0_10px_20px_-14px_rgb(0_0_0/0.55)]" : ""
             }`}>
                 {children}
             </div>

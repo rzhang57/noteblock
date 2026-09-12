@@ -76,7 +76,19 @@ should read it defensively (`content?.url`) and degrade rather than throw.
 ## Coding Style & Naming Conventions
 Be pragmatic. Match the surrounding code rather than importing conventions from elsewhere.
 
-- **Comments are sparse.** This codebase is deliberately near-comment-free — `electron/preload.js` and `client/src/services/NoteService.ts` have zero, and that is correct. Write at most a **single line**, and only where the code is genuinely non-obvious: a cross-file invariant, a non-local consequence, a deliberate-looking-wrong choice. Never write block comments, function-header docs, or a comment that restates what the line below already says. A clear name or a descriptive test name beats a comment.
+- **The code is the documentation; comments are the exception.** This codebase is deliberately
+  near-comment-free — `electron/preload.js` and `client/src/services/NoteService.ts` have zero, and
+  that is correct. Before writing a comment, first try to make it unnecessary: a clearer name, a
+  smaller function, an extracted constant, or a descriptive test name. Reach for a comment only when
+  the code cannot carry the meaning on its own.
+- **When one is warranted, write exactly one line.** Only for something genuinely non-obvious: a
+  cross-file invariant, a non-local consequence, a workaround for third-party behaviour, or a choice
+  that looks wrong until you know why. Say *why*, never *what* — the code already says what. Never
+  write block comments, function-header docs, section banners, or a comment restating the line below.
+- **Maintaining this is part of the job.** When you touch a file, delete comments that have gone
+  stale or that restate the code, and collapse any multi-line block you find down to a single line or
+  nothing. Do not leave commented-out code behind; git has it. A comment that no longer matches the
+  code is worse than no comment, so if you change behaviour the nearby comment is yours to fix.
 - `TODO:` comments are the exception — they are roadmap markers, some referencing ticket IDs (`NB-31`, `NB-32`). Leave them in place unless you are implementing them.
 - TypeScript/React: follow ESLint config in `client/eslint.config.js`; use PascalCase for components (`Sidebar.tsx`), camelCase for variables/functions, and keep service/type files descriptive (`NoteService.ts`, `filesystem.ts`).
 - Go: use standard Go formatting (`gofmt`), package-oriented layout under `internal/`, and `_test.go` suffix for tests.

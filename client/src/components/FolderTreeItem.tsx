@@ -47,6 +47,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
     const {selectedNoteId, setSelectedNoteId, setNoteTitle} = useNoteContext();
     const [isRenaming, setIsRenaming] = useState(isTemporary);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [contextMenuAt, setContextMenuAt] = useState<{ x: number; y: number } | null>(null);
     const dragDepthRef = useRef(0);
 
     useEffect(() => {
@@ -184,7 +185,11 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
-                    onContextMenu={(e) => e.stopPropagation()}
+                    onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setContextMenuAt({x: e.clientX, y: e.clientY});
+                    }}
                     onClick={() => !isRenaming && onToggle(item.id)}
                     className={cn(
                         "group flex items-center justify-between gap-1 rounded-md py-[5px] px-2 cursor-pointer select-none overflow-hidden transition-colors duration-150 hover:bg-sidebar-accent",
@@ -233,6 +238,8 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                             onDelete={() => onDeleteItem(item)}
                             onRename={handleRename}
                             onMoveToRoot={handleMoveToRoot}
+                            openAt={contextMenuAt}
+                            onRequestClose={() => setContextMenuAt(null)}
                         />
                     )}
                 </div>
@@ -293,7 +300,11 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
         <div
             draggable={!isRenaming}
             onDragStart={handleDragStart}
-            onContextMenu={(e) => e.stopPropagation()}
+            onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setContextMenuAt({x: e.clientX, y: e.clientY});
+            }}
             onClick={() => {
                 if (!isRenaming) {
                     setSelectedNoteId(item.id)
@@ -330,6 +341,8 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                     onDelete={() => onDeleteItem(item)}
                     onRename={handleRename}
                     onMoveToRoot={handleMoveToRoot}
+                    openAt={contextMenuAt}
+                    onRequestClose={() => setContextMenuAt(null)}
                 />
             )}
         </div>

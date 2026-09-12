@@ -225,7 +225,7 @@
     @apply text-[13px] leading-snug text-ink-muted;
   }
   .editor-col {
-    @apply mx-auto w-full max-w-[51rem] px-10;
+    @apply mx-auto w-full max-w-[52rem] px-16;
   }
   .surface-pop {
     background: var(--popover);

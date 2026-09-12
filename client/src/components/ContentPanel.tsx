@@ -279,7 +279,7 @@ export function MainContentPanel() {
     return (
         note && noteTitle && (
             <div className="pb-2 pt-10">
-                <div className="editor-col mb-0.5" onClick={() => !editingTitle && setEditingTitle(true)}>
+                <div className="editor-col mb-3" onClick={() => !editingTitle && setEditingTitle(true)}>
                     {editingTitle ? (
                         <input
                             className={`${titleClasses} border-0 p-0 focus:outline-none`}
@@ -312,8 +312,8 @@ export function MainContentPanel() {
                     >
                         <div className="flex w-full flex-col">
                             {sortedBlocks.length === 0 ? (
-                                <div className="editor-col">
-                                    <p className="mb-2 text-[15px] text-ink-faint">
+                                <div className="editor-col pt-6 pb-10">
+                                    <p className="mb-10 text-[15px] text-ink-faint">
                                         Start writing, or add a block below.
                                     </p>
                                     <InsertionPoint onAdd={(kind) => handleAddBlockAt(kind, 0)} persistent/>
