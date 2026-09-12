@@ -13,6 +13,7 @@ type Folder struct {
 	UserID    string `gorm:"type:uuid;index"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 
 	Parent          *Folder  `gorm:"foreignKey:ParentID"`
 	ChildrenFolders []Folder `gorm:"foreignKey:ParentID"`

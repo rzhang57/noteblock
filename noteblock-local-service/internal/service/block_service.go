@@ -61,7 +61,7 @@ func (s *BlockService) CreateNewBlock(noteID string, blockType string, index int
 	return block, nil
 }
 
-// Sync scans notes.updated_at, so a block write that leaves its parent stale is invisible to it.
+// The sync scan reads notes.updated_at, so block writes have to advance it too.
 func touchNote(tx *gorm.DB, noteID string) error {
 	return tx.Model(&model.Note{}).Where("id = ?", noteID).Update("updated_at", time.Now()).Error
 }
