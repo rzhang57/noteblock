@@ -12,7 +12,7 @@ Status: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ## 1. Rethink the seeded root folder
 
-`[ ]`
+`[ ]` design settled, implementation not started
 
 `db.InitDb` seeds a folder with the literal ID `"root"` at startup, and `note.create` falls back to
 that ID when no folder is given. This makes a magic string load-bearing across the DB, the IPC
@@ -31,6 +31,47 @@ handlers, and the client.
 
 **Related:** the seeding *bug* (malformed query, root re-created every launch) is already fixed —
 this item is the design cleanup, not the bug.
+
+**Decision (2026-08-27) — settled, not yet implemented.** Drop the seeded row. `parent_id IS NULL`
+and `folder_id IS NULL` mean top-level; root stops being a record and becomes a value.
+
+- **Why null over a sentinel row.** Multi-user (item 5) becomes `WHERE user_id = ? AND parent_id IS
+  NULL`, with no per-user root row to provision or to leak across users. Sync (item 4) then has
+  nothing to version, tombstone, or merge for root — a sentinel is a real row that two devices can
+  each create independently, which needs deterministic ID derivation to stop it diverging. And
+  keeping a sentinel under multi-user means discovering its ID by query anyway: the null approach
+  plus an extra row.
+- **This does not answer the API entry point — decide both together.** `Sidebar.tsx` loads the whole
+  tree via `FolderService.getFolder("root")`, so removing the row leaves no ID to fetch. Add
+  `folder.tree` (all six registration points) returning a *synthesized* `FolderResponse`:
+  `ParentID: nil`, children = folders with a null parent, notes = notes with a null folder. The
+  client swaps one call and `FolderTreeItem` keeps recursing on an identical shape. "Root" survives
+  as a presentation label rather than a foreign key.
+- **`Note.FolderID` has to become `*string`.** This is the real cost, and it is unavoidable in any
+  null scheme — it is `not null` today, so top-level notes currently require a real folder row to
+  point at. The code change is mild: `ListChildrenByParentId` already has exactly this branch shape.
+  FK cascade still behaves correctly, since null FKs skip the constraint and top-level notes are
+  therefore never cascade-deleted along with a folder.
+- **Null defeats uniqueness constraints, in SQLite and Postgres both.** `UNIQUE(parent_id, name)`
+  will *not* stop two "Projects" folders at top level, because SQL treats nulls as distinct. Nothing
+  breaks today — `folderCreate` enforces name uniqueness in application code — but a DB-level
+  constraint would need `UNIQUE(COALESCE(parent_id, ''), name)` or PG15+ `NULLS NOT DISTINCT`.
+- **There is a data migration here, not just a schema one.** Reparent `parent_id = 'root'` to null
+  and `folder_id = 'root'` to null, *then* delete the root row — in that order, with
+  `PRAGMA foreign_keys = ON` active. SQLite also cannot `ALTER COLUMN` to drop `NOT NULL`; GORM's
+  SQLite migrator rebuilds the table for it. `AutoMigrate` does not do the data half at all.
+
+**Sequencing (agreed 2026-08-27):** this lands **before** item 4, paired with the "real versioned
+migrations" suggested addition — the database changes go together. Doing it now costs one root row
+and a single user; doing it after sync means the same migration *plus* version columns, tombstone
+semantics, and other devices holding rows that reference `'root'`. It also makes a small, reversible
+migration to build the migration machinery against, instead of writing the first real one under sync
+pressure.
+
+**Call sites when this is implemented:** `db/db.go` (seed block), the four hardcoded fallbacks in
+`ipc/folder_handlers.go` and `ipc/note_handlers.go`, `folder_service.go` +
+`buildFolderResponseRecursive`, `Sidebar.tsx` and `FolderTreeItem.tsx`, and the `"root"` assertions
+in `FolderService.test.ts` / `LocalIpcClient.test.ts`.
 
 ---
 
@@ -53,6 +94,19 @@ changing the service layer, changing the IPC contract.
 
 Note that `Sidebar.tsx` (~650 LOC) and `TextBlock.tsx` (~520 LOC) are already oversized. Do not grow
 them further during this pass; splitting them is fine and welcome if it falls out naturally.
+
+**Direction decided (2026-08-27):** Mercury.com's restraint as the shell. A liquid-metal WebGPU
+shader accent was tried on non-writing surfaces (brand mark, empty state, per-note covers) and
+**removed on 2026-09-11** — see the second pass below. The restraint half of the direction stands.
+
+**Findings worth keeping from that attempt:**
+- **WebGPU works in Electron 31.7.7 as pinned — no flags, no upgrade.** Verified directly (NVIDIA
+  adapter, device acquired). WebGPU needs a secure context, so a `data:` URL reports no
+  `navigator.gpu` and looks like a false negative. Load a real file when testing this.
+- **Per-note covers were derived from the note ID, not stored.** `Note` has no cover column, and
+  adding one would drag a schema change into a visual pass. An FNV-1a hash of the UUID gives each
+  note a stable, distinct cover for free. **User-chosen** covers do need the column, so they belong
+  with the item 1 migration.
 
 ---
 
@@ -339,6 +393,9 @@ Proposed, not yet accepted by Ryan. Move up into the numbered list if they earn 
 - **`[ ]` Real versioned migrations.** `db.InitDb` uses GORM `AutoMigrate`, which is fine for solo
   development but not once a released build holds notes you care about. Items 4 and 5 both require
   schema changes against real data. This should land *before* those migrations, not during.
+  **Update (2026-08-27):** now coupled to item 1 — the null-parent change is the first migration
+  against real data and is deliberately being used to build this machinery. Strong candidate to
+  promote into the numbered list ahead of item 4.
 - **`[ ]` Search.** A notes app with no search. Directly relevant to the Notion conversation, and
   SQLite FTS5 makes it very tractable locally.
 - **`[ ]` Export / backup.** Before trusting this with a full school year of notes, there should be a
