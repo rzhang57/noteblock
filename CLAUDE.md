@@ -6,9 +6,9 @@
 starting anything non-trivial — issues carry the constraints that explain why work is scoped the way
 it is. Update the issue as work lands rather than narrating status elsewhere.
 
-[TODO.md](./TODO.md) is **historical context only**, kept for the long-form reasoning behind earlier
-decisions. Do not add new planned work to it and do not keep it in sync — two roadmaps drift within a
-week. If a decision in it still matters, move it into the relevant Linear issue.
+This file is the only doc the repo carries. Do not add a roadmap, a planning file, or a second
+source of truth alongside it — a `TODO.md` used to live here and drifted from Linear within a week.
+Long-form reasoning belongs in the Linear issue it concerns, not in the repo.
 
 Note that the concurrent-IPC project is a deliberate learning exercise for the repo owner — explain,
 review, and prototype on request, but do not implement it end-to-end unsolicited.
