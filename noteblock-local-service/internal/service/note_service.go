@@ -73,6 +73,9 @@ func (s *NoteService) UpdateNoteMetaData(id string, title string, folderId strin
 // Blocks are left in place: the tombstoned note hides them from every read, and a note
 // that comes back needs them intact.
 func (s *NoteService) DeleteNoteTx(tx *gorm.DB, id string) error {
+	if err := touchNote(tx, id); err != nil {
+		return err
+	}
 	return tx.Where("id = ?", id).Delete(&model.Note{}).Error
 }
 
@@ -83,5 +86,7 @@ func (s *NoteService) DeleteNote(id string) error {
 		return err
 	}
 
-	return s.DB.Delete(&note).Error
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		return s.DeleteNoteTx(tx, id)
+	})
 }
