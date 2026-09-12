@@ -56,6 +56,190 @@ them further during this pass; splitting them is fine and welcome if it falls ou
 
 ---
 
+**Second pass (2026-09-11) — seamless / Notion-feel polish.**
+
+- **Shader accents removed from the UI entirely**, at Ryan's call ("remove the webgpu blob thing").
+  `NoteCover.tsx` deleted; `SidebarBrand` back to the static logo; `NoteEmptyState` now typographic.
+  **Open:** `client/src/shader/` (7 files), the `vgpu` / `@vgpu/wgsl` / `@vgpu/wgsl-std` deps and
+  `wgslVitePlugin()` in `vite.config.ts` are now unreferenced. Decide delete vs. keep for a future
+  landing site — the repo otherwise does not tolerate dead code.
+- **The sidebar was never actually using its own token.** It was `bg-card` (= `--paper`) everywhere,
+  so sidebar and canvas were the same colour separated only by a hard `border-r`. Now `bg-sidebar`
+  with the border dropped — the surfaces separate by tone, not by a rule.
+- Sidebar rows: rounded/inset, 150ms colour transitions, active state (`--selected`) now distinct
+  from hover (they were both `bg-accent`), chevron rotates instead of swapping icons, and drag-over
+  uses an inset ring instead of a 2px dashed border that shifted the row by 2px.
+- Editor: per-block `border border-rule` removed, gutter affordances are ghost icons, the title no
+  longer swaps into a ringed input box, and one shared `.editor-col` makes the title and blocks share
+  an edge — this closes the `max-w-3xl` / `max-w-6xl` mismatch noted above.
+- Code block retokened; all hardcoded `#333` / `#d3d3d3` / `#ffffff` / `#2383e2` are gone.
+- `.mdxeditor` had `all: revert`, so the writing surface was rendering at raw browser defaults. Added
+  an explicit typography layer after the revert (16px/1.6, heading scale, list and quote spacing).
+- Hover insertion divider kept and restored after a brief detour — Ryan: "KEY UX component". Options
+  are now **Canvas / Code**; code is a text block seeded with a fence, since there is no `code` block
+  type in the schema.
+
+**Dev mock bridge (new, `client/src/dev/mockBridge.ts`).** `npm run dev` opened in a plain browser
+had no `window.noteblock`, so nothing loaded and the app was Electron-only for inspection. The mock
+installs the *same* bridge shape the preload exposes, so the service layer and the IPC boundary stay
+untouched. Gated on `import.meta.env.DEV && !("noteblock" in window)` behind a dynamic import, and
+**verified absent from `dist/` after `npm run build`.** It seeds a workspace plus a "Rendering
+scenarios" folder used for the measurements below.
+
+---
+
+**Third pass (2026-09-11) — density, font, code blocks.** All numbers below are measured in the
+browser through Playwright against the dev mock, not estimated.
+
+- **Tab did not indent list items — it inserted a literal tab character.** This was the actual
+  "indenting adds whitespace" bug. `INDENT_CONTENT_COMMAND` turns out to be unhandled in MDXEditor's
+  configuration (dispatching it is a no-op), so indent/outdent are now implemented directly against
+  the Lexical node tree in `TextBlock.tsx`. Indent joins the nested list above or creates one;
+  requiring a previous sibling is what caps nesting at **one level at a time**. Outside a list the
+  handler returns false, so plain paragraphs keep normal Tab behaviour (multiple tabs fine).
+- **`MDXEditorMethods` does not expose the Lexical instance.** `editorRef.current.getEditorState()
+  .editor` is `undefined` — which means the pre-existing `blockUnfocused` effect in `TextBlock` has
+  been dead code. The working handle is `__lexicalEditor` on the contenteditable root.
+- **Nested lists cost zero vertical space now.** Lexical nests as `<li><ul>…</ul></li>`, and that
+  wrapper `li` was generating a marker *and* a full line box on top of the nested list. Fixed with
+  `li:has(> ul) { display: block }` plus margin resets. Measured: indent dead space 20px → **0px**,
+  gap between items 8px → **0px**, the sample list 258px → **156px**.
+- **MDXEditor injects its stylesheet at runtime, after ours**, so equal-specificity rules silently
+  lose (this is why `li { margin: 0 }` was being ignored). The editor rules are written with the
+  class doubled (`.mdxeditor.mdxeditor`); two margin resets still need `!important`.
+- Density: line-height 1.6 → 1.5, list rows 30px → 26px, title→first-block 40px → **14px**.
+- **Font is now Inter**, bundled via `@fontsource-variable/inter`. Deliberately not a CDN/Google
+  Fonts link — that would break the offline-first invariant.
+- **`code` is a real block type now.** `Block.Type` is a free-form string in Go with no enum or
+  validation, so this needed **zero Go and zero IPC changes** — the six-place checklist applies to
+  new *methods*, not new block types. Only the TS union and a renderer. Typing ``` in a text block
+  strips the fence and spawns a real code block below it.
+- CodeMirror was extracted out of `TextBlock` into `block_types/CodeMirrorEditor.tsx` +
+  `codeLanguages.ts` so the new block could reuse it: **TextBlock 522 → ~330 LOC**, and lint went
+  27 → **26** errors (one fewer than the documented baseline).
+
+**Not verified end-to-end:** the full keypress→indent path. Playwright cannot click into the editor
+(the page never reaches its "stable" check) and a JS-set DOM range does not sync into Lexical's own
+selection, so the handler cannot be driven synthetically. The two halves were verified separately:
+the Tab handler fires (literal tab no longer inserted) and the restructuring moves an item from
+depth 1 → 2 with no height change. **Worth a manual check in the real app.**
+
+---
+
+**Fourth pass (2026-09-11) — block affordances, image blocks.**
+
+- **Block boundaries.** New `--rule-soft` token (a step lighter than `--rule`); each block carries a
+  transparent border that resolves to it on hover, so blocks stay seamless at rest but their extent
+  is legible while navigating.
+- **Move/delete reworked.** Was: grip far-left, trash far-right, delete one-click and irreversible.
+  Now one left-gutter handle — **drag to move, click for a menu** (Duplicate / Delete), so a single
+  click can no longer destroy a block. Added a real **drop indicator** (the old drag showed what you
+  were dragging but never where it would land), and dropped the `height: 60px` collapse that made the
+  page jump mid-drag.
+- **`PointerSensor` needs `activationConstraint: {distance: 4}}`.** The handle is both drag source and
+  menu trigger; without the constraint dnd-kit swallows the click and the menu never opens.
+- **Image blocks.** Pasting an image into a text block uploads it and spawns an `image` block below,
+  the same mechanism as ``` → code block. Clicking the image opens a full-screen annotator with a pen,
+  six colours, three widths, per-stroke undo, and Esc/Ctrl+Z.
+- **Annotations are stored as normalised strokes, not flattened into the image.** `Stroke.points` are
+  0..1 fractions of the image box, so they scale to any display size and the original image is never
+  destroyed. `ImageContent` already had a free-form `data` field and block content is an unvalidated
+  JSON string in Go — so this again needed **no Go and no IPC changes**.
+- `setPointerCapture` now guarded: it throws for pointers the browser never registered, which would
+  otherwise abort the stroke.
+
+**Verified e2e** (per the new CLAUDE.md rule): drew a stroke in the annotator, confirmed colour
+`#2f9e44`, width 11, 13 captured points, then Done → stroke renders on the block → reopening the
+annotator still shows it, i.e. it round-tripped through block content rather than living in component
+state. Duplicate verified 3 → 4 blocks with the copy directly below its source.
+
+---
+
+## 2b. Block-level undo stack
+
+`[ ]` designed 2026-09-11, not implemented — see the soft-delete dependency below
+
+Goal: a per-note in-memory stack so block operations (create, delete, duplicate, reorder) can be
+undone, not just text edits inside a single block.
+
+**The crux is that there are two undo scopes, and they will collide.** Lexical (text blocks) and
+CodeMirror (code blocks) each own their own history. If a page-level stack also binds Ctrl+Z, undo
+becomes unpredictable — the single biggest UX risk here. Workable rule: while focus is inside an
+editor let that editor undo first, and fall through to the page stack only once its history is empty
+(Lexical exposes `CAN_UNDO_COMMAND`; CodeMirror has `undoDepth()`). Notion merges both into one
+stack, which is much harder because it means owning text history too.
+
+**Inverses, by operation:**
+- create / duplicate → delete the new block. Clean.
+- reorder → re-apply the previous index array through `note.update`. Clean, and one IPC call.
+- delete → recreate from captured content. **Not identity-preserving.**
+
+**Why delete is the hard one.** `Block.BeforeCreate` assigns `uuid.New()`, so an undone delete comes
+back with a **new ID**. That breaks redo entries holding the old ID, anything keyed by block ID, and
+later sync (another device sees a delete plus an unrelated create rather than a restore).
+
+**So soft delete should land first.** With a `deleted_at` tombstone, undo becomes "clear the
+tombstone" — identity-preserving, one call, no content capture. Soft delete is already in Suggested
+Additions (NB-32) and is already wanted by item 4, since sync needs tombstones regardless; undo is
+simply a third consumer of the same primitive.
+
+**Cheap first slice, if wanted before soft delete:** implement undo for create / duplicate / reorder
+only. Those are all identity-preserving and cover most accidents, at a fraction of the risk.
+
+---
+
+## 2a. Per-line blocks (Notion-style)
+
+`[ ]` raised 2026-09-11 — needs a decision before any code
+
+Ryan wants every line to be its own block, matching Notion's editing behaviour.
+
+**This contradicts the constraint recorded on item 2** ("keep the core frontend architecture as-is
+… not a frontend rewrite"). It is a rewrite of the editor layer, so it belongs here as its own item
+with its own design phase rather than folded into the visual pass.
+
+**Measured baseline of the current renderer** (MDXEditor/Lexical, driven through Playwright against
+the dev mock; all numbers from `getComputedStyle`):
+
+- Paragraphs: 16px text, 25.6px line-height, 3px padding top and bottom → 6px between paragraphs.
+  This is already essentially Notion's paragraph metric.
+- Soft break (single newline) correctly stays inside one `<p>`; a blank line correctly splits them.
+- Nested unordered lists work: markers cycle disc → circle → square, 25.6px indent per level
+  (Notion uses ~24px). Mixed `ol > ul > ol` nesting renders with the correct markers.
+- Headings: h1 28px, h2 22px (margin-top 33px), h3 18px (margin-top 27px).
+
+**Bugs the scenario sweep found:**
+
+1. **FIXED — silent content truncation at `---`.** `thematicBreakPlugin()` was never registered, so
+   rendering stopped dead at the first thematic break and *everything after it was dropped from the
+   rendered output* — measured as 6 expected children rendering as 2. Plugin added; now 6/6.
+   **This generalises:** any markdown construct without a registered MDXEditor plugin truncates the
+   rest of the block the same way. Worth an explicit plugin audit (tables, frontmatter) before
+   trusting this with a real school year of notes.
+2. **Open — nested ordered lists do not change numbering style.** Every depth renders `decimal`;
+   Notion goes `1.` → `a.` → `i.`.
+3. **Open — a phantom trailing empty `<p>` is appended after every list**, giving 32px of dead space
+   and a stray clickable line. Lexical adds a trailing paragraph node; Notion does not.
+
+**The real design question:** "one block per line" at the *Noteblock* level means one DB row per
+line, and that collides with two constraints already recorded in this file.
+
+- **The IPC server is strictly sequential** (item 3, not done). Per-line rows multiply
+  `block.create` / `block.update` traffic by roughly the line count — every Enter creates a row and
+  every autosave touches one. Head-of-line blocking gets materially worse, so **item 3 is arguably a
+  prerequisite here, not a parallel track.**
+- **Ordered-list numbering stops being free.** If each list item is its own block, `<ol>` can no
+  longer auto-number; numbering has to be computed by walking sibling blocks and their indent levels.
+  That is exactly what Notion does, and it is the single largest piece of work in this item.
+
+Reuse vs. rebuild: MDXEditor is built on **Lexical, which already has a per-node block model** — each
+paragraph and list item is a node. Notion-like *behaviour* may therefore be reachable without one
+editor instance per line (N Lexical instances would be heavy; the bundle is already 2.7MB). **Decide
+first whether the goal is per-line DB rows or per-line editing behaviour** — they are very different
+builds, and only the first one drags the IPC and schema work along with it.
+
+---
+
 ## 3. Concurrent IPC server
 
 `[~]` design/learning phase

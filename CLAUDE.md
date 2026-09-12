@@ -49,6 +49,30 @@ A method must be registered in **six** places, in lockstep. Missing one fails at
 
 Handlers return `Response`; use `rpcErr` for failures and `dbErrToRPC` to map GORM errors onto RPC codes rather than inventing new ones.
 
+## Adding a New Block Type
+Unlike adding an IPC method, this is **cheap and frontend-only**. `Block.Type` is a plain `string` in
+`model/block.go` with no enum or validation, and `Block.Content` is an opaque JSON string the Go
+service never parses. So a new block type needs **no Go changes, no IPC changes, and no migration** —
+`block.create` / `block.update` / `block.delete` already carry it.
+
+What a new type actually costs:
+1. Add it to the `BlockType` union and give its content an interface in `client/src/types/Note.ts`.
+2. Write the component under `client/src/components/blocks/block_types/`.
+3. Render it in the `block.type === ...` switch in `ContentPanel.tsx`, and offer it wherever blocks
+   are created (`InsertionPoint.tsx`, or a trigger inside `TextBlock`).
+4. Persist through `NoteService.updateBlock(noteId, blockId, {type, content})` — whatever shape you
+   put in `content` comes back verbatim.
+
+So the real design work is **the content data model, not the plumbing**. Two conventions worth
+keeping:
+- **Store source data, not rendered output.** Image annotations are stroke lists, not a flattened
+  PNG, so the original survives and strokes stay editable.
+- **Store resolution-independent values.** Stroke points are 0..1 fractions of the image box, so they
+  survive any display size rather than baking in pixel coordinates.
+
+Because content is unvalidated, a malformed blob fails at render rather than at write. Components
+should read it defensively (`content?.url`) and degrade rather than throw.
+
 ## Coding Style & Naming Conventions
 Be pragmatic. Match the surrounding code rather than importing conventions from elsewhere.
 
@@ -65,6 +89,27 @@ Be pragmatic. Match the surrounding code rather than importing conventions from 
 - Local desktop flows should pass `go test ./...` in `noteblock-local-service` before PRs.
 - Frontend service and preload bridge tests run with `npm test`; add targeted mocks for transport-layer changes.
 - `npm run lint` currently reports pre-existing `no-explicit-any` errors in `client/src/types/electron-api.d.ts` and `client/src/types/Note.ts`. Do not add new ones; fixing the existing ones is a welcome standalone change.
+
+### Verifying UI changes end-to-end (required)
+Unit tests passing is **not** sufficient evidence for a UI change. After `npm test` and `npm run lint`
+are green, verify the change in a real browser with the Playwright MCP tools before reporting it done.
+
+1. Start the client dev server (`cd client && npm run dev`) and open the URL it prints.
+2. The renderer needs `window.noteblock`, which only Electron's preload provides. In a plain browser
+   `client/src/dev/mockBridge.ts` installs the same bridge shape automatically — dev-only, behind
+   `import.meta.env.DEV`, and verified absent from `dist/`. Add seed data there when a scenario needs it.
+3. Drive the real UI and assert on **measured values**, not screenshots: read back
+   `getComputedStyle` and `getBoundingClientRect` via `browser_evaluate`. Spacing, indent, and
+   alignment claims must come from numbers. State the before/after figures when reporting.
+
+Known friction, so it is not rediscovered every time:
+- Playwright's click can time out on this page (`waiting for element to be stable`). Prefer
+  `browser_evaluate` to drive the DOM, and fall back to real clicks only when an interaction needs them.
+- A JS-set DOM `Range` does **not** sync into Lexical's selection, so synthetic carets cannot drive
+  editor keybindings. Real key handling has to be checked with a real click plus `browser_press_key`.
+- MDXEditor's ref does not expose the Lexical editor; use `__lexicalEditor` on the contenteditable root.
+- The dev mock is in-memory and reseeds on reload, so reload between measurements to avoid drift from
+  earlier edits (including any typing done by hand in that tab).
 
 ## Common Pitfalls and Self-improvement
 - **Local binary freshness matters.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`. A stale binary means you are debugging code that is no longer on disk. Use root `npm run dev` or `npm run build:local-service` first.
