@@ -5,30 +5,28 @@ import {
     markdownShortcutPlugin,
     MDXEditor,
     quotePlugin,
+    thematicBreakPlugin,
     codeBlockPlugin,
     imagePlugin,
     useCodeBlockEditorContext,
     type CodeBlockEditorDescriptor,
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
+import {BareCodeMirror, LanguagePicker} from "../CodeMirrorEditor.tsx";
+import {LANGUAGE_MAP} from "../codeLanguages";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {NoteService} from "@/services/NoteService.ts";
-import {useState, useRef, useEffect, useMemo, useRef as useDomRef, useCallback} from "react";
+import {useState, useRef, useEffect, useCallback} from "react";
 import type {Block, TextContent} from "@/types/Note.ts";
-import {EditorState, Compartment} from "@codemirror/state";
-import {EditorView, keymap, drawSelection, highlightActiveLine} from "@codemirror/view";
-import {defaultKeymap, history, historyKeymap, indentWithTab} from "@codemirror/commands";
-import {indentOnInput, bracketMatching, syntaxHighlighting, defaultHighlightStyle} from "@codemirror/language";
-import {closeBrackets, closeBracketsKeymap} from "@codemirror/autocomplete";
-import {javascript} from "@codemirror/lang-javascript";
-import {python} from "@codemirror/lang-python";
-import {java} from "@codemirror/lang-java";
-import {go as golang} from "@codemirror/lang-go";
-import {html} from "@codemirror/lang-html";
-import {css} from "@codemirror/lang-css";
-import {sql} from "@codemirror/lang-sql";
-import {cpp} from "@codemirror/lang-cpp";
 import {TbCopy, TbCopyCheckFilled, TbTrash} from "react-icons/tb";
+import {
+    $isListItemNode,
+    $isListNode,
+    $createListNode,
+    $createListItemNode,
+    type ListItemNode,
+    type ListNode,
+} from "@lexical/list";
 import {
     $getNodeByKey,
     $getRoot,
@@ -38,175 +36,11 @@ import {
     $createTextNode,
     $getSelection,
     $isRangeSelection,
+    KEY_TAB_COMMAND,
+    COMMAND_PRIORITY_CRITICAL,
+    type LexicalEditor,
+    type LexicalNode,
 } from "lexical";
-
-function LanguagePicker({
-                            value,
-                            onChange,
-                            options
-                        }: {
-    value: string | undefined;
-    onChange: (lang: string) => void;
-    options: Record<string, string>;
-}) {
-    return (
-        <select
-            value={value ?? "text"}
-            onChange={(e) => onChange(e.target.value)}
-            style={{
-                background: "#eaeaea",
-                color: "#444444",
-                border: "1px solid #333",
-                padding: "4px 8px",
-                fontSize: 12
-            }}
-        >
-            {Object.entries(options).map(([k, label]) => (
-                <option key={k} value={k}>
-                    {label}
-                </option>
-            ))}
-        </select>
-    );
-}
-
-type BareEditorProps = {
-    code: string;
-    language?: string;
-    onChange: (next: string) => void;
-    onExitUp?: () => void;
-    onExitDown?: () => void;
-};
-
-function langExtensionFor(key?: string) {
-    switch (key) {
-        case "js":
-        case "jsx":
-            return javascript({jsx: true, typescript: false});
-        case "ts":
-        case "tsx":
-            return javascript({jsx: key === "tsx", typescript: true});
-        case "python":
-            return python();
-        case "java":
-            return java();
-        case "go":
-            return golang();
-        case "html":
-            return html();
-        case "css":
-            return css();
-        case "sql":
-            return sql();
-        case "c":
-        case "cpp":
-            return cpp();
-        case "csharp":
-            return [];
-        case "text":
-        default:
-            return [];
-    }
-}
-
-function BareCodeMirror({code, language, onChange, onExitUp}: BareEditorProps) {
-    const host = useDomRef<HTMLDivElement>(null);
-    const viewRef = useRef<EditorView | null>(null);
-    const langCompartment = useRef(new Compartment()).current;
-
-    useEffect(() => {
-        if (!host.current) return;
-
-        const startState = EditorState.create({
-            doc: code,
-            extensions: [
-                keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap, ...closeBracketsKeymap]),
-                history(),
-                drawSelection(),
-                highlightActiveLine(),
-                indentOnInput(),
-                bracketMatching(),
-                closeBrackets(),
-                syntaxHighlighting(defaultHighlightStyle),
-                keymap.of([
-                    {
-                        key: "Backspace",
-                        run: (view) => {
-                            if (view.state.selection.main.from === 0) {
-                                onExitUp?.();
-                                return true;
-                            }
-                            return false;
-                        }
-                    }
-                ]),
-                EditorView.theme(
-                    {
-                        "&": {
-                            backgroundColor: "#f5f5f5",
-                            color: "#1f1f1f",
-                            fontFamily:
-                                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-                            fontSize: "14px"
-                        },
-                        ".cm-gutters": {display: "none !important"},
-                        ".cm-content": {caretColor: "#444444"},
-                        ".cm-cursor": {borderLeftColor: "#444444"},
-                        ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-                            backgroundColor: "#c9c9c9"
-                        }
-                    },
-                    {dark: false}
-                ),
-                langCompartment.of(langExtensionFor(language))
-            ]
-        });
-
-        const view = new EditorView({
-            state: startState,
-            parent: host.current,
-            dispatch: (tr) => {
-                view.update([tr]);
-                if (tr.docChanged) onChange(view.state.doc.toString());
-            }
-        });
-
-        viewRef.current = view;
-
-        const contentElement = view.contentDOM;
-        (contentElement as any).cmView = {view};
-
-        // Auto-focus the editor on mount
-        requestAnimationFrame(() => {
-            view.focus();
-            view.dispatch({selection: {anchor: 0, head: 0}});
-        });
-
-        return () => {
-            view.destroy();
-            viewRef.current = null;
-        };
-    }, []);
-
-    useEffect(() => {
-        const view = viewRef.current;
-        if (!view) return;
-        const current = view.state.doc.toString();
-        if (current !== code) {
-            view.dispatch({changes: {from: 0, to: view.state.doc.length, insert: code}});
-        }
-    }, [code]);
-
-    useEffect(() => {
-        const view = viewRef.current;
-        if (!view) return;
-        view.dispatch({
-            effects: langCompartment.reconfigure(langExtensionFor(language))
-        });
-    }, [language]);
-
-    return <div ref={host}/>;
-}
 
 function HeaderedBareEditor({
                                 code,
@@ -302,11 +136,11 @@ function HeaderedBareEditor({
             data-nb-codeblock
             style={{
                 overflow: "hidden",
-                border: isSelected ? "2px solid #2383e2" : "1px solid #333",
-                background: "#ffffff",
+                borderRadius: 8,
+                background: "var(--secondary)",
                 margin: "1rem 0",
-                boxShadow: isSelected ? "0 0 0 1px #2383e2" : "none",
-                transition: "border-color 0.1s, box-shadow 0.1s"
+                boxShadow: isSelected ? "0 0 0 2px var(--ink)" : "none",
+                transition: "box-shadow 0.12s ease"
             }}
         >
             <div
@@ -315,14 +149,13 @@ function HeaderedBareEditor({
                     alignItems: "center",
                     justifyContent: "space-between",
                     gap: 8,
-                    padding: "8px 10px",
-                    background: isSelected ? "#d4e5f7" : "#d3d3d3",
-                    borderBottom: "1px solid #2a2a2a",
-                    transition: "background-color 0.1s"
+                    padding: "6px 8px 2px 10px",
+                    background: "transparent",
+                    transition: "opacity 0.12s ease"
                 }}
             >
                 <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                    <span style={{fontSize: 12, color: "#444444"}}>Language:</span>
+                    <span style={{fontSize: 11, color: "var(--ink-faint)"}}>Language</span>
                     <LanguagePicker value={language} options={languageMap} onChange={(v) => setLanguage(v)}/>
                 </div>
                 <div style={{display: "flex", alignItems: "center", gap: 8}}>
@@ -333,11 +166,12 @@ function HeaderedBareEditor({
                             setTimeout(() => setCopied(false), 3000);
                         }}
                         style={{
-                            fontSize: 12,
-                            color: "#444444",
-                            background: "#eaeaea",
-                            border: "1px solid #333",
-                            padding: "4px 8px",
+                            fontSize: 11,
+                            color: "var(--ink-muted)",
+                            background: "transparent",
+                            border: "none",
+                            borderRadius: 4,
+                            padding: "3px 6px",
                             cursor: "pointer",
                             display: "flex",
                             alignItems: "center",
@@ -351,20 +185,21 @@ function HeaderedBareEditor({
                         onClick={deleteCodeBlock}
                         style={{
                             fontSize: 14,
-                            color: "#666666",
+                            color: "var(--ink-faint)",
                             background: "transparent",
                             border: "none",
-                            padding: "4px",
+                            borderRadius: 4,
+                            padding: "3px",
                             cursor: "pointer",
                             display: "flex",
                             alignItems: "center",
                             transition: "color 0.2s"
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.color = "#dc3545";
+                            e.currentTarget.style.color = "var(--destructive)";
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.color = "#666666";
+                            e.currentTarget.style.color = "var(--ink-faint)";
                         }}
                     >
                         <TbTrash/>
@@ -372,7 +207,7 @@ function HeaderedBareEditor({
                 </div>
             </div>
 
-            <div style={{padding: 10}}>
+            <div style={{padding: "2px 10px 10px"}}>
                 <BareCodeMirror
                     code={code}
                     language={language}
@@ -390,9 +225,67 @@ const bareDescriptor = (languageMap: Record<string, string>): CodeBlockEditorDes
     Editor: (p: any) => <HeaderedBareEditor code={p.code} language={p.language} languageMap={languageMap}/>
 });
 
-export function TextBlock({block}: { block: Block }) {
+function closestListItem(node: LexicalNode): LexicalNode | null {
+    let current: LexicalNode | null = node;
+    while (current) {
+        if (current.getType() === "listitem") return current;
+        current = current.getParent();
+    }
+    return null;
+}
+
+function nestedListOf(item: ListItemNode): ListNode | null {
+    const child = item.getFirstChild();
+    return child && $isListNode(child) ? child : null;
+}
+
+// requiring a previous sibling to nest under is what caps indentation at one level
+function indentListItem(item: ListItemNode) {
+    const parentList = item.getParent();
+    if (!$isListNode(parentList)) return;
+
+    const previous = item.getPreviousSibling();
+    if (!previous || !$isListItemNode(previous)) return;
+
+    const existing = nestedListOf(previous);
+    if (existing) {
+        existing.append(item);
+    } else {
+        const nested = $createListNode(parentList.getListType());
+        const wrapper = $createListItemNode();
+        nested.append(item);
+        wrapper.append(nested);
+        previous.insertAfter(wrapper);
+    }
+    item.selectEnd();
+}
+
+function outdentListItem(item: ListItemNode) {
+    const parentList = item.getParent();
+    if (!$isListNode(parentList)) return;
+
+    const wrapper = parentList.getParent();
+    if (!$isListItemNode(wrapper)) return;
+
+    wrapper.insertAfter(item);
+    if (parentList.getChildrenSize() === 0) wrapper.remove();
+    item.selectEnd();
+}
+
+const FENCE = "```";
+
+function countFences(markdown: string): number {
+    return markdown.split("\n").filter(line => line.trimStart().startsWith(FENCE)).length;
+}
+
+export function TextBlock({block, onSpawnCodeBlock, onSpawnImageBlock}: {
+    block: Block;
+    onSpawnCodeBlock?: () => void;
+    onSpawnImageBlock?: (url: string) => void;
+}) {
     const {selectedNoteId} = useNoteContext();
     const editorRef = useRef<any>(null);
+    const hostRef = useRef<HTMLDivElement>(null);
     const [content, setContent] = useState(() => {
         const textContent = block.content as TextContent;
         return textContent.text ?? "";
@@ -419,6 +312,69 @@ export function TextBlock({block}: { block: Block }) {
             });
         });
     }, []);
+
+    // without this Tab falls through to the default handler and inserts a literal tab character
+    useEffect(() => {
+        let unregister: (() => void) | undefined;
+        let frame = 0;
+
+        const attach = () => {
+            // MDXEditor's ref does not expose the Lexical instance; the contenteditable root does
+            const root = hostRef.current?.querySelector("[contenteditable]") as
+                (HTMLElement & { __lexicalEditor?: LexicalEditor }) | null;
+            const editor = root?.__lexicalEditor;
+            if (!editor) {
+                frame = requestAnimationFrame(attach);
+                return;
+            }
+
+            const onTab = editor.registerCommand<KeyboardEvent>(
+                KEY_TAB_COMMAND,
+                (event) => {
+                    const selection = $getSelection();
+                    if (!$isRangeSelection(selection)) return false;
+                    const item = closestListItem(selection.anchor.getNode());
+                    if (!item || !$isListItemNode(item)) return false;
+
+                    event.preventDefault();
+                    editor.update(() => {
+                        if (event.shiftKey) outdentListItem(item);
+                        else indentListItem(item);
+                    });
+                    return true;
+                },
+                COMMAND_PRIORITY_CRITICAL
+            );
+
+            unregister = onTab;
+        };
+
+        attach();
+        return () => {
+            cancelAnimationFrame(frame);
+            unregister?.();
+        };
+    }, []);
+
+    // capture phase, so MDXEditor's imagePlugin never gets a chance to inline the paste
+    useEffect(() => {
+        const host = hostRef.current;
+        if (!host || !onSpawnImageBlock) return;
+
+        const onPaste = (event: ClipboardEvent) => {
+            const file = [...(event.clipboardData?.files ?? [])].find(f => f.type.startsWith("image/"));
+            if (!file) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            NoteService.uploadImage(file)
+                .then(onSpawnImageBlock)
+                .catch(err => console.error("Failed to upload pasted image:", err));
+        };
+
+        host.addEventListener("paste", onPaste, true);
+        return () => host.removeEventListener("paste", onPaste, true);
+    }, [onSpawnImageBlock]);
 
     useEffect(() => {
         contentRef.current = content;
@@ -452,7 +408,18 @@ export function TextBlock({block}: { block: Block }) {
         };
     }, [content, selectedNoteId, block.id, block.type]);
 
+    // the fence is stripped back out so a code block never exists both inline and as a block
     const handleChange = (newContent: string) => {
+        if (onSpawnCodeBlock && countFences(newContent) > countFences(contentRef.current)) {
+            const stripped = newContent
+                .split("\n")
+                .filter(line => !line.trimStart().startsWith(FENCE))
+                .join("\n");
+            setContent(stripped);
+            editorRef.current?.setMarkdown?.(stripped);
+            onSpawnCodeBlock();
+            return;
+        }
         setContent(newContent);
     }
 
@@ -476,25 +443,9 @@ export function TextBlock({block}: { block: Block }) {
         return await NoteService.uploadImage(image);
     }
 
-    const languageMap = useMemo(
-        () => ({
-            text: "Plain text",
-            python: "Python",
-            ts: "TypeScript",
-            js: "JavaScript",
-            java: "Java",
-            go: "Go",
-            cpp: "C++",
-            c: "C",
-            html: "HTML",
-            css: "CSS",
-            sql: "SQL"
-        }),
-        []
-    );
 
     return (
-        <div className="p-2 bg-white w-full">
+        <div className="w-full" ref={hostRef}>
             <MDXEditor
                 ref={editorRef}
                 markdown={content}
@@ -506,9 +457,10 @@ export function TextBlock({block}: { block: Block }) {
                     listsPlugin(),
                     linkPlugin(),
                     quotePlugin(),
+                    thematicBreakPlugin(),
                     codeBlockPlugin({
                         defaultCodeBlockLanguage: "text",
-                        codeBlockEditorDescriptors: [bareDescriptor(languageMap)]
+                        codeBlockEditorDescriptors: [bareDescriptor(LANGUAGE_MAP)]
                     }),
                     imagePlugin({
                         imageUploadHandler: imageUploadHandler,
