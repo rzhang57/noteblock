@@ -1,13 +1,54 @@
 # Repository Guidelines
 
 ## Planned Work
-[TODO.md](./TODO.md) is the persisted source of truth for planned work and the reasoning behind it.
-Read it before proposing or starting anything non-trivial — it records constraints that explain why
-items are scoped the way they are. Update statuses and append findings as work lands; do not delete
-the context lines.
+**Linear is the source of truth for what to work on and in what order.** Workspace `noteblock`, team
+**Noteblock** (key `NOT`, id `81f007ee-2cd1-4483-8a33-a124518558ff`). Read the relevant issue before
+starting anything non-trivial — issues carry the constraints that explain why work is scoped the way
+it is. Update the issue as work lands rather than narrating status elsewhere.
 
-Note in particular that item 3 (concurrent IPC) is a deliberate learning exercise for the repo owner
-— explain, review, and prototype on request, but do not implement it end-to-end unsolicited.
+[TODO.md](./TODO.md) is **historical context only**, kept for the long-form reasoning behind earlier
+decisions. Do not add new planned work to it and do not keep it in sync — two roadmaps drift within a
+week. If a decision in it still matters, move it into the relevant Linear issue.
+
+Note that the concurrent-IPC project is a deliberate learning exercise for the repo owner — explain,
+review, and prototype on request, but do not implement it end-to-end unsolicited.
+
+### Working in Linear
+Ryan and agents both manage tickets, so leave the workspace in a state the other can pick up.
+
+- **Read the `Writing conventions` document** (team-level, in Linear) before creating or editing
+  anything. Issues take **Background / Proposal / Constraints / Open questions / Done when**;
+  projects keep that shape with freer section names. Bullets over prose; drop a section rather than
+  pad it.
+- **Labels:** exactly one type (`Feature`, `Improvement`, `Bug`, `Chore`, `Spike`) and one or more
+  area (`client`, `local-service`, `cloud-service`, `electron`).
+- **Projects vs standalone issues:** a project is multi-step work with an outcome and a sequence; a
+  standalone issue lands in a single PR and needs no coordination.
+- `Spike` means the deliverable is a written decision. Close one by writing the answer into
+  **Proposal**, then opening the implementation issues.
+- Dependencies are Linear relations, not sentences in the description.
+- Creating and updating issues is fair game. **Bulk reordering, re-prioritising, or rewriting
+  existing issues is not — ask first**, since manual order is workspace-wide and overwrites Ryan's.
+
+### MCP vs the GraphQL API
+The `mcp__linear-server__*` tools cover most reads and writes and are the default. **The API is
+strictly more capable — fall back to it whenever the MCP cannot express something.** Known gaps:
+`sortOrder` (manual ordering) on issues and projects, and clearing a project icon.
+
+```powershell
+. $PROFILE                                    # the PowerShell tool does NOT load profiles itself
+Invoke-RestMethod -Uri 'https://api.linear.app/graphql' -Method Post -Body $json `
+  -Headers @{ 'Authorization' = $env:LINEAR_API_KEY; 'Content-Type' = 'application/json' }
+```
+
+- `LINEAR_API_KEY` lives in Ryan's PowerShell profile and is **not** exported to Git Bash. Dot-source
+  `$PROFILE` first, every invocation. Never echo the key.
+- The `Authorization` header takes the raw key — no `Bearer` prefix.
+- **Introspect before writing an unfamiliar field** (`__type(name: "IssueUpdateInput")`) rather than
+  trusting a remembered schema.
+- Manual order is a `Float` on `sortOrder`, ascending. Space values (100, 200, 300…) so items can be
+  dragged into gaps later without renumbering.
+- After a bulk write, read the data back and check it, not just the `success` flag.
 
 ## Project Structure & Module Organization
 This repository contains a desktop app plus two Go services:
