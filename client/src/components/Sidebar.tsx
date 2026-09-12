@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from "react";
-import {AlertCircle, FileText, FolderPlus, Plus, X, ChevronLeft} from "lucide-react";
+import {AlertCircle, FileText, FolderPlus, Plus, X, ChevronLeft, ChevronRight} from "lucide-react";
 import {FolderTreeItem} from "./FolderTreeItem";
 import {FolderService} from "@/services/FolderService";
 import type {Folder} from "@/services/FolderService";
@@ -492,7 +492,11 @@ export const Sidebar: React.FC = () => {
                     className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors duration-150 group relative cursor-pointer"
                     aria-label="Expand sidebar"
                 >
-                    <img src="./noteblock.png" alt="" className="h-5 w-5"/>
+                    <img src="./noteblock.png" alt="" className="h-5 w-5 group-hover:opacity-0"/>
+                    <ChevronRight
+                        className="absolute inset-0 m-auto h-4 w-4 text-ink-muted opacity-0 group-hover:opacity-100"
+                        aria-hidden
+                    />
                     <span
                         className="absolute left-full ml-2 px-2 py-1 bg-ink text-primary-foreground text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none z-50">
                         Expand sidebar
