@@ -86,14 +86,12 @@ func applyFolders(tx *gorm.DB, docs []model.JSONB, serverTime time.Time) error {
 			continue
 		}
 
-		row := model.CloudFolder{
-			ID:              id,
-			UserID:          model.LocalUserID,
-			Data:            doc,
-			ClientUpdatedAt: clientUpdatedAt,
-			ServerUpdatedAt: serverTime,
-		}
-		if err := tx.Save(&row).Error; err != nil {
+		if err := upsert(tx, &model.CloudFolder{}, id, len(existing) == 1, map[string]any{
+			"user_id":           model.LocalUserID,
+			"data":              doc,
+			"client_updated_at": clientUpdatedAt,
+			"updated_at":        serverTime,
+		}, serverTime); err != nil {
 			return err
 		}
 	}
@@ -117,15 +115,13 @@ func applyNotes(tx *gorm.DB, docs []model.JSONB, serverTime time.Time) error {
 		}
 
 		folderID, _ := doc["folder_id"].(string)
-		row := model.CloudNote{
-			ID:              id,
-			UserID:          model.LocalUserID,
-			FolderID:        folderID,
-			Data:            doc,
-			ClientUpdatedAt: clientUpdatedAt,
-			ServerUpdatedAt: serverTime,
-		}
-		if err := tx.Save(&row).Error; err != nil {
+		if err := upsert(tx, &model.CloudNote{}, id, len(existing) == 1, map[string]any{
+			"user_id":           model.LocalUserID,
+			"folder_id":         folderID,
+			"data":              doc,
+			"client_updated_at": clientUpdatedAt,
+			"updated_at":        serverTime,
+		}, serverTime); err != nil {
 			return err
 		}
 	}
