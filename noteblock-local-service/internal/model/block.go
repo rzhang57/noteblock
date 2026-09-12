@@ -18,7 +18,9 @@ type Block struct {
 }
 
 func (b *Block) BeforeCreate(*gorm.DB) (err error) {
-	b.ID = uuid.New().String()
+	if b.ID == "" {
+		b.ID = uuid.New().String()
+	}
 	if b.UserID == "" {
 		b.UserID = LocalUserID
 	}

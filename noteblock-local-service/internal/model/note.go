@@ -24,7 +24,9 @@ type Note struct {
 }
 
 func (n *Note) BeforeCreate(*gorm.DB) (err error) {
-	n.ID = uuid.New().String()
+	if n.ID == "" {
+		n.ID = uuid.New().String()
+	}
 	if n.UserID == "" {
 		n.UserID = LocalUserID
 	}

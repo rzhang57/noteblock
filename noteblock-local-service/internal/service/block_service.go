@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"server/internal/model"
+	"time"
 )
 
 type BlockService struct {
@@ -48,11 +49,21 @@ func (s *BlockService) CreateNewBlock(noteID string, blockType string, index int
 		Content: jsonString,
 	}
 
-	if err := s.DB.Create(block).Error; err != nil {
+	if err := s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(block).Error; err != nil {
+			return err
+		}
+		return touchNote(tx, noteID)
+	}); err != nil {
 		return nil, err
 	}
 
 	return block, nil
+}
+
+// Sync scans notes.updated_at, so a block write that leaves its parent stale is invisible to it.
+func touchNote(tx *gorm.DB, noteID string) error {
+	return tx.Model(&model.Note{}).Where("id = ?", noteID).Update("updated_at", time.Now()).Error
 }
 
 // TODO: for non-plugin blocks, we can assert type and json content fields by unmarshalling before storing
@@ -71,13 +82,23 @@ func (s *BlockService) UpdateBlockContent(noteID string, blockID string, blockTy
 
 	block.Type = blockType
 	block.Content = jsonString
-	if err := s.DB.Save(&block).Error; err != nil {
+	if err := s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&block).Error; err != nil {
+			return err
+		}
+		return touchNote(tx, noteID)
+	}); err != nil {
 		return nil, err
 	}
 
-	return &block, err
+	return &block, nil
 }
 
 func (s *BlockService) DeleteBlock(noteID string, blockID string) error {
-	return s.DB.Delete(&model.Block{}, "id = ? AND note_id = ?", blockID, noteID).Error
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&model.Block{}, "id = ? AND note_id = ?", blockID, noteID).Error; err != nil {
+			return err
+		}
+		return touchNote(tx, noteID)
+	})
 }
