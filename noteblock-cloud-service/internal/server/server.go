@@ -22,6 +22,16 @@ type Server struct {
 	gorm *gorm.DB
 }
 
+// The raw database/sql handle only knows how to reach Postgres, so in local sqlite mode
+// there is nothing for it to connect to and health reports on the gorm connection instead.
+func maybeLegacyDB() database.Service {
+	if os.Getenv("BLUEPRINT_DB_SQLITE_PATH") != "" {
+		return nil
+	}
+
+	return database.New()
+}
+
 func NewServer() *http.Server {
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 	gormDB, err := database.OpenGorm()
@@ -32,7 +42,7 @@ func NewServer() *http.Server {
 	NewServer := &Server{
 		port: port,
 
-		db:   database.New(),
+		db:   maybeLegacyDB(),
 		gorm: gormDB,
 	}
 

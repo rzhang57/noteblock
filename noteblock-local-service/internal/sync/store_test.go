@@ -208,7 +208,7 @@ func TestChangedSinceIsEmptyWhenNothingHasHappened(t *testing.T) {
 		t.Fatalf("changed since: %v", err)
 	}
 	if !changes.IsEmpty() {
-		t.Errorf("changes = %+v, want empty so the pass skips the request entirely", changes)
+		t.Errorf("changes = %+v, want nothing left to push once the cursor has caught up", changes)
 	}
 }
 

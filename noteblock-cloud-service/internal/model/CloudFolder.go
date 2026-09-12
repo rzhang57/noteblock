@@ -3,8 +3,8 @@ package model
 import "time"
 
 type CloudFolder struct {
-	ID              string `gorm:"type:uuid;primaryKey"`
-	UserID          string `gorm:"type:uuid;not null;index"`
+	ID              string `gorm:"type:text;primaryKey"`
+	UserID          string `gorm:"type:text;not null;index"`
 	Data            JSONB  `gorm:"type:jsonb;not null"`
 	ClientUpdatedAt time.Time
 	CreatedAt       time.Time

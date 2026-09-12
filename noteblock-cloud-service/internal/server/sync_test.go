@@ -143,26 +143,29 @@ func TestTheSamePayloadTwiceChangesNothing(t *testing.T) {
 	}
 }
 
-func TestCursorExcludesWorkTheDeviceHasAlreadySeen(t *testing.T) {
+func TestCursorExcludesSettledWorkButDeliberatelyReReadsARecentOverlap(t *testing.T) {
 	_, r := newSyncServer(t)
 
 	first := postSync(t, r, syncRequest{Notes: docsOf(noteDoc("n1", "first", time.Now()))})
-	cursor := first.ServerTime
 
-	settled := postSync(t, r, syncRequest{Since: &cursor})
-	if len(settled.Notes) != 0 {
-		t.Errorf("got %d notes at a current cursor, want none", len(settled.Notes))
+	// Well past the overlap window: settled work must not come back.
+	settled := time.Now().Add(time.Hour).Format(cursorLayout)
+	quiet := postSync(t, r, syncRequest{Since: &settled})
+	if len(quiet.Notes) != 0 {
+		t.Errorf("got %d notes at a long-settled cursor, want none", len(quiet.Notes))
 	}
 
-	time.Sleep(10 * time.Millisecond)
+	// Inside the overlap: re-reading is intentional, and harmless because apply is idempotent.
+	recent := first.ServerTime
+	echoed := postSync(t, r, syncRequest{Since: &recent})
+	if len(echoed.Notes) != 1 {
+		t.Errorf("got %d notes inside the overlap window, want the recent one re-read", len(echoed.Notes))
+	}
+
 	postSync(t, r, syncRequest{Notes: docsOf(noteDoc("n2", "second", time.Now()))})
-
-	fresh := postSync(t, r, syncRequest{Since: &cursor})
-	if len(fresh.Notes) != 1 {
-		t.Fatalf("got %d notes after a new write, want 1", len(fresh.Notes))
-	}
+	fresh := postSync(t, r, syncRequest{Since: &recent})
 	if got := titlesOf(toDocs(fresh.Notes))["n2"]; got != "second" {
-		t.Errorf("returned the wrong note: %v", toDocs(fresh.Notes))
+		t.Errorf("new work missing from the pull: %v", toDocs(fresh.Notes))
 	}
 }
 

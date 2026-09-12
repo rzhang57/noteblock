@@ -51,11 +51,11 @@ func (s *Server) syncHandler(c *gin.Context) {
 			return err
 		}
 
-		folders, err := foldersChangedSince(tx, since)
+		folders, err := foldersChangedSince(tx, overlap(since))
 		if err != nil {
 			return err
 		}
-		notes, err := notesChangedSince(tx, since)
+		notes, err := notesChangedSince(tx, overlap(since))
 		if err != nil {
 			return err
 		}
@@ -133,6 +133,19 @@ func applyNotes(tx *gorm.DB, docs []model.JSONB, serverTime time.Time) error {
 	return nil
 }
 
+// gorm's Save() issues Updates with Select("*"), which writes the zero CreatedAt of a
+// freshly built struct over the stored one. Only the columns that should change are sent.
+func upsert(tx *gorm.DB, out any, id string, exists bool, columns map[string]any, serverTime time.Time) error {
+	if exists {
+		return tx.Model(out).Where("id = ?", id).Updates(columns).Error
+	}
+
+	columns["id"] = id
+	columns["created_at"] = serverTime
+
+	return tx.Model(out).Create(columns).Error
+}
+
 func foldersChangedSince(tx *gorm.DB, since *time.Time) ([]model.JSONB, error) {
 	query := tx.Model(&model.CloudFolder{}).Where("user_id = ?", model.LocalUserID)
 	if since != nil {
@@ -198,8 +211,27 @@ func parseCursor(since *string) (*time.Time, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Rows are stored UTC and SQLite compares datetimes lexically, so an offset-bearing
+	// cursor matches the wrong rows. Postgres would compare instants either way.
+	parsed = parsed.UTC()
 
 	return &parsed, nil
+}
+
+// A transaction stamps its rows when it starts but they only become visible when it commits,
+// so another device syncing in between is handed a cursor past rows it never saw. Re-reading a
+// short overlap on every pull costs a redundant row and closes that window; skipping one loses
+// the edit forever.
+const cursorOverlap = 5 * time.Second
+
+func overlap(since *time.Time) *time.Time {
+	if since == nil {
+		return nil
+	}
+
+	widened := since.Add(-cursorOverlap)
+
+	return &widened
 }
 
 // Every device runs its own copy of this service against one shared database, so the process
@@ -214,7 +246,7 @@ func now(tx *gorm.DB) (time.Time, error) {
 	}
 
 	var t time.Time
-	if err := tx.Raw("SELECT CURRENT_TIMESTAMP").Scan(&t).Error; err != nil {
+	if err := tx.Raw("SELECT clock_timestamp()").Scan(&t).Error; err != nil {
 		return time.Time{}, err
 	}
 
