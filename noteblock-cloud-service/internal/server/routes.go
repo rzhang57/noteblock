@@ -21,6 +21,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	r.GET("/health", s.healthHandler)
 
+	r.POST("/sync", s.syncHandler)
+
 	return r
 }
 
