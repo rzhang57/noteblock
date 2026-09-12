@@ -9,6 +9,7 @@ import (
 var Migrations = []Migration{
 	{ID: "0001_baseline", Up: baseline},
 	{ID: "0002_user_ownership", Up: userOwnership},
+	{ID: "0003_tombstones", Up: tombstones},
 }
 
 // Mirrors what AutoMigrate had already created, so an existing database adopts the ledger untouched.
@@ -30,8 +31,7 @@ func baseline(tx *gorm.DB) error {
 	return nil
 }
 
-// Ownership lands before auth so the later migration is a no-op rather than a schema change
-// against a device holding a term of notes. Nothing reads these columns yet.
+// Nothing reads these columns yet; they exist so adding auth later is not a second migration.
 func userOwnership(tx *gorm.DB) error {
 	stmts := []string{
 		"CREATE TABLE IF NOT EXISTS `users` (`id` uuid,`name` text,`created_at` datetime,`updated_at` datetime,PRIMARY KEY (`id`))",
@@ -61,6 +61,24 @@ func userOwnership(tx *gorm.DB) error {
 			"UPDATE `"+table+"` SET `user_id` = ? WHERE `user_id` IS NULL",
 			model.LocalUserID,
 		).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Blocks are excluded: a note carries its whole block set, so a missing block is already a delete.
+func tombstones(tx *gorm.DB) error {
+	stmts := []string{
+		"ALTER TABLE `folders` ADD COLUMN `deleted_at` datetime",
+		"ALTER TABLE `notes` ADD COLUMN `deleted_at` datetime",
+		"CREATE INDEX IF NOT EXISTS `idx_folders_deleted_at` ON `folders`(`deleted_at`)",
+		"CREATE INDEX IF NOT EXISTS `idx_notes_deleted_at` ON `notes`(`deleted_at`)",
+	}
+
+	for _, stmt := range stmts {
+		if err := tx.Exec(stmt).Error; err != nil {
 			return err
 		}
 	}

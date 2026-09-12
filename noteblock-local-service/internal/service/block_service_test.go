@@ -25,7 +25,7 @@ func newServiceTestDB(t *testing.T) *gorm.DB {
 		}
 	})
 
-	// Match InitDb, or foreign keys go unenforced here and the tests are laxer than production.
+	// InitDb enables foreign keys; the suite matches it so constraints behave as in production.
 	conn.Exec("PRAGMA foreign_keys = ON")
 
 	if err := db.Migrate(conn, db.Migrations); err != nil {
@@ -66,7 +66,6 @@ func rawJSON(s string) *json.RawMessage {
 	return &raw
 }
 
-// Without this, the sync scan silently skips every note whose only change was a block edit.
 func TestBlockWritesTouchTheParentNote(t *testing.T) {
 	tests := map[string]func(t *testing.T, svc *BlockService, note *model.Note, blockID string){
 		"create": func(t *testing.T, svc *BlockService, note *model.Note, _ string) {
@@ -127,7 +126,6 @@ func TestAFailedBlockCreateLeavesNothingBehind(t *testing.T) {
 	}
 }
 
-// Overwriting a pulled record's id would re-push it as a new row on every sync pass.
 func TestCreatePreservesAProvidedID(t *testing.T) {
 	conn := newServiceTestDB(t)
 
