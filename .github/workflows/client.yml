@@ -1,0 +1,61 @@
+name: Client
+
+on:
+  pull_request:
+    paths:
+      - 'client/**'
+      - 'electron/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
+      - '.github/workflows/client.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'client/**'
+      - 'electron/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
+      - '.github/workflows/client.yml'
+
+jobs:
+  build:
+    name: Typecheck, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - name: Type check
+        run: npx tsc -b
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    # Non-blocking until the pre-existing no-explicit-any errors are cleared.
+    # Flip this to a failing step once they are.
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm run lint

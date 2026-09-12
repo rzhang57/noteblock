@@ -1,0 +1,29 @@
+name: Local service
+
+on:
+  pull_request:
+    paths:
+      - 'noteblock-local-service/**'
+      - '.github/workflows/local-service.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'noteblock-local-service/**'
+      - '.github/workflows/local-service.yml'
+
+jobs:
+  test:
+    name: Vet, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: noteblock-local-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: noteblock-local-service/go.sum
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go build ./cmd/noteblock

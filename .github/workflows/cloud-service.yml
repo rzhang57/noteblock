@@ -1,0 +1,31 @@
+name: Cloud service
+
+on:
+  pull_request:
+    paths:
+      - 'noteblock-cloud-service/**'
+      - '.github/workflows/cloud-service.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'noteblock-cloud-service/**'
+      - '.github/workflows/cloud-service.yml'
+
+jobs:
+  test:
+    name: Vet and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: noteblock-cloud-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: noteblock-cloud-service/go.sum
+      - run: go vet ./...
+      - name: Unit tests
+        run: go test ./cmd/... ./internal/model ./internal/server
+      - name: Database integration tests
+        run: go test ./internal/database
