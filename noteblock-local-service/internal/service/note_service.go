@@ -69,10 +69,6 @@ func (s *NoteService) UpdateNoteMetaData(id string, title string, folderId strin
 
 // TODO: NB-31 - implement UpdateNoteContents to update a note's title, block content, and folder ID
 // for this, we might just be editing the individual blocks so this might not be necessary?
-func (s *NoteService) UpdateNoteContents(id string, title string, md string, folderID string) error {
-	// stub
-	return nil
-}
 
 func (s *NoteService) DeleteNoteTx(tx *gorm.DB, id string) error {
 	if err := tx.Where("note_id = ?", id).Delete(&model.Block{}).Error; err != nil {

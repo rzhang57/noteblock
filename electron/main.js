@@ -57,6 +57,11 @@ function wireBackendStdout() {
     })
 }
 
+// Backend NOTE_DB_PATH and the image protocol handler must resolve to the same dir.
+function getDataPath() {
+    return app.isPackaged ? app.getPath("userData") : path.join(__dirname, "..")
+}
+
 function startBackendProcess() {
     const isWin = process.platform === "win32"
     const backendFile = isWin ? "noteblock-server.exe" : "noteblock-server"
@@ -68,7 +73,7 @@ function startBackendProcess() {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
             ...process.env,
-            NOTE_DB_PATH: app.getPath("userData")
+            NOTE_DB_PATH: getDataPath()
         }
     })
 
@@ -133,7 +138,7 @@ function registerLocalImageProtocol() {
             return new Response("Not Found", { status: 404 })
         }
 
-        const filePath = path.join(app.getPath("userData"), "uploads", "images", safeName)
+        const filePath = path.join(getDataPath(), "uploads", "images", safeName)
         return net.fetch(pathToFileURL(filePath).toString())
     })
 }

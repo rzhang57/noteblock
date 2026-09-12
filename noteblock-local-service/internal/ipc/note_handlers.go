@@ -1,7 +1,7 @@
 package ipc
 
 import (
-	"server/internal/api/mapper"
+	"server/internal/mapper"
 	"server/internal/model"
 	"server/internal/model/dto"
 

@@ -1,5 +1,10 @@
 package ipc
 
+import (
+	"log"
+	"runtime/debug"
+)
+
 type handlerFn func(Request) Response
 
 func (s *Server) buildHandlers() map[string]handlerFn {
@@ -19,7 +24,15 @@ func (s *Server) buildHandlers() map[string]handlerFn {
 	}
 }
 
-func (s *Server) handle(req Request) Response {
+func (s *Server) handle(req Request) (res Response) {
+	// Without this, one bad handler kills the sidecar for the rest of the session.
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic handling %q: %v\n%s", req.Method, r, debug.Stack())
+			res = rpcErr(req.ID, "INTERNAL", "Internal error")
+		}
+	}()
+
 	if handler, ok := s.handlers[req.Method]; ok {
 		return handler(req)
 	}

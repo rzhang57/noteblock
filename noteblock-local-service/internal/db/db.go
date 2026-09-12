@@ -37,12 +37,16 @@ func InitDb() *gorm.DB {
 	db.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{})
 
 	var count int64
-	db.Model(&model.Folder{}).Where("id = root", "root").Count(&count)
+	if err := db.Model(&model.Folder{}).Where("id = ?", "root").Count(&count).Error; err != nil {
+		log.Fatalf("failed to check for root folder: %v", err)
+	}
 	if count == 0 {
-		db.Create(&model.Folder{
+		if err := db.Create(&model.Folder{
 			ID:   "root",
 			Name: "Root",
-		})
+		}).Error; err != nil {
+			log.Fatalf("failed to create root folder: %v", err)
+		}
 		log.Println("Created root folder with ID 'root'")
 	}
 
