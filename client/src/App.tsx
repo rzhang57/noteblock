@@ -2,29 +2,23 @@ import './App.css'
 import {Sidebar} from "./components/Sidebar";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {MainContentPanel} from "@/components/ContentPanel.tsx";
+import {NoteEmptyState} from "@/components/NoteEmptyState.tsx";
 
 export default function App() {
     const {selectedNoteId} = useNoteContext();
 
     return (
-        <div className="h-screen w-full bg-white flex flex-col">
+        <div className="flex h-screen w-full flex-col bg-background">
             <div className="flex flex-1 overflow-hidden">
                 <Sidebar/>
-                <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex-1 overflow-auto p-6">
+                <div className="flex flex-1 flex-col overflow-hidden">
+                    <div className="flex-1 overflow-auto">
                         {selectedNoteId ? (
-                            <div className="text-gray-800">
+                            <div className="text-ink">
                                 <MainContentPanel/>
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full">
-                                <h3 className="text-xl font-bold text-foreground mb-2 tracking-wide">Welcome to
-                                    noteblock</h3>
-                                <p className="text-muted-foreground mb-6 text-balance leading-relaxed">
-                                    Select a note from the sidebar to start editing, or create a new one to begin your
-                                    block-based note-taking journey.
-                                </p>
-                            </div>
+                            <NoteEmptyState/>
                         )}
                     </div>
                 </div>
@@ -32,4 +26,3 @@ export default function App() {
         </div>
     );
 }
-
