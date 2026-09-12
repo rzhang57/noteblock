@@ -1,4 +1,3 @@
-// components/InlineRename.tsx
 import {useState, useEffect, useRef} from "react";
 
 interface InlineRenameProps {
@@ -53,7 +52,7 @@ export const InlineRename: React.FC<InlineRenameProps> = ({
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={handleSave}
-            className="bg-white border border-blue-500 px-1 py-0.5 text-sm w-full"
+            className="w-full rounded-[4px] bg-paper px-1.5 py-0.5 text-sm text-ink shadow-[0_0_0_1px_var(--ink-faint)] focus:outline-none focus:shadow-[0_0_0_2px_var(--ink)]"
             onClick={(e) => e.stopPropagation()}
         />
     );
