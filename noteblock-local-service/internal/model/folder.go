@@ -10,6 +10,7 @@ type Folder struct {
 	ID        string `gorm:"type:uuid;primaryKey"`
 	Name      string
 	ParentID  *string
+	UserID    string `gorm:"type:uuid;index"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
@@ -21,6 +22,9 @@ type Folder struct {
 func (f *Folder) BeforeCreate(*gorm.DB) (err error) {
 	if f.ID == "" {
 		f.ID = uuid.New().String()
+	}
+	if f.UserID == "" {
+		f.UserID = LocalUserID
 	}
 	return
 }

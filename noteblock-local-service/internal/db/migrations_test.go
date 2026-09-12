@@ -133,18 +133,17 @@ func TestMigrateRejectsDuplicateAndUnorderedIDs(t *testing.T) {
 	}
 }
 
-func TestBaselineAdoptsAnExistingAutoMigratedDatabase(t *testing.T) {
+func TestMigrateAdoptsALegacyDatabaseWithoutLosingRows(t *testing.T) {
 	db := newTestDB(t)
 
-	if err := db.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{}); err != nil {
-		t.Fatalf("automigrate: %v", err)
+	// A database as it existed before the ledger: baseline schema, no schema_migrations.
+	if err := baseline(db); err != nil {
+		t.Fatalf("legacy schema: %v", err)
 	}
-	folder := model.Folder{ID: "root", Name: "Root"}
-	if err := db.Create(&folder).Error; err != nil {
+	if err := db.Exec("INSERT INTO folders (id, name) VALUES ('root', 'Root')").Error; err != nil {
 		t.Fatalf("seed folder: %v", err)
 	}
-	note := model.Note{Title: "Existing", FolderID: "root"}
-	if err := db.Create(&note).Error; err != nil {
+	if err := db.Exec("INSERT INTO notes (id, title, folder_id) VALUES ('n1', 'Existing', 'root')").Error; err != nil {
 		t.Fatalf("seed note: %v", err)
 	}
 
@@ -152,12 +151,12 @@ func TestBaselineAdoptsAnExistingAutoMigratedDatabase(t *testing.T) {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	var count int64
-	if err := db.Model(&model.Note{}).Count(&count).Error; err != nil {
-		t.Fatalf("count notes: %v", err)
+	var note model.Note
+	if err := db.First(&note, "id = ?", "n1").Error; err != nil {
+		t.Fatalf("existing note did not survive migration: %v", err)
 	}
-	if count != 1 {
-		t.Errorf("note count = %d, want 1; baseline destroyed existing data", count)
+	if note.Title != "Existing" {
+		t.Errorf("note title = %q, want %q", note.Title, "Existing")
 	}
 }
 

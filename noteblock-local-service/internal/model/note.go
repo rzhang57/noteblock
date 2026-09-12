@@ -10,6 +10,7 @@ type Note struct {
 	ID        string `gorm:"type:uuid;primaryKey"`
 	Title     string
 	FolderID  string `gorm:"type:uuid;not null;index"`
+	UserID    string `gorm:"type:uuid;index"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
@@ -24,5 +25,8 @@ type Note struct {
 
 func (n *Note) BeforeCreate(*gorm.DB) (err error) {
 	n.ID = uuid.New().String()
+	if n.UserID == "" {
+		n.UserID = LocalUserID
+	}
 	return
 }
