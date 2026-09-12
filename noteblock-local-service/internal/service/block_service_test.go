@@ -30,11 +30,11 @@ func newServiceTestDB(t *testing.T) *gorm.DB {
 func seedNote(t *testing.T, conn *gorm.DB) *model.Note {
 	t.Helper()
 
-	folder := model.Folder{ID: "root", Name: "Root"}
+	folder := model.Folder{ID: "f-top", Name: "Coursework"}
 	if err := conn.Create(&folder).Error; err != nil {
 		t.Fatalf("seed folder: %v", err)
 	}
-	note := model.Note{Title: "Notes", FolderID: folder.ID}
+	note := model.Note{Title: "Notes", FolderID: &folder.ID}
 	if err := conn.Create(&note).Error; err != nil {
 		t.Fatalf("seed note: %v", err)
 	}
@@ -121,12 +121,12 @@ func TestAFailedBlockCreateLeavesNothingBehind(t *testing.T) {
 func TestCreatePreservesAProvidedID(t *testing.T) {
 	conn := newServiceTestDB(t)
 
-	folder := model.Folder{ID: "root", Name: "Root"}
+	folder := model.Folder{ID: "f-top", Name: "Coursework"}
 	if err := conn.Create(&folder).Error; err != nil {
 		t.Fatalf("create folder: %v", err)
 	}
 
-	note := model.Note{ID: "note-from-another-device", Title: "Pulled", FolderID: folder.ID}
+	note := model.Note{ID: "note-from-another-device", Title: "Pulled", FolderID: &folder.ID}
 	if err := conn.Create(&note).Error; err != nil {
 		t.Fatalf("create note: %v", err)
 	}

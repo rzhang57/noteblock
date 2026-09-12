@@ -114,10 +114,9 @@ func applyNotes(tx *gorm.DB, docs []model.JSONB, serverTime time.Time) error {
 			continue
 		}
 
-		folderID, _ := doc["folder_id"].(string)
 		if err := upsert(tx, &model.CloudNote{}, id, len(existing) == 1, map[string]any{
 			"user_id":           model.LocalUserID,
-			"folder_id":         folderID,
+			"folder_id":         optionalString(doc["folder_id"]),
 			"data":              doc,
 			"client_updated_at": clientUpdatedAt,
 			"updated_at":        serverTime,
@@ -178,6 +177,16 @@ func notesChangedSince(tx *gorm.DB, since *time.Time) ([]model.JSONB, error) {
 	}
 
 	return docs, nil
+}
+
+// A top-level note has no folder, and JSON null decodes to a nil interface.
+func optionalString(v any) *string {
+	s, ok := v.(string)
+	if !ok || s == "" {
+		return nil
+	}
+
+	return &s
 }
 
 func identify(doc model.JSONB) (string, time.Time, bool) {

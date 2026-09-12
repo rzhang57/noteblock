@@ -19,7 +19,7 @@ func TestFoldersApplyRegardlessOfOrder(t *testing.T) {
 
 	incoming := Changes{Folders: []FolderDocument{
 		{ID: "child", Name: "CS341", ParentID: ptr("parent"), UserID: model.LocalUserID, UpdatedAt: now},
-		{ID: "parent", Name: "Term", ParentID: ptr(RootFolderID), UserID: model.LocalUserID, UpdatedAt: now},
+		{ID: "parent", Name: "Term", ParentID: nil, UserID: model.LocalUserID, UpdatedAt: now},
 	}}
 
 	if err := f.conn.Transaction(func(tx *gorm.DB) error { return Apply(tx, incoming) }); err != nil {
@@ -41,10 +41,10 @@ func TestNotesApplyBeforeTheFolderTheyPointAt(t *testing.T) {
 
 	incoming := Changes{
 		Notes: []NoteDocument{
-			{ID: "n1", Title: "Lecture", FolderID: "late-folder", UserID: model.LocalUserID, UpdatedAt: now, Blocks: []BlockDocument{}},
+			{ID: "n1", Title: "Lecture", FolderID: ptr("late-folder"), UserID: model.LocalUserID, UpdatedAt: now, Blocks: []BlockDocument{}},
 		},
 		Folders: []FolderDocument{
-			{ID: "late-folder", Name: "CS341", ParentID: ptr(RootFolderID), UserID: model.LocalUserID, UpdatedAt: now},
+			{ID: "late-folder", Name: "CS341", ParentID: nil, UserID: model.LocalUserID, UpdatedAt: now},
 		},
 	}
 

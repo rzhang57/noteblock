@@ -8,6 +8,9 @@ export const localIpcClient = {
         get(id: string) {
             return window.noteblock.local.folder.get(id)
         },
+        tree() {
+            return window.noteblock.local.folder.tree()
+        },
         update(payload: { current_id: string; name?: string; parent_id?: string | null }) {
             return window.noteblock.local.folder.update(payload)
         },
@@ -16,13 +19,13 @@ export const localIpcClient = {
         },
     },
     note: {
-        create(payload: { title: string; folder_id: string }) {
+        create(payload: { title: string; folder_id: string | null }) {
             return window.noteblock.local.note.create(payload)
         },
         get(id: string) {
             return window.noteblock.local.note.get(id)
         },
-        update(payload: { id: string; title?: string; folder_id?: string; blocks?: Array<{ id: string; index: number }> }) {
+        update(payload: { id: string; title?: string; folder_id?: string | null; blocks?: Array<{ id: string; index: number }> }) {
             return window.noteblock.local.note.update(payload)
         },
         delete(id: string) {

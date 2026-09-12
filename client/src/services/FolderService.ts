@@ -4,7 +4,7 @@ import type {Note} from "@/types/Note.ts";
 export interface Folder {
     id: string;
     name: string;
-    parent_id: string;
+    parent_id: string | null;
     notes: Note[];
     children: Folder[];
 }
@@ -38,6 +38,11 @@ export const FolderService = {
 
     async getFolder(id: string): Promise<Folder> {
         return localIpcClient.folder.get(id);
+    },
+
+    // Top level has no folder row to fetch, so the sidebar asks for a synthesized tree.
+    async getTree(): Promise<Folder> {
+        return localIpcClient.folder.tree();
     },
 
     async updateFolder(request: FolderUpdateRequest | FolderMoveRequest | FolderRenameRequest): Promise<Folder> {

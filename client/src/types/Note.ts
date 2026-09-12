@@ -41,6 +41,6 @@ export interface Block {
 export interface Note {
     id: string;
     title: string;
-    folder_id: string;
+    folder_id: string | null;
     blocks: Block[];
 }

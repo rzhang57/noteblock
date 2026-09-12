@@ -11,6 +11,7 @@ var Migrations = []Migration{
 	{ID: "0002_user_ownership", Up: userOwnership},
 	{ID: "0003_tombstones", Up: tombstones},
 	{ID: "0004_sync_state", Up: syncState},
+	{ID: "0005_drop_root_folder", Up: dropRootFolder, RebuildsTables: true},
 }
 
 // Mirrors what AutoMigrate had already created, so an existing database adopts the ledger untouched.
@@ -93,6 +94,35 @@ func tombstones(tx *gorm.DB) error {
 		"ALTER TABLE `notes` ADD COLUMN `deleted_at` datetime",
 		"CREATE INDEX IF NOT EXISTS `idx_folders_deleted_at` ON `folders`(`deleted_at`)",
 		"CREATE INDEX IF NOT EXISTS `idx_notes_deleted_at` ON `notes`(`deleted_at`)",
+	}
+
+	for _, stmt := range stmts {
+		if err := tx.Exec(stmt).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// A seeded row with the literal id "root" made a magic string load-bearing across the
+// database, the handlers and the client. Top level is now simply a null parent.
+func dropRootFolder(tx *gorm.DB) error {
+	// SQLite cannot drop NOT NULL in place, so notes is rebuilt following the procedure in
+	// SQLite's own ALTER TABLE docs. The runner has enforcement off and checks it afterwards.
+	stmts := []string{
+		"CREATE TABLE `notes_rebuilt` (`id` uuid,`title` text,`folder_id` uuid,`user_id` uuid,`created_at` datetime,`updated_at` datetime,`deleted_at` datetime,PRIMARY KEY (`id`),CONSTRAINT `fk_folders_notes` FOREIGN KEY (`folder_id`) REFERENCES `folders`(`id`))",
+		"INSERT INTO `notes_rebuilt` (`id`,`title`,`folder_id`,`user_id`,`created_at`,`updated_at`,`deleted_at`) SELECT `id`,`title`,`folder_id`,`user_id`,`created_at`,`updated_at`,`deleted_at` FROM `notes`",
+		"DROP TABLE `notes`",
+		"ALTER TABLE `notes_rebuilt` RENAME TO `notes`",
+		"CREATE INDEX IF NOT EXISTS `idx_notes_folder_id` ON `notes`(`folder_id`)",
+		"CREATE INDEX IF NOT EXISTS `idx_notes_user_id` ON `notes`(`user_id`)",
+		"CREATE INDEX IF NOT EXISTS `idx_notes_deleted_at` ON `notes`(`deleted_at`)",
+
+		// Reparent before deleting, or the rows point at a folder that is gone.
+		"UPDATE `notes` SET `folder_id` = NULL WHERE `folder_id` = 'root'",
+		"UPDATE `folders` SET `parent_id` = NULL WHERE `parent_id` = 'root'",
+		"DELETE FROM `folders` WHERE `id` = 'root'",
 	}
 
 	for _, stmt := range stmts {

@@ -38,8 +38,8 @@ func TestRecordsWithNonUuidIdsArePersistable(t *testing.T) {
 	note := model.CloudNote{
 		ID:              "9564241e-b8c1-4179-b525-debbb5e09b7a",
 		UserID:          model.LocalUserID,
-		FolderID:        "root",
-		Data:            model.JSONB{"id": "9564241e-b8c1-4179-b525-debbb5e09b7a", "folder_id": "root"},
+		FolderID:        nil,
+		Data:            model.JSONB{"id": "9564241e-b8c1-4179-b525-debbb5e09b7a", "folder_id": nil},
 		ClientUpdatedAt: time.Now().UTC(),
 		ServerUpdatedAt: time.Now().UTC(),
 	}
@@ -67,7 +67,7 @@ func TestJsonbRoundTripsThroughPostgres(t *testing.T) {
 	stored := model.CloudNote{
 		ID:              "jsonb-round-trip",
 		UserID:          model.LocalUserID,
-		FolderID:        "root",
+		FolderID:        nil,
 		Data:            model.JSONB{"title": "CS341", "blocks": []any{map[string]any{"content": map[string]any{"text": "hello"}}}},
 		ClientUpdatedAt: time.Now().UTC(),
 		ServerUpdatedAt: time.Now().UTC(),

@@ -9,13 +9,14 @@ declare global {
                 folder: {
                     create: (payload: { name: string; parent_id: string | null }) => Promise<any>
                     get: (id: string) => Promise<any>
+                    tree: () => Promise<any>
                     update: (payload: { current_id: string; name?: string; parent_id?: string | null }) => Promise<any>
                     delete: (id: string) => Promise<any>
                 }
                 note: {
-                    create: (payload: { title: string; folder_id: string }) => Promise<any>
+                    create: (payload: { title: string; folder_id: string | null }) => Promise<any>
                     get: (id: string) => Promise<any>
-                    update: (payload: { id: string; title?: string; folder_id?: string; blocks?: Array<{ id: string; index: number }> }) => Promise<any>
+                    update: (payload: { id: string; title?: string; folder_id?: string | null; blocks?: Array<{ id: string; index: number }> }) => Promise<any>
                     delete: (id: string) => Promise<any>
                 }
                 block: {

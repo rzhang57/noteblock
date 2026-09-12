@@ -54,7 +54,7 @@ func (s *Store) ChangedSince(since *time.Time) (Changes, error) {
 }
 
 func (s *Store) changedFolders(since *time.Time) ([]FolderDocument, error) {
-	query := s.DB.Unscoped().Model(&model.Folder{}).Where("id != ?", RootFolderID)
+	query := s.DB.Unscoped().Model(&model.Folder{})
 	if since != nil {
 		query = query.Where("updated_at > ?", *since)
 	}

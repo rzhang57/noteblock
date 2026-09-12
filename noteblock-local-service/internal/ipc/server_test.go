@@ -8,8 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	"server/internal/db"
 	"server/internal/model"
 	"server/internal/model/dto"
 	"server/internal/service"
@@ -20,11 +19,11 @@ func setupTestServer(t *testing.T) *Server {
 
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "ipc_test.sqlite")
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open test sqlite db: %v", err)
 	}
-	sqlDB, err := db.DB()
+	sqlDB, err := database.DB()
 	if err != nil {
 		t.Fatalf("failed to get sql db handle: %v", err)
 	}
@@ -32,11 +31,8 @@ func setupTestServer(t *testing.T) *Server {
 		_ = sqlDB.Close()
 	})
 
-	if err := db.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{}); err != nil {
-		t.Fatalf("failed to migrate test schema: %v", err)
-	}
-	if err := db.Create(&model.Folder{ID: "root", Name: "Root"}).Error; err != nil {
-		t.Fatalf("failed to create root folder: %v", err)
+	if err := database.Create(&model.Folder{ID: "f-top", Name: "Coursework"}).Error; err != nil {
+		t.Fatalf("failed to seed folder: %v", err)
 	}
 
 	_ = os.Setenv("NOTE_DB_PATH", tmpDir)
@@ -44,9 +40,9 @@ func setupTestServer(t *testing.T) *Server {
 		_ = os.Unsetenv("NOTE_DB_PATH")
 	})
 
-	noteSvc := &service.NoteService{DB: db}
-	folderSvc := &service.FolderService{DB: db, NoteService: noteSvc}
-	blockSvc := &service.BlockService{DB: db}
+	noteSvc := &service.NoteService{DB: database}
+	folderSvc := &service.FolderService{DB: database, NoteService: noteSvc}
+	blockSvc := &service.BlockService{DB: database}
 	return NewServer(noteSvc, folderSvc, blockSvc)
 }
 
@@ -65,7 +61,7 @@ func TestIPCServer_SmokeCRUDFlow(t *testing.T) {
 	createFolderRes := srv.handle(Request{
 		ID:     "1",
 		Method: "folder.create",
-		Params: mustRaw(t, map[string]any{"name": "Projects", "parent_id": "root"}),
+		Params: mustRaw(t, map[string]any{"name": "Projects", "parent_id": "f-top"}),
 	})
 	if createFolderRes.Error != nil {
 		t.Fatalf("folder.create failed: %+v", createFolderRes.Error)
@@ -178,7 +174,7 @@ func TestIPCServer_HandlerPanicIsContainedAndServerKeepsServing(t *testing.T) {
 
 	in := strings.NewReader(
 		`{"id":"1","method":"test.panic","params":{}}` + "\n" +
-			`{"id":"2","method":"folder.get","params":{"id":"root"}}` + "\n")
+			`{"id":"2","method":"folder.get","params":{"id":"f-top"}}` + "\n")
 	var out bytes.Buffer
 
 	if err := s.Run(in, &out); err != nil {

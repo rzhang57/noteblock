@@ -11,6 +11,7 @@ func (s *Server) buildHandlers() map[string]handlerFn {
 	return map[string]handlerFn{
 		"folder.create":     s.folderCreate,
 		"folder.get":        s.folderGet,
+		"folder.tree":       s.folderTree,
 		"folder.update":     s.folderUpdate,
 		"folder.delete":     s.folderDelete,
 		"note.create":       s.noteCreate,

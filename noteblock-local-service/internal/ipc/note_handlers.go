@@ -17,11 +17,6 @@ func (s *Server) noteCreate(req Request) Response {
 		return rpcErr(req.ID, "BAD_REQUEST", "Invalid params")
 	}
 
-	if body.FolderID == nil || *body.FolderID == "" {
-		root := "root"
-		body.FolderID = &root
-	}
-
 	existingNotesInFolder, err := s.noteSvc.ListNotesByFolderId(body.FolderID)
 	if err != nil {
 		return rpcErr(req.ID, "INTERNAL", "Failed to query notes in current folder")
@@ -38,7 +33,7 @@ func (s *Server) noteCreate(req Request) Response {
 		}
 	}
 
-	note, err := s.noteSvc.NewNote(*body.Title, *body.FolderID)
+	note, err := s.noteSvc.NewNote(*body.Title, body.FolderID)
 	if err != nil {
 		return rpcErr(req.ID, "INTERNAL", "Failed to create new note")
 	}
@@ -103,8 +98,8 @@ func (s *Server) noteUpdate(req Request) Response {
 	}
 
 	targetFolderID := existingNote.FolderID
-	if body.FolderID != nil && *body.FolderID != "" {
-		targetFolderID = *body.FolderID
+	if body.FolderID != nil {
+		targetFolderID = topLevelIfEmpty(*body.FolderID)
 	}
 
 	if body.Blocks != nil {
@@ -123,7 +118,7 @@ func (s *Server) noteUpdate(req Request) Response {
 		}
 	}
 
-	notesInFolder, err := s.noteSvc.ListNotesByFolderId(&targetFolderID)
+	notesInFolder, err := s.noteSvc.ListNotesByFolderId(targetFolderID)
 	if err != nil {
 		return rpcErr(req.ID, "INTERNAL", "Failed to retrieve notes in new folder")
 	}

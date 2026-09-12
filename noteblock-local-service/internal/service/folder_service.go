@@ -74,6 +74,36 @@ func (s *FolderService) GetFolderDtoById(id string) (*dto.FolderResponse, error)
 	return s.buildFolderResponseRecursive(folder.ID)
 }
 
+// There is no root row to fetch, so the top level is synthesized from whatever has no parent.
+func (s *FolderService) GetTree() (*dto.FolderResponse, error) {
+	children, err := s.ListChildrenByParentId(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	notes, err := s.NoteService.ListNotesByFolderId(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	childResponses := make([]dto.FolderResponse, 0, len(children))
+	for _, child := range children {
+		childResponse, err := s.buildFolderResponseRecursive(child.ID)
+		if err != nil {
+			return nil, err
+		}
+		childResponses = append(childResponses, *childResponse)
+	}
+
+	return &dto.FolderResponse{
+		ID:       "",
+		Name:     "",
+		ParentID: nil,
+		Children: childResponses,
+		Notes:    noteResponsesOf(notes),
+	}, nil
+}
+
 func (s *FolderService) buildFolderResponseRecursive(folderID string) (*dto.FolderResponse, error) {
 	var folder model.Folder
 	if err := s.DB.Where("id = ?", folderID).First(&folder).Error; err != nil {
@@ -100,21 +130,25 @@ func (s *FolderService) buildFolderResponseRecursive(folderID string) (*dto.Fold
 		childResponses = append(childResponses, *childResponse)
 	}
 
-	noteResponses := make([]dto.NoteResponse, 0, len(notes))
-	for _, note := range notes {
-		noteResponses = append(noteResponses, dto.NoteResponse{
-			ID:    note.ID,
-			Title: note.Title,
-		})
-	}
-
 	return &dto.FolderResponse{
 		ID:       folder.ID,
 		Name:     folder.Name,
 		ParentID: folder.ParentID,
 		Children: childResponses,
-		Notes:    noteResponses,
+		Notes:    noteResponsesOf(notes),
 	}, nil
+}
+
+func noteResponsesOf(notes []model.Note) []dto.NoteResponse {
+	responses := make([]dto.NoteResponse, 0, len(notes))
+	for _, note := range notes {
+		responses = append(responses, dto.NoteResponse{
+			ID:    note.ID,
+			Title: note.Title,
+		})
+	}
+
+	return responses
 }
 
 // TODO: delete folder, all children folders, notes in folder, and blocks associated with notes

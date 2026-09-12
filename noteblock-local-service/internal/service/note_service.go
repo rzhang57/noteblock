@@ -7,7 +7,7 @@ import (
 
 type NoteService struct{ DB *gorm.DB }
 
-func (s *NoteService) NewNote(title string, folderID string) (*model.Note, error) {
+func (s *NoteService) NewNote(title string, folderID *string) (*model.Note, error) {
 	note := &model.Note{
 		Title:    title,
 		FolderID: folderID,
@@ -48,7 +48,7 @@ func (s *NoteService) ListNotesByFolderId(folderId *string) ([]model.Note, error
 	return notes, err
 }
 
-func (s *NoteService) UpdateNoteMetaData(id string, title string, folderId string) (*model.Note, error) {
+func (s *NoteService) UpdateNoteMetaData(id string, title string, folderId *string) (*model.Note, error) {
 	var note model.Note
 	if err := s.DB.Transaction(func(tx *gorm.DB) error {
 		err := tx.First(&note, "id = ?", id).Error

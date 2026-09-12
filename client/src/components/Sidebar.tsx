@@ -165,13 +165,13 @@ export const Sidebar: React.FC = () => {
     const isInitialMount = useRef(true);
 
     const refreshRoot = async () => {
-        const refreshed = await FolderService.getFolder('root');
+        const refreshed = await FolderService.getTree();
         setRoot(refreshed);
     };
 
     useEffect(() => {
         (async () => {
-            const rootFolder = await FolderService.getFolder("root");
+            const rootFolder = await FolderService.getTree();
             setRoot(rootFolder);
             if (expanded.size === 0) {
                 setExpanded(new Set([rootFolder.id]));
@@ -350,7 +350,7 @@ export const Sidebar: React.FC = () => {
     const handleMoveItem = async (item: string, targetFolderId: string, itemType: 'folder' | 'note') => {
         setMoveError(null);
 
-        if (itemType === 'folder' && targetFolderId !== 'root') {
+        if (itemType === 'folder' && targetFolderId !== '') {
             const isDescendant = (sourceId: string, targetId: string, folder: Folder): boolean => {
                 if (folder.id === sourceId) {
                     const checkDescendant = (f: Folder): boolean => {

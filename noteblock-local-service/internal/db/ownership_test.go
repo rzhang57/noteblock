@@ -24,10 +24,10 @@ func TestOwnershipBackfillsRowsThatPredateTheColumn(t *testing.T) {
 	if err := Migrate(db, Migrations[:1]); err != nil {
 		t.Fatalf("baseline: %v", err)
 	}
-	if err := db.Exec("INSERT INTO folders (id, name) VALUES ('root', 'Root')").Error; err != nil {
+	if err := db.Exec("INSERT INTO folders (id, name) VALUES ('f1', 'Coursework')").Error; err != nil {
 		t.Fatalf("seed folder: %v", err)
 	}
-	if err := db.Exec("INSERT INTO notes (id, title, folder_id) VALUES ('n1', 'Existing', 'root')").Error; err != nil {
+	if err := db.Exec("INSERT INTO notes (id, title, folder_id) VALUES ('n1', 'Existing', 'f1')").Error; err != nil {
 		t.Fatalf("seed note: %v", err)
 	}
 	if err := db.Exec("INSERT INTO blocks (id, note_id, type, content) VALUES ('b1', 'n1', 'text', '{}')").Error; err != nil {
@@ -79,7 +79,7 @@ func TestNewRecordsGetTheLocalUserWithoutAnyCallerSayingSo(t *testing.T) {
 	if err := db.Create(&folder).Error; err != nil {
 		t.Fatalf("create folder: %v", err)
 	}
-	note := model.Note{Title: "Fresh", FolderID: folder.ID}
+	note := model.Note{Title: "Fresh", FolderID: &folder.ID}
 	if err := db.Create(&note).Error; err != nil {
 		t.Fatalf("create note: %v", err)
 	}

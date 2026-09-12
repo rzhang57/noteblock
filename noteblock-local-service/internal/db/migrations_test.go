@@ -140,10 +140,10 @@ func TestMigrateAdoptsALegacyDatabaseWithoutLosingRows(t *testing.T) {
 	if err := baseline(db); err != nil {
 		t.Fatalf("legacy schema: %v", err)
 	}
-	if err := db.Exec("INSERT INTO folders (id, name) VALUES ('root', 'Root')").Error; err != nil {
+	if err := db.Exec("INSERT INTO folders (id, name) VALUES ('f1', 'Coursework')").Error; err != nil {
 		t.Fatalf("seed folder: %v", err)
 	}
-	if err := db.Exec("INSERT INTO notes (id, title, folder_id) VALUES ('n1', 'Existing', 'root')").Error; err != nil {
+	if err := db.Exec("INSERT INTO notes (id, title, folder_id) VALUES ('n1', 'Existing', 'f1')").Error; err != nil {
 		t.Fatalf("seed note: %v", err)
 	}
 
@@ -174,10 +174,11 @@ func TestBaselineCreatesSchemaOnAFreshDatabase(t *testing.T) {
 	}
 
 	// The models must round-trip against the hand-written baseline DDL.
-	if err := db.Create(&model.Folder{ID: "root", Name: "Root"}).Error; err != nil {
+	folderID := "f1"
+	if err := db.Create(&model.Folder{ID: folderID, Name: "Coursework"}).Error; err != nil {
 		t.Fatalf("create folder: %v", err)
 	}
-	note := model.Note{Title: "Fresh", FolderID: "root"}
+	note := model.Note{Title: "Fresh", FolderID: &folderID}
 	if err := db.Create(&note).Error; err != nil {
 		t.Fatalf("create note: %v", err)
 	}

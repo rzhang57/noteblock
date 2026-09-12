@@ -169,7 +169,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
 
     const handleMoveToRoot = () => {
         const itemType = isFolder(item) ? 'folder' : 'note';
-        onMoveItem(item.id, 'root', itemType);
+        onMoveItem(item.id, '', itemType);
     };
 
     if (isFolder(item)) {
