@@ -98,7 +98,7 @@ Be pragmatic. Match the surrounding code rather than importing conventions from 
 - Run `make test` before PRs; run `make itest` when changing DB or persistence behavior.
 - Local desktop flows should pass `go test ./...` in `noteblock-local-service` before PRs.
 - Frontend service and preload bridge tests run with `npm test`; add targeted mocks for transport-layer changes.
-- `npm run lint` has pre-existing `no-explicit-any` errors, so it runs non-blocking in CI. Do not add new ones; clearing them is a welcome standalone change and turns lint back into a real gate.
+- `npm run lint` has pre-existing `no-explicit-any` errors, so it is not wired into CI yet. Run it locally and do not add new ones; clearing them is a welcome standalone change that lets lint become a blocking gate.
 
 ### Verifying UI changes end-to-end (required)
 Unit tests passing is **not** sufficient evidence for a UI change. After `npm test` and `npm run lint`
