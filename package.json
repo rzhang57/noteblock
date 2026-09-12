@@ -6,12 +6,12 @@
   "main": "electron/main.js",
   "scripts": {
     "clean:build": "node scripts/clean-build-artifacts.cjs",
-    "predev": "node scripts/build-local-service.cjs",
-    "build:local-service": "node scripts/build-local-service.cjs",
+    "predev": "node scripts/build-go-services.cjs",
+    "build:services": "node scripts/build-go-services.cjs",
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:electron\"",
     "dev:client": "cd client && npm run dev",
     "dev:electron": "wait-on tcp:5173 && electron .",
-    "build": "npm run clean:build && npm run build:local-service && npm --prefix client run build && electron-builder"
+    "build": "npm run clean:build && npm run build:services && npm --prefix client run build && electron-builder"
   },
   "devDependencies": {
     "electron": "^31.0.0",
@@ -46,6 +46,22 @@
           "to": "noteblock-server"
         }
       ]
-    }
+    },
+    "extraResources": [
+      {
+        "from": "noteblock-local-service/bin",
+        "to": ".",
+        "filter": [
+          "noteblock-server*"
+        ]
+      },
+      {
+        "from": "noteblock-cloud-service/bin",
+        "to": ".",
+        "filter": [
+          "cloud-api*"
+        ]
+      }
+    ]
   }
 }

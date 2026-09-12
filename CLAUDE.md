@@ -15,7 +15,7 @@ so they may arrive out of order.
 ## Essential Commands
 - `npm run dev` (root): rebuilds the local Go binary, then runs Vite and Electron together.
 - `npm run build` (root): builds the client and packages via `electron-builder`.
-- `npm run build:local-service` (root): rebuilds the sidecar binary alone.
+- `npm run build:services` (root): rebuilds both Go binaries alone.
 - `cd client && npm test` / `npm run lint` / `npm run build` (the last type-checks via `tsc -b`).
 - `cd noteblock-local-service && go test ./...` — includes the IPC round-trip smoke tests.
 - `cd noteblock-local-service && go build -o bin/noteblock-server.exe ./cmd/noteblock` (Windows).
@@ -93,9 +93,10 @@ exception). Underneath all three sit `ipc-change`, `block-type-change`, `verify-
 `prepare-pr`.
 
 ## Repo-Specific Landmines
-- **Binary freshness.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`.
+- **Binary freshness.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`
+  and `noteblock-cloud-service/bin/cloud-api(.exe)`.
   A stale binary means debugging code that is no longer on disk — run `npm run dev` or
-  `npm run build:local-service` first.
+  `npm run build:services` first.
 - **`gofmt -l` reports every Go file on Windows.** A CRLF artifact, not real drift; git normalizes on
   commit. Do not "fix" it — the whole-file diffs bury the real change. Check with `gofmt -d <file>`
   and see whether the diff is anything other than `^M`.
