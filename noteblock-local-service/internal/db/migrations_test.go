@@ -337,8 +337,8 @@ func TestMigrateAdoptsALegacyDatabaseWithoutLosingRows(t *testing.T) {
 		t.Fatalf("legacy schema: %v", err)
 	}
 	seeds := []string{
-		"INSERT INTO `folders` (`id`, `name`) VALUES ('root', 'Root')",
-		"INSERT INTO `folders` (`id`, `name`, `parent_id`) VALUES ('child', 'Child', 'root')",
+		"INSERT INTO `folders` (`id`, `name`) VALUES ('f1', 'Coursework')",
+		"INSERT INTO `folders` (`id`, `name`, `parent_id`) VALUES ('child', 'Child', 'f1')",
 		"INSERT INTO `notes` (`id`, `title`, `folder_id`) VALUES ('n1', 'Existing', 'child')",
 		"INSERT INTO `blocks` (`id`, `note_id`, `type`, `index`, `content`) VALUES ('b1', 'n1', 'text', 0, '{\"text\":\"keep me\"}')",
 	}
@@ -355,8 +355,8 @@ func TestMigrateAdoptsALegacyDatabaseWithoutLosingRows(t *testing.T) {
 	var folder model.Folder
 	if err := db.First(&folder, "id = ?", "child").Error; err != nil {
 		t.Errorf("child folder lost: %v", err)
-	} else if folder.ParentID == nil || *folder.ParentID != "root" {
-		t.Errorf("child folder parent = %v, want root", folder.ParentID)
+	} else if folder.ParentID == nil || *folder.ParentID != "f1" {
+		t.Errorf("child folder parent = %v, want f1", folder.ParentID)
 	}
 	var note model.Note
 	if err := db.First(&note, "id = ?", "n1").Error; err != nil {
@@ -399,10 +399,18 @@ func TestBaselineCreatesSchemaOnAFreshDatabase(t *testing.T) {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	if err := db.Create(&model.Folder{ID: "root", Name: "Root"}).Error; err != nil {
+	for _, table := range []string{"folders", "notes", "blocks"} {
+		if !db.Migrator().HasTable(table) {
+			t.Errorf("table %s missing after baseline", table)
+		}
+	}
+
+	// The models must round-trip against the hand-written baseline DDL.
+	folderID := "f1"
+	if err := db.Create(&model.Folder{ID: folderID, Name: "Coursework"}).Error; err != nil {
 		t.Fatalf("create folder: %v", err)
 	}
-	note := model.Note{Title: "Fresh", FolderID: "root"}
+	note := model.Note{Title: "Fresh", FolderID: &folderID}
 	if err := db.Create(&note).Error; err != nil {
 		t.Fatalf("create note: %v", err)
 	}
@@ -419,7 +427,8 @@ func TestBaselineCreatesSchemaOnAFreshDatabase(t *testing.T) {
 		t.Errorf("block round-tripped as %+v, want content %q type text", got, block.Content)
 	}
 
-	if err := db.Create(&model.Note{Title: "Orphan", FolderID: "nonexistent"}).Error; err == nil {
+	missing := "nonexistent"
+	if err := db.Create(&model.Note{Title: "Orphan", FolderID: &missing}).Error; err == nil {
 		t.Error("a note referencing a missing folder was accepted; the foreign key is not enforced")
 	}
 }

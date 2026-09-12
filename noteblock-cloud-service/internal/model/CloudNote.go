@@ -8,10 +8,10 @@ import "time"
 // Ids are opaque strings, not uuids: top-level notes carry the literal folder id "root",
 // which Postgres rejects outright as a uuid.
 type CloudNote struct {
-	ID              string `gorm:"type:text;primaryKey"`
-	UserID          string `gorm:"type:text;not null;index"`
-	FolderID        string `gorm:"type:text;not null;index"`
-	Data            JSONB  `gorm:"type:jsonb;not null"`
+	ID              string  `gorm:"type:text;primaryKey"`
+	UserID          string  `gorm:"type:text;not null;index"`
+	FolderID        *string `gorm:"type:text;index"`
+	Data            JSONB   `gorm:"type:jsonb;not null"`
 	ClientUpdatedAt time.Time
 	CreatedAt       time.Time
 	ServerUpdatedAt time.Time `gorm:"column:updated_at;index"`

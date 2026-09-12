@@ -78,7 +78,7 @@ func seedNote(t *testing.T, srv *Server, title string) string {
 	res := srv.handle(Request{
 		ID:     "seed-note-" + title,
 		Method: "note.create",
-		Params: mustRaw(t, map[string]any{"title": title, "folder_id": "root"}),
+		Params: mustRaw(t, map[string]any{"title": title}),
 	})
 	if res.Error != nil {
 		t.Fatalf("note.create failed: %+v", res.Error)

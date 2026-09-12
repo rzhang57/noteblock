@@ -3,13 +3,13 @@ import type {Block, BlockType, Note} from "@/types/Note.ts";
 
 export interface NoteCreateRequest {
     title: string;
-    folder_id: string;
+    folder_id: string | null;
 }
 
 export interface NoteUpdateRequest {
     id: string;
     title?: string;
-    folder_id?: string;
+    folder_id?: string | null;
     blocks?: Block[];
 }
 

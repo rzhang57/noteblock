@@ -4,13 +4,13 @@ import type {Folder} from "@/services/FolderService";
 interface StoredFolder {
     id: string;
     name: string;
-    parent_id: string;
+    parent_id: string | null;
 }
 
 interface StoredNote {
     id: string;
     title: string;
-    folder_id: string;
+    folder_id: string | null;
     blocks: Block[];
 }
 
@@ -35,13 +35,13 @@ function textBlock(index: number, text: string): Block {
     };
 }
 
-function seedFolder(name: string, parentId: string): string {
+function seedFolder(name: string, parentId: string | null): string {
     const id = nextId("folder");
     folders.set(id, {id, name, parent_id: parentId});
     return id;
 }
 
-function seedNote(title: string, folderId: string, blocks: Block[]): string {
+function seedNote(title: string, folderId: string | null, blocks: Block[]): string {
     const id = nextId("note");
     notes.set(id, {id, title, folder_id: folderId, blocks});
     return id;
@@ -126,11 +126,11 @@ The dynamic array doubling argument is the canonical example.`;
 function seed() {
     folders.set("root", {id: "root", name: "root", parent_id: ""});
 
-    const coursework = seedFolder("Coursework", "root");
+    const coursework = seedFolder("Coursework", null);
     const cs341 = seedFolder("CS 341", coursework);
     seedFolder("STAT 231", coursework);
-    const journal = seedFolder("Journal", "root");
-    seedFolder("Archive", "root");
+    const journal = seedFolder("Journal", null);
+    seedFolder("Archive", null);
 
     seedNote("Dijkstra and friends", cs341, [
         textBlock(0, SHORTEST_PATHS),
@@ -176,7 +176,7 @@ function seed() {
         },
     ]);
 
-    seedNote("Scratch", "root", [textBlock(0, "Anything that does not have a home yet.")]);
+    seedNote("Scratch", null, [textBlock(0, "Anything that does not have a home yet.")]);
 }
 
 seed();
@@ -212,6 +212,17 @@ function buildFolder(id: string): Folder {
     };
 }
 
+// Mirrors folder.tree on the Go side: a synthesized root over everything with no parent.
+function buildTree(): Folder {
+    return {
+        id: "",
+        name: "",
+        parent_id: null,
+        children: [...folders.values()].filter(f => f.parent_id === null).map(f => buildFolder(f.id)),
+        notes: [...notes.values()].filter(n => n.folder_id === null).map(toNote),
+    };
+}
+
 function descendantFolderIds(id: string): string[] {
     const direct = [...folders.values()].filter(f => f.parent_id === id && f.id !== id);
     return direct.flatMap(f => [f.id, ...descendantFolderIds(f.id)]);
@@ -232,8 +243,8 @@ export function installMockBridge() {
         local: {
             folder: {
                 create: (payload: { name: string; parent_id: string | null }) => {
-                    const parentId = payload.parent_id ?? "root";
-                    if (!folders.has(parentId)) fail(`folder not found: ${parentId}`);
+                    const parentId = payload.parent_id || null;
+                    if (parentId !== null && !folders.has(parentId)) fail(`folder not found: ${parentId}`);
                     const siblings = [...folders.values()].filter(f => f.parent_id === parentId);
                     if (siblings.some(f => f.name === payload.name)) {
                         fail(`a folder named "${payload.name}" already exists here`);
@@ -243,12 +254,13 @@ export function installMockBridge() {
                     return delay(buildFolder(id));
                 },
                 get: (id: string) => delay(buildFolder(id)),
+                tree: () => delay(buildTree()),
                 update: (payload: { current_id: string; name?: string; parent_id?: string | null }) => {
                     const stored = folders.get(payload.current_id) ?? fail(`folder not found: ${payload.current_id}`);
                     if (payload.name !== undefined) stored.name = payload.name;
                     if (payload.parent_id !== undefined) {
-                        const target = payload.parent_id ?? "root";
-                        if (target === stored.id || descendantFolderIds(stored.id).includes(target)) {
+                        const target = payload.parent_id || null;
+                        if (target !== null && (target === stored.id || descendantFolderIds(stored.id).includes(target))) {
                             fail("cannot move a folder into itself");
                         }
                         stored.parent_id = target;
@@ -268,8 +280,8 @@ export function installMockBridge() {
             },
             note: {
                 create: (payload: { title: string; folder_id: string | null }) => {
-                    const folderId = payload.folder_id ?? "root";
-                    if (!folders.has(folderId)) fail(`folder not found: ${folderId}`);
+                    const folderId = payload.folder_id || null;
+                    if (folderId !== null && !folders.has(folderId)) fail(`folder not found: ${folderId}`);
                     const id = nextId("note");
                     notes.set(id, {id, title: payload.title, folder_id: folderId, blocks: []});
                     return delay(toNote(notes.get(id)!));

@@ -22,7 +22,7 @@ func TestRequestMarshalsToTheAgreedWireFormat(t *testing.T) {
 		Notes: []NoteDocument{{
 			ID:        "n1",
 			Title:     "Lecture",
-			FolderID:  "f1",
+			FolderID:  ptr("f1"),
 			UserID:    model.LocalUserID,
 			UpdatedAt: stamp,
 			Blocks:    []BlockDocument{{ID: "b1", Type: "text", Index: 0, Content: content}},

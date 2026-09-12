@@ -12,6 +12,11 @@ import (
 type Migration struct {
 	ID string
 	Up func(tx *gorm.DB) error
+
+	// SQLite counts DROP TABLE as deleting every child row that references it, and bringing
+	// the table back does not undo that, so a rebuild cannot satisfy a deferred check. These
+	// run with enforcement off and are verified with foreign_key_check before they commit.
+	RebuildsTables bool
 }
 
 const createLedgerSQL = `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -45,16 +50,36 @@ func Migrate(db *gorm.DB, migrations []Migration) error {
 			continue
 		}
 
+		// PRAGMA foreign_keys is a no-op inside a transaction, so it has to be set out here.
+		if m.RebuildsTables {
+			if err := db.Exec("PRAGMA foreign_keys = OFF").Error; err != nil {
+				return fmt.Errorf("migration %s: disable foreign keys: %w", m.ID, err)
+			}
+		}
+
 		// SQLite has transactional DDL, so a failed migration leaves no half-applied schema.
-		if err := db.Transaction(func(tx *gorm.DB) error {
+		err := db.Transaction(func(tx *gorm.DB) error {
 			if err := m.Up(tx); err != nil {
 				return err
+			}
+			if m.RebuildsTables {
+				if err := assertReferencesIntact(tx); err != nil {
+					return err
+				}
 			}
 			return tx.Exec(
 				"INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)",
 				m.ID, time.Now().UTC(),
 			).Error
-		}); err != nil {
+		})
+
+		if m.RebuildsTables {
+			if onErr := db.Exec("PRAGMA foreign_keys = ON").Error; onErr != nil {
+				return fmt.Errorf("migration %s: re-enable foreign keys: %w", m.ID, onErr)
+			}
+		}
+
+		if err != nil {
 			return fmt.Errorf("migration %s: %w", m.ID, err)
 		}
 
@@ -117,6 +142,26 @@ func validateAgainstLedger(migrations []Migration, appliedIDs []string) error {
 		if i := sort.SearchStrings(applied, m.ID); i == len(applied) || applied[i] != m.ID {
 			return fmt.Errorf("migration %s is pending but sorts below applied migration %s", m.ID, highestApplied)
 		}
+	}
+
+	return nil
+}
+
+// A table rebuild silently drops rows whose parent moved; the check has to run inside the same
+// transaction, while it can still be rolled back.
+func assertReferencesIntact(tx *gorm.DB) error {
+	var violations []struct {
+		Table  string `gorm:"column:table"`
+		RowID  int64  `gorm:"column:rowid"`
+		Parent string `gorm:"column:parent"`
+	}
+	if err := tx.Raw("PRAGMA foreign_key_check").Scan(&violations).Error; err != nil {
+		return fmt.Errorf("foreign key check: %w", err)
+	}
+
+	if len(violations) > 0 {
+		return fmt.Errorf("%d dangling references after rebuild, first in %s -> %s",
+			len(violations), violations[0].Table, violations[0].Parent)
 	}
 
 	return nil

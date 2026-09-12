@@ -31,10 +31,6 @@ func newFixture(t *testing.T) *fixture {
 			sqlDB.Close()
 		}
 	})
-	if err := conn.Create(&model.Folder{ID: RootFolderID, Name: "Root"}).Error; err != nil {
-		t.Fatalf("seed root: %v", err)
-	}
-
 	return &fixture{
 		conn:   conn,
 		store:  &Store{DB: conn},
@@ -85,7 +81,7 @@ func TestCursorTableHoldsExactlyOneRow(t *testing.T) {
 func TestChangedSinceReturnsWholeNoteDocuments(t *testing.T) {
 	f := newFixture(t)
 
-	note, err := f.notes.NewNote("CS341", RootFolderID)
+	note, err := f.notes.NewNote("CS341", nil)
 	if err != nil {
 		t.Fatalf("create note: %v", err)
 	}
@@ -126,7 +122,7 @@ func TestChangedSinceReturnsWholeNoteDocuments(t *testing.T) {
 func TestChangedSinceSkipsWorkOlderThanTheCursor(t *testing.T) {
 	f := newFixture(t)
 
-	if _, err := f.notes.NewNote("Old", RootFolderID); err != nil {
+	if _, err := f.notes.NewNote("Old", nil); err != nil {
 		t.Fatalf("create old note: %v", err)
 	}
 
@@ -134,7 +130,7 @@ func TestChangedSinceSkipsWorkOlderThanTheCursor(t *testing.T) {
 	cursor := time.Now()
 	time.Sleep(20 * time.Millisecond)
 
-	if _, err := f.notes.NewNote("New", RootFolderID); err != nil {
+	if _, err := f.notes.NewNote("New", nil); err != nil {
 		t.Fatalf("create new note: %v", err)
 	}
 
@@ -153,7 +149,7 @@ func TestChangedSinceSkipsWorkOlderThanTheCursor(t *testing.T) {
 func TestChangedSinceCarriesTombstones(t *testing.T) {
 	f := newFixture(t)
 
-	note, err := f.notes.NewNote("Doomed", RootFolderID)
+	note, err := f.notes.NewNote("Doomed", nil)
 	if err != nil {
 		t.Fatalf("create note: %v", err)
 	}
@@ -178,25 +174,29 @@ func TestChangedSinceCarriesTombstones(t *testing.T) {
 	}
 }
 
-func TestChangedSinceNeverReportsTheRootFolder(t *testing.T) {
+func TestTopLevelNotesCarryANullFolder(t *testing.T) {
 	f := newFixture(t)
+
+	if _, err := f.notes.NewNote("Loose", nil); err != nil {
+		t.Fatalf("create note: %v", err)
+	}
 
 	changes, err := f.store.ChangedSince(nil)
 	if err != nil {
 		t.Fatalf("changed since: %v", err)
 	}
-
-	for _, folder := range changes.Folders {
-		if folder.ID == RootFolderID {
-			t.Error("root folder was included; each device seeds its own and they would fight under LWW")
-		}
+	if len(changes.Notes) != 1 {
+		t.Fatalf("note count = %d, want 1", len(changes.Notes))
+	}
+	if changes.Notes[0].FolderID != nil {
+		t.Errorf("folder_id = %v, want nil for a top-level note", *changes.Notes[0].FolderID)
 	}
 }
 
 func TestChangedSinceIsEmptyWhenNothingHasHappened(t *testing.T) {
 	f := newFixture(t)
 
-	if _, err := f.notes.NewNote("Settled", RootFolderID); err != nil {
+	if _, err := f.notes.NewNote("Settled", nil); err != nil {
 		t.Fatalf("create note: %v", err)
 	}
 

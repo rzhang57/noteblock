@@ -65,3 +65,20 @@ func generateUniqueNoteName(notes []model.Note) string {
 	}
 	return fmt.Sprintf("%s %d", base, maxIndex+1)
 }
+
+// An explicit empty id means top level; omitting the field entirely means leave it alone.
+func topLevelIfEmpty(id string) *string {
+	if id == "" {
+		return nil
+	}
+
+	return &id
+}
+
+func topLevelIfNilOrEmpty(id *string) *string {
+	if id == nil {
+		return nil
+	}
+
+	return topLevelIfEmpty(*id)
+}

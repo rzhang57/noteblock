@@ -9,13 +9,12 @@ func (s *Server) folderCreate(req Request) Response {
 		return rpcErr(req.ID, "BAD_REQUEST", "Invalid params")
 	}
 
-	if body.ParentID == nil || *body.ParentID == "" {
-		root := "root"
-		body.ParentID = &root
-	}
+	body.ParentID = topLevelIfNilOrEmpty(body.ParentID)
 
-	if _, err := s.folderSvc.GetFolderByID(*body.ParentID); err != nil {
-		return dbErrToRPC(req.ID, err, "Failed to query parent folder")
+	if body.ParentID != nil {
+		if _, err := s.folderSvc.GetFolderByID(*body.ParentID); err != nil {
+			return dbErrToRPC(req.ID, err, "Failed to query parent folder")
+		}
 	}
 
 	existingFolders, err := s.folderSvc.ListChildrenByParentId(body.ParentID)
@@ -95,16 +94,14 @@ func (s *Server) folderUpdate(req Request) Response {
 	}
 
 	targetParentID := currentFolder.ParentID
-	if body.ParentID != nil && *body.ParentID != "" {
-		targetParentID = body.ParentID
-	}
-	if targetParentID == nil || *targetParentID == "" {
-		root := "root"
-		targetParentID = &root
+	if body.ParentID != nil {
+		targetParentID = topLevelIfEmpty(*body.ParentID)
 	}
 
-	if _, err := s.folderSvc.GetFolderByID(*targetParentID); err != nil {
-		return dbErrToRPC(req.ID, err, "Parent folder does not exist")
+	if targetParentID != nil {
+		if _, err := s.folderSvc.GetFolderByID(*targetParentID); err != nil {
+			return dbErrToRPC(req.ID, err, "Parent folder does not exist")
+		}
 	}
 
 	siblings, err := s.folderSvc.ListChildrenByParentId(targetParentID)
@@ -142,10 +139,6 @@ func (s *Server) folderDelete(req Request) Response {
 	if body.ID == "" {
 		return rpcErr(req.ID, "BAD_REQUEST", "Missing folder ID")
 	}
-	if body.ID == "root" {
-		return rpcErr(req.ID, "BAD_REQUEST", "Cannot delete root folder")
-	}
-
 	folder, err := s.folderSvc.GetFolderByID(body.ID)
 	if err != nil {
 		return dbErrToRPC(req.ID, err, "Folder was not found or does not exist")
@@ -161,4 +154,13 @@ func (s *Server) folderDelete(req Request) Response {
 			"message": "Folder deleted successfully",
 		},
 	}
+}
+
+func (s *Server) folderTree(req Request) Response {
+	tree, err := s.folderSvc.GetTree()
+	if err != nil {
+		return rpcErr(req.ID, "INTERNAL", "Failed to build folder tree")
+	}
+
+	return Response{ID: req.ID, Result: tree}
 }
