@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -45,28 +46,54 @@ func appliedIDs(t *testing.T, db *gorm.DB) []string {
 	return ids
 }
 
-func schemaSnapshot(t *testing.T, db *gorm.DB) string {
+func schemaFingerprint(t *testing.T, db *gorm.DB) string {
 	t.Helper()
 
-	type object struct {
-		Type string
-		Name string
-		SQL  string
-	}
-	var objects []object
-	if err := db.Raw(
-		"SELECT type, name, COALESCE(sql, '') AS sql FROM sqlite_master " +
-			"WHERE name NOT LIKE 'sqlite_%' AND name <> 'schema_migrations' ORDER BY name",
-	).Scan(&objects).Error; err != nil {
-		t.Fatalf("read sqlite_master: %v", err)
+	var tables []string
+	if err := db.Table("sqlite_master").
+		Where("type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'schema_migrations'").
+		Order("name").Pluck("name", &tables).Error; err != nil {
+		t.Fatalf("read tables: %v", err)
 	}
 
-	lines := make([]string, 0, len(objects))
-	for _, o := range objects {
-		lines = append(lines, o.Type+" "+o.Name+" "+o.SQL)
+	var lines []string
+	for _, table := range tables {
+		var columns []struct {
+			Name    string
+			Type    string
+			Notnull int
+			Pk      int
+		}
+		if err := db.Raw("SELECT name, type, `notnull`, pk FROM pragma_table_info(?) ORDER BY name", table).
+			Scan(&columns).Error; err != nil {
+			t.Fatalf("read columns of %s: %v", table, err)
+		}
+		for _, c := range columns {
+			lines = append(lines, fmt.Sprintf("%s.%s %s notnull=%d pk=%d", table, c.Name, c.Type, c.Notnull, c.Pk))
+		}
+
+		var keys []struct {
+			Table string
+			From  string
+			To    string
+		}
+		if err := db.Raw("SELECT `table`, `from`, `to` FROM pragma_foreign_key_list(?) ORDER BY `from`", table).
+			Scan(&keys).Error; err != nil {
+			t.Fatalf("read foreign keys of %s: %v", table, err)
+		}
+		for _, k := range keys {
+			lines = append(lines, fmt.Sprintf("%s.%s -> %s.%s", table, k.From, k.Table, k.To))
+		}
 	}
 
-	return strings.Join(lines, "\n")
+	var indexes []string
+	if err := db.Table("sqlite_master").
+		Where("type = 'index' AND sql IS NOT NULL").
+		Order("name").Pluck("sql", &indexes).Error; err != nil {
+		t.Fatalf("read indexes: %v", err)
+	}
+
+	return strings.Join(append(lines, indexes...), "\n")
 }
 
 func noop(*gorm.DB) error { return nil }
@@ -284,9 +311,10 @@ func TestMigrateRejectsAPendingMigrationBelowTheLedger(t *testing.T) {
 	}
 }
 
-func TestBaselineMatchesAutoMigrateSchema(t *testing.T) {
+// Column order is not compared: ALTER TABLE appends, while AutoMigrate writes in field order.
+func TestMigratedSchemaMatchesTheModels(t *testing.T) {
 	automigrated := newTestDB(t)
-	if err := automigrated.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{}); err != nil {
+	if err := automigrated.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{}, &model.User{}); err != nil {
 		t.Fatalf("automigrate: %v", err)
 	}
 
@@ -295,55 +323,53 @@ func TestBaselineMatchesAutoMigrateSchema(t *testing.T) {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	want := schemaSnapshot(t, automigrated)
-	if got := schemaSnapshot(t, migrated); got != want {
-		t.Errorf("baseline has drifted from the models\n got: %s\nwant: %s", got, want)
+	want := schemaFingerprint(t, automigrated)
+	if got := schemaFingerprint(t, migrated); got != want {
+		t.Errorf("the migrations have drifted from the models\n got: %s\nwant: %s", got, want)
 	}
 }
 
-func TestBaselineAdoptsAnExistingAutoMigratedDatabase(t *testing.T) {
+func TestMigrateAdoptsALegacyDatabaseWithoutLosingRows(t *testing.T) {
 	db := newTestDB(t)
 
-	if err := db.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{}); err != nil {
-		t.Fatalf("automigrate: %v", err)
+	// A database as it existed before the ledger: baseline schema, no schema_migrations.
+	if err := baseline(db); err != nil {
+		t.Fatalf("legacy schema: %v", err)
 	}
-	if err := db.Create(&model.Folder{ID: "root", Name: "Root"}).Error; err != nil {
-		t.Fatalf("seed root folder: %v", err)
+	seeds := []string{
+		"INSERT INTO `folders` (`id`, `name`) VALUES ('root', 'Root')",
+		"INSERT INTO `folders` (`id`, `name`, `parent_id`) VALUES ('child', 'Child', 'root')",
+		"INSERT INTO `notes` (`id`, `title`, `folder_id`) VALUES ('n1', 'Existing', 'child')",
+		"INSERT INTO `blocks` (`id`, `note_id`, `type`, `index`, `content`) VALUES ('b1', 'n1', 'text', 0, '{\"text\":\"keep me\"}')",
 	}
-	child := model.Folder{Name: "Child", ParentID: ptr("root")}
-	if err := db.Create(&child).Error; err != nil {
-		t.Fatalf("seed child folder: %v", err)
+	for _, seed := range seeds {
+		if err := db.Exec(seed).Error; err != nil {
+			t.Fatalf("seed legacy rows: %v", err)
+		}
 	}
-	note := model.Note{Title: "Existing", FolderID: child.ID}
-	if err := db.Create(&note).Error; err != nil {
-		t.Fatalf("seed note: %v", err)
-	}
-	block := model.Block{NoteID: note.ID, Type: "text", Content: `{"text":"keep me"}`}
-	if err := db.Create(&block).Error; err != nil {
-		t.Fatalf("seed block: %v", err)
-	}
-
-	before := schemaSnapshot(t, db)
 
 	if err := Migrate(db, Migrations); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	if after := schemaSnapshot(t, db); after != before {
-		t.Errorf("baseline rebuilt an existing schema\nbefore: %s\n after: %s", before, after)
-	}
-
-	if err := db.First(&model.Folder{}, "id = ?", child.ID).Error; err != nil {
+	var folder model.Folder
+	if err := db.First(&folder, "id = ?", "child").Error; err != nil {
 		t.Errorf("child folder lost: %v", err)
+	} else if folder.ParentID == nil || *folder.ParentID != "root" {
+		t.Errorf("child folder parent = %v, want root", folder.ParentID)
 	}
-	if err := db.First(&model.Note{}, "id = ?", note.ID).Error; err != nil {
-		t.Errorf("note lost: %v", err)
+	var note model.Note
+	if err := db.First(&note, "id = ?", "n1").Error; err != nil {
+		t.Fatalf("existing note did not survive migration: %v", err)
 	}
-	var gotBlock model.Block
-	if err := db.First(&gotBlock, "id = ?", block.ID).Error; err != nil {
+	if note.Title != "Existing" {
+		t.Errorf("note title = %q, want %q", note.Title, "Existing")
+	}
+	var block model.Block
+	if err := db.First(&block, "id = ?", "b1").Error; err != nil {
 		t.Errorf("block lost: %v", err)
-	} else if gotBlock.Content != block.Content {
-		t.Errorf("block content = %q, want %q", gotBlock.Content, block.Content)
+	} else if block.Content != `{"text":"keep me"}` {
+		t.Errorf("block content = %q, want the seeded json", block.Content)
 	}
 }
 

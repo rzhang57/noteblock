@@ -4,11 +4,13 @@ import (
 	"fmt"
 
 	"gorm.io/gorm"
+	"server/internal/model"
 )
 
 // Migrations apply in slice order; IDs must sort ascending. Never edit one that has shipped.
 var Migrations = []Migration{
 	{ID: "0001_baseline", Up: baseline},
+	{ID: "0002_user_ownership", Up: userOwnership},
 }
 
 // Mirrors what AutoMigrate had already created, so an existing database adopts the ledger untouched.
@@ -47,6 +49,44 @@ func assertBaselineColumns(tx *gorm.DB) error {
 			if !tx.Migrator().HasColumn(t.table, column) {
 				return fmt.Errorf("table %s is missing column %s; this database predates the migration ledger", t.table, column)
 			}
+		}
+	}
+
+	return nil
+}
+
+// Ownership lands before auth so the later migration is a no-op rather than a schema change
+// against a device holding a term of notes. Nothing reads these columns yet.
+func userOwnership(tx *gorm.DB) error {
+	stmts := []string{
+		"CREATE TABLE IF NOT EXISTS `users` (`id` uuid,`name` text,`created_at` datetime,`updated_at` datetime,PRIMARY KEY (`id`))",
+		"ALTER TABLE `folders` ADD COLUMN `user_id` uuid",
+		"ALTER TABLE `notes` ADD COLUMN `user_id` uuid",
+		"ALTER TABLE `blocks` ADD COLUMN `user_id` uuid",
+		"CREATE INDEX IF NOT EXISTS `idx_folders_user_id` ON `folders`(`user_id`)",
+		"CREATE INDEX IF NOT EXISTS `idx_notes_user_id` ON `notes`(`user_id`)",
+		"CREATE INDEX IF NOT EXISTS `idx_blocks_user_id` ON `blocks`(`user_id`)",
+	}
+
+	for _, stmt := range stmts {
+		if err := tx.Exec(stmt).Error; err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Exec(
+		"INSERT OR IGNORE INTO `users` (`id`, `name`, `created_at`, `updated_at`) VALUES (?, ?, datetime('now'), datetime('now'))",
+		model.LocalUserID, "Local",
+	).Error; err != nil {
+		return err
+	}
+
+	for _, table := range []string{"folders", "notes", "blocks"} {
+		if err := tx.Exec(
+			"UPDATE `"+table+"` SET `user_id` = ? WHERE `user_id` IS NULL",
+			model.LocalUserID,
+		).Error; err != nil {
+			return err
 		}
 	}
 
