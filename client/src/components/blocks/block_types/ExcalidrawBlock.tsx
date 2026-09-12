@@ -75,7 +75,6 @@ export const ExcalidrawBlock: React.FC<ExcalidrawBlockProps> = ({block}) => {
     }, [block.content]);
 
     useEffect(() => {
-        // Cleanup function to save on unmount
         return () => {
             if (saveTimeout.current) {
                 clearTimeout(saveTimeout.current);
