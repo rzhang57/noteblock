@@ -23,6 +23,10 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	r.POST("/sync", s.syncHandler)
 
+	r.PUT("/images/:key", s.imagePut)
+	r.GET("/images/:key", s.imageGet)
+	r.HEAD("/images/:key", s.imageHead)
+
 	return r
 }
 
