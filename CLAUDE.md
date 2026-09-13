@@ -1,142 +1,114 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-This repository contains a desktop app plus two Go services:
+## Repository Map
+A desktop app plus two Go services:
 - `client/`: React + TypeScript + Vite frontend (`src/components`, `src/context`, `src/services`, `src/types`).
-- `electron/`: Electron main/preload IPC bridge (`main.js`, `preload.js`) used by the desktop shell.
-- `noteblock-local-service/`: local-first Go sidecar binary (`cmd/noteblock`, `internal/ipc`, `internal/service`, `internal/mapper`, `internal/db`).
+- `electron/`: Electron main/preload IPC bridge (`main.js`, `preload.js`).
+- `noteblock-local-service/`: local-first Go sidecar (`cmd/noteblock`, `internal/ipc`, `internal/service`, `internal/mapper`, `internal/db`).
 - `noteblock-cloud-service/`: cloud sync Go API (`cmd/api`, `internal/server`, `internal/database`, `internal/model`).
-- `assets/icons/`: app icons for packaging. `dist/` is generated output; do not hand-edit it.
+- `assets/icons/`: packaging assets. `dist/` is generated output; never hand-edit it.
 
 A write travels: component → `src/services/*Service` → `LocalIpcClient` → preload `contextBridge` →
 Electron main → sidecar stdin → `ipc` dispatcher → service → GORM. Responses are correlated by `id`,
 so they may arrive out of order.
 
-## Build, Test, and Development Commands
-- `npm run dev` (repo root): rebuilds local Go binary, then runs Vite client and Electron together.
-- `npm run build` (repo root): builds client and packages Electron via `electron-builder`.
-- `cd client && npm run lint`: runs ESLint on TypeScript/React code.
-- `cd client && npm run build`: type-checks (`tsc -b`) and builds frontend assets.
-- `cd client && npm test`: runs frontend service/preload tests (Vitest).
-- `cd noteblock-cloud-service && make test`: runs Go unit tests.
-- `cd noteblock-cloud-service && make itest`: runs DB integration tests (requires Docker/Testcontainers).
-- `cd noteblock-local-service && go test ./... `: runs local service tests, including IPC integration smoke tests.
-- `cd noteblock-local-service && go build -o bin/noteblock-server.exe ./cmd/noteblock` (Windows): builds local service binary used by Electron packaging.
+## Essential Commands
+- `npm run dev` (root): rebuilds the local Go binary, then runs Vite and Electron together.
+- `npm run build` (root): builds the client and packages via `electron-builder`.
+- `npm run build:local-service` (root): rebuilds the sidecar binary alone.
+- `cd client && npm test` / `npm run lint` / `npm run build` (the last type-checks via `tsc -b`).
+- `cd noteblock-local-service && go test ./...` — includes the IPC round-trip smoke tests.
+- `cd noteblock-local-service && go build -o bin/noteblock-server.exe ./cmd/noteblock` (Windows).
+- `cd noteblock-cloud-service && make test`; `make itest` for DB integration (Docker/Testcontainers).
 
-CI runs these on every PR, scoped by path — a change under `client/` runs the client workflow only,
-and likewise for each Go service. A change is not done until its workflow is green.
+CI is path-scoped: a change under `client/` runs the client workflow only, likewise per Go service.
+A change is not done until its workflow is green. `npm run lint` has pre-existing `no-explicit-any`
+errors so it is not a CI gate yet — run it locally and do not add new ones.
 
 ## Architecture Invariants
-These are load-bearing. Breaking one produces confusing runtime failures rather than compile errors.
+Load-bearing. Breaking one produces confusing runtime failures rather than compile errors.
 
-- **Local-first is the point.** All folder/note/block/image operations go through the local Go sidecar over IPC and must work fully offline. Cloud sync is additive and eventually consistent — never put a network call on a local read/write path.
-- **IPC protocol is stdout-only JSON lines.** Any non-JSON on the Go process's stdout breaks the parser in `electron/main.js`. Protocol output goes to stdout; all logging goes to stderr (Go's `log` package defaults to stderr — keep it that way).
-- **Transport split is intentional.** Local flows use IPC; `RestClient` is reserved for cloud/auth/sync HTTP flows. Do not route local operations through HTTP.
-- **Preload is the boundary.** The renderer calls `window.noteblock.local.*` via service wrappers in `client/src/services`. It must never touch Electron or Node APIs directly.
-- **Local image URLs are not HTTP.** They use `noteblock-image:///...` and are resolved by the Electron protocol handler. `getDataPath()` in `electron/main.js` is the single source of truth for the data directory — the Go process's `NOTE_DB_PATH` and the image protocol handler must resolve to the same place, or images written in dev cannot be read back.
+- **Local-first is the point.** All folder/note/block/image operations go through the local Go
+  sidecar over IPC and must work fully offline. Cloud sync is additive and eventually consistent —
+  never put a network call on a local read/write path.
+- **IPC protocol is stdout-only JSON lines.** Any non-JSON on the sidecar's stdout breaks the parser
+  in `electron/main.js`. Protocol goes to stdout, all logging to stderr (Go's `log` default — keep it).
+- **Transport split is intentional.** Local flows use IPC; `RestClient` is reserved for
+  cloud/auth/sync HTTP. Do not route local operations through HTTP, and do not reintroduce an HTTP
+  server into the local service — `internal/api` (Gin) and `internal/routes` were deliberately removed.
+- **Preload is the boundary.** The renderer reaches `window.noteblock.local.*` only through the
+  service wrappers in `client/src/services`; it must never touch Electron or Node APIs directly.
+- **Local image URLs are not HTTP.** They use `noteblock-image:///...`, resolved by the Electron
+  protocol handler. `getDataPath()` in `electron/main.js` is the single source of truth for the data
+  directory — the sidecar's `NOTE_DB_PATH` and the image protocol handler must resolve to the same
+  place, or images written in dev cannot be read back.
+- **Block content is deliberately opaque.** `Block.Type` is a plain `string` in `model/block.go` and
+  `Block.Content` is JSON the Go service never parses, so an ordinary new block type needs no Go, IPC
+  or migration change. Malformed content therefore fails at render rather than at write.
+- **A new IPC method must be registered in six places in lockstep.** Missing one fails at runtime,
+  not at compile time — the most common source of bugs in this repo. See the `ipc-change` skill.
+- **Local IPC is strictly sequential** (`ipc/server.go`, one `scanner.Scan()` loop). A slow handler
+  head-of-line-blocks every request behind it. Assume no handler concurrency until that changes.
+- Handlers return `Response`; use `rpcErr` for failures and `dbErrToRPC` to map GORM errors onto RPC
+  codes rather than inventing new error semantics.
 
-## Adding a New IPC Method
-A method must be registered in **six** places, in lockstep. Missing one fails at runtime, not at compile time — this is the most common source of bugs in this repo:
-
-1. `noteblock-local-service/internal/ipc/{domain}_handlers.go` — the handler itself
-2. `noteblock-local-service/internal/ipc/dispatcher.go` — register in the `buildHandlers` map
-3. `electron/preload.js` — expose it on the `contextBridge`
-4. `client/src/types/electron-api.d.ts` — type it on `window.noteblock`
-5. `client/src/services/LocalIpcClient.ts` — the typed client wrapper
-6. `client/src/services/{Domain}Service.ts` — the service-level API the components call
-
-Handlers return `Response`; use `rpcErr` for failures and `dbErrToRPC` to map GORM errors onto RPC codes rather than inventing new ones.
-
-## Adding a New Block Type
-Unlike adding an IPC method, this is **cheap and frontend-only**. `Block.Type` is a plain `string` in
-`model/block.go` with no enum or validation, and `Block.Content` is an opaque JSON string the Go
-service never parses. So a new block type needs **no Go changes, no IPC changes, and no migration** —
-`block.create` / `block.update` / `block.delete` already carry it.
-
-What a new type actually costs:
-1. Add it to the `BlockType` union and give its content an interface in `client/src/types/Note.ts`.
-2. Write the component under `client/src/components/blocks/block_types/`.
-3. Render it in the `block.type === ...` switch in `ContentPanel.tsx`, and offer it wherever blocks
-   are created (`InsertionPoint.tsx`, or a trigger inside `TextBlock`).
-4. Persist through `NoteService.updateBlock(noteId, blockId, {type, content})` — whatever shape you
-   put in `content` comes back verbatim.
-
-So the real design work is **the content data model, not the plumbing**. Two conventions worth
-keeping:
-- **Store source data, not rendered output.** Image annotations are stroke lists, not a flattened
-  PNG, so the original survives and strokes stay editable.
-- **Store resolution-independent values.** Stroke points are 0..1 fractions of the image box, so they
-  survive any display size rather than baking in pixel coordinates.
-
-Because content is unvalidated, a malformed blob fails at render rather than at write. Components
-should read it defensively (`content?.url`) and degrade rather than throw.
-
-## Coding Style & Naming Conventions
+## Coding Conventions
 Be pragmatic. Match the surrounding code rather than importing conventions from elsewhere.
 
 - **The code is the documentation; comments are the exception.** This codebase is deliberately
   near-comment-free — `electron/preload.js` and `client/src/services/NoteService.ts` have zero, and
-  that is correct. Before writing a comment, first try to make it unnecessary: a clearer name, a
-  smaller function, an extracted constant, or a descriptive test name. Reach for a comment only when
-  the code cannot carry the meaning on its own.
-- **When one is warranted, write exactly one line.** Only for something genuinely non-obvious: a
-  cross-file invariant, a non-local consequence, a workaround for third-party behaviour, or a choice
-  that looks wrong until you know why. Say *why*, never *what* — the code already says what. Never
-  write block comments, function-header docs, section banners, or a comment restating the line below.
+  that is correct. Prefer a clearer name, a smaller function, an extracted constant or a descriptive
+  test name over a comment.
+- **When one is warranted, write exactly one line, and say *why*, never *what*.** Only for a
+  cross-file invariant, a non-local consequence, a third-party workaround, or a choice that looks
+  wrong until you know why. No block comments, header docs, section banners, or restatements.
 - **Maintaining this is part of the job.** When you touch a file, delete comments that have gone
-  stale or that restate the code, and collapse any multi-line block you find down to a single line or
-  nothing. Do not leave commented-out code behind; git has it. A comment that no longer matches the
-  code is worse than no comment, so if you change behaviour the nearby comment is yours to fix.
-- `TODO:` comments are the exception — they are roadmap markers, some referencing ticket IDs (`NB-31`, `NB-32`). Leave them in place unless you are implementing them.
-- TypeScript/React: follow ESLint config in `client/eslint.config.js`; use PascalCase for components (`Sidebar.tsx`), camelCase for variables/functions, and keep service/type files descriptive (`NoteService.ts`, `filesystem.ts`).
-- Go: use standard Go formatting (`gofmt`), package-oriented layout under `internal/`, and `_test.go` suffix for tests.
-- Prefer small, focused modules over large mixed-responsibility files. If a file is doing several jobs, splitting it is welcome.
-- Do not silently discard errors. `_ = someCall()` and bare `db.Create(...)` without checking `.Error` have hidden real bugs here before.
+  stale or restate the code, and collapse multi-line blocks. Leave no commented-out code; git has it.
+- `TODO:` comments are roadmap markers, some citing ticket IDs (`NB-31`, `NB-32`). Leave them in
+  place unless you are implementing them.
+- TypeScript/React: follow `client/eslint.config.js`; PascalCase components (`Sidebar.tsx`),
+  camelCase values, descriptive service/type files (`NoteService.ts`, `filesystem.ts`).
+- Go: `gofmt`, package-oriented layout under `internal/`, `_test.go` suffix for tests.
+- Prefer small, focused modules over large mixed-responsibility files.
+- Never silently discard errors. `_ = someCall()` and a bare `db.Create(...)` without checking
+  `.Error` have each hidden real bugs here.
 
-## Testing Guidelines
-- Cloud service tests use Go `testing` (`*_test.go`), including integration coverage in `internal/database/database_test.go`.
-- Run `make test` before PRs; run `make itest` when changing DB or persistence behavior.
-- Local desktop flows should pass `go test ./...` in `noteblock-local-service` before PRs.
-- Frontend service and preload bridge tests run with `npm test`; add targeted mocks for transport-layer changes.
-- `npm run lint` has pre-existing `no-explicit-any` errors, so it is not wired into CI yet. Run it locally and do not add new ones; clearing them is a welcome standalone change that lets lint become a blocking gate.
+## Validation
+Run the tests and the build for every area a change touches, and let the path-scoped CI go green.
 
-### Verifying UI changes end-to-end (required)
-Unit tests passing is **not** sufficient evidence for a UI change. After `npm test` and `npm run lint`
-are green, verify the change in a real browser with the Playwright MCP tools before reporting it done.
+A UI behaviour or layout change additionally requires runtime verification in a real browser; unit
+tests are necessary but not sufficient.
 
-1. Start the client dev server (`cd client && npm run dev`) and open the URL it prints.
-2. The renderer needs `window.noteblock`, which only Electron's preload provides. In a plain browser
-   `client/src/dev/mockBridge.ts` installs the same bridge shape automatically — dev-only, behind
-   `import.meta.env.DEV`, and verified absent from `dist/`. Add seed data there when a scenario needs it.
-3. Drive the real UI and assert on **measured values**, not screenshots: read back
-   `getComputedStyle` and `getBoundingClientRect` via `browser_evaluate`. Spacing, indent, and
-   alignment claims must come from numbers. State the before/after figures when reporting.
+Longer procedures live in `.claude/skills/`, not here: `develop-feature` is the end-to-end playbook,
+with `ipc-change`, `block-type-change`, `verify-ui-change` and `prepare-pr` underneath it.
 
-Known friction, so it is not rediscovered every time:
-- Playwright's click can time out on this page (`waiting for element to be stable`). Prefer
-  `browser_evaluate` to drive the DOM, and fall back to real clicks only when an interaction needs them.
-- A JS-set DOM `Range` does **not** sync into Lexical's selection, so synthetic carets cannot drive
-  editor keybindings. Real key handling has to be checked with a real click plus `browser_press_key`.
-- MDXEditor's ref does not expose the Lexical editor; use `__lexicalEditor` on the contenteditable root.
-- MDXEditor injects its stylesheet at runtime, after ours, so equal-specificity CSS loses to it.
-- The dev mock is in-memory and reseeds on reload, so reload between measurements to avoid drift from
-  earlier edits (including any typing done by hand in that tab).
+## Repo-Specific Landmines
+- **Binary freshness.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`.
+  A stale binary means debugging code that is no longer on disk — run `npm run dev` or
+  `npm run build:local-service` first.
+- **`gofmt -l` reports every Go file on Windows.** A CRLF artifact, not real drift; git normalizes on
+  commit. Do not "fix" it — the whole-file diffs bury the real change. Check with `gofmt -d <file>`
+  and see whether the diff is anything other than `^M`.
+- **Preserve a file's existing line endings when scripting edits.** Rewriting a CRLF file as LF turns
+  a three-line change into a whole-file diff.
+- `block.update` can race with UI autosave after a block delete or reorder. `NOT_FOUND` there is
+  usually benign and is deliberately swallowed in `electron/main.js`.
+- Playwright's click can time out on this page (`waiting for element to be stable`); prefer
+  `browser_evaluate` to drive the DOM.
+- A JS-set DOM `Range` does not sync into Lexical's selection, so synthetic carets cannot drive
+  editor keybindings — real key handling needs a real click plus `browser_press_key`.
+- MDXEditor's ref does not expose the Lexical editor; use `__lexicalEditor` on the contenteditable
+  root. It also injects its stylesheet at runtime, after ours, so equal-specificity CSS loses to it.
+- `client/src/dev/mockBridge.ts` is in-memory and reseeds on every reload.
 
-## Common Pitfalls and Self-improvement
-- **Local binary freshness matters.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`. A stale binary means you are debugging code that is no longer on disk. Use root `npm run dev` or `npm run build:local-service` first.
-- **`gofmt -l` reports every Go file on Windows.** This is a CRLF artifact, not real formatting drift — git normalizes line endings on commit. Do not "fix" it; the resulting whole-file diffs bury the real change. Verify formatting with `gofmt -d <file>` and check whether the diff is anything other than `^M`.
-- **Preserve a file's existing line endings when scripting edits.** Tools that rewrite a CRLF file as LF turn a three-line change into a whole-file diff.
-- `block.update` can race with UI autosave after block deletion/reorder; `NOT_FOUND` here is often benign and is deliberately swallowed in `electron/main.js`, not a fatal sync issue.
-- The IPC server handles requests **strictly sequentially** (`ipc/server.go`, one `scanner.Scan()` loop). A slow request head-of-line-blocks every request behind it. Keep handlers fast; assume no concurrency until that changes.
-- `internal/api` (Gin HTTP handlers) and `internal/routes` were removed after the IPC migration, along with the Gin dependency. Do not reintroduce an HTTP server in the local service.
-
-## Planned Work
-Linear (`linear.app/noteblock`) is the source of truth for project direction. Access it through the
+## Project Context
+Linear (`linear.app/noteblock`) is the source of truth for project direction — reach it through the
 `mcp__linear-server__*` tools, or the GraphQL API at `https://api.linear.app/graphql` when the MCP
-cannot express something — `LINEAR_API_KEY` is set in the shell profile (dot-source `$PROFILE`
-first; the PowerShell tool does not load it).
+cannot express something (`LINEAR_API_KEY` is in the shell profile; dot-source `$PROFILE` first, the
+PowerShell tool does not load it).
 
-Keep CLAUDE.md the only doc in the repo. Roadmaps and long-form reasoning live in Linear.
+Keep CLAUDE.md the only prose doc in the repo: procedures belong in `.claude/skills/`, review
+perspectives in `.claude/agents/`, roadmaps and long-form reasoning in Linear.
 
-The concurrent-IPC work is a deliberate learning exercise for the repo owner — explain, review, and
+The concurrent-IPC work is a deliberate learning exercise for the repo owner — explain, review and
 prototype on request, but do not implement it end-to-end unsolicited.
