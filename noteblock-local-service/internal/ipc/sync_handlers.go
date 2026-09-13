@@ -19,7 +19,7 @@ func (s *Server) syncFlush(req Request) Response {
 	ctx, cancel := context.WithTimeout(context.Background(), flushTimeout)
 	defer cancel()
 
-	if err := s.flusher.Pass(ctx); err != nil {
+	if err := s.flusher.Flush(ctx); err != nil {
 		return rpcErr(req.ID, "INTERNAL", "Sync flush failed: "+err.Error())
 	}
 

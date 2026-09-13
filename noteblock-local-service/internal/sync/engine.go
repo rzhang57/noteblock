@@ -3,7 +3,6 @@ package sync
 import (
 	"context"
 	"log"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -23,7 +22,8 @@ type Engine struct {
 
 	// One pass at a time: concurrent passes would race on both cursors and on the
 	// single SQLite writer, and one could advance a cursor past records the other has not applied.
-	running sync.Mutex
+	// A channel rather than a Mutex so a flush can wait for the slot under its own deadline.
+	running chan struct{}
 	focus   atomic.Value
 }
 
@@ -37,6 +37,7 @@ func NewEngine(db *gorm.DB, baseURL string, interval time.Duration) *Engine {
 		Store:    &Store{DB: db},
 		Client:   NewClient(baseURL),
 		Interval: interval,
+		running:  make(chan struct{}, 1),
 	}
 }
 
@@ -62,14 +63,35 @@ func (e *Engine) Run(ctx context.Context) {
 	}
 }
 
-// Batches are drained inside the one lock rather than one per tick, so a first sync finishes
-// in one go instead of taking interval × corpus/batch to catch up.
+// Pass is the ticker's entry point: if one is already running there is nothing useful to add,
+// so it yields. Use Flush when the caller needs the work actually done.
 func (e *Engine) Pass(ctx context.Context) error {
-	if !e.running.TryLock() {
+	select {
+	case e.running <- struct{}{}:
+		defer func() { <-e.running }()
+	default:
 		return nil
 	}
-	defer e.running.Unlock()
 
+	return e.drain(ctx)
+}
+
+// Flush waits for the in-flight pass instead of yielding to it. Shutdown calls this, and
+// reporting success after skipping the work would be a lie told at the one moment it matters.
+func (e *Engine) Flush(ctx context.Context) error {
+	select {
+	case e.running <- struct{}{}:
+		defer func() { <-e.running }()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	return e.drain(ctx)
+}
+
+// Batches are drained inside the one slot rather than one per tick, so a first sync finishes
+// in one go instead of taking interval × corpus/batch to catch up.
+func (e *Engine) drain(ctx context.Context) error {
 	for range maxBatchesPerPass {
 		complete, err := e.pass(ctx)
 		if err != nil {

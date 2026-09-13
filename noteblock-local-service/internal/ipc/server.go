@@ -12,7 +12,7 @@ import (
 // Flusher is the sync engine, kept as an interface so the ipc package does not depend on it
 // and so a build with sync switched off simply has none.
 type Flusher interface {
-	Pass(ctx context.Context) error
+	Flush(ctx context.Context) error
 	Focus(ctx context.Context, noteID string)
 }
 

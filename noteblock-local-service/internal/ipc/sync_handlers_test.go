@@ -16,7 +16,7 @@ func (f *stubFlusher) Focus(_ context.Context, noteID string) {
 	f.focused = noteID
 }
 
-func (f *stubFlusher) Pass(context.Context) error {
+func (f *stubFlusher) Flush(context.Context) error {
 	f.calls++
 	return f.err
 }
