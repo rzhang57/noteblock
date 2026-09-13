@@ -1,9 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 import {X, Undo2, Pen} from "lucide-react";
 import type {Stroke} from "@/types/Note.ts";
-
-const PEN_COLORS = ["#e0452c", "#f0a202", "#2f9e44", "#1c7ed6", "#7048e8", "#1a1a1a"];
-const PEN_WIDTHS = [3, 6, 11];
+import {loadPen, PEN_COLORS, PEN_WIDTHS, savePen, type PenSettings} from "./penSettings.ts";
 
 function strokePath(stroke: Stroke, w: number, h: number): string {
     return stroke.points.map(([x, y]) => `${(x * w).toFixed(2)},${(y * h).toFixed(2)}`).join(" ");
@@ -19,8 +17,7 @@ interface ImageAnnotatorProps {
 export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorProps) {
     const [draft, setDraft] = useState<Stroke[]>(strokes);
     const [active, setActive] = useState<Stroke | null>(null);
-    const [color, setColor] = useState(PEN_COLORS[0]);
-    const [width, setWidth] = useState(PEN_WIDTHS[1]);
+    const [pen, setPen] = useState<PenSettings>(loadPen);
     const surfaceRef = useRef<HTMLDivElement>(null);
     const [box, setBox] = useState({w: 0, h: 0});
 
@@ -33,6 +30,10 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
         measure();
         return () => observer.disconnect();
     }, []);
+
+    useEffect(() => {
+        savePen(pen);
+    }, [pen]);
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -61,7 +62,7 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
         } catch {
             /* empty */
         }
-        setActive({color, width, points: [pointAt(e)]});
+        setActive({color: pen.color, width: pen.width, points: [pointAt(e)]});
     };
 
     const onPointerMove = (e: React.PointerEvent) => {
@@ -77,6 +78,10 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
     };
 
     const rendered = active ? [...draft, active] : draft;
+
+    // Merging off the previous value rather than the rendered one, so picking a colour and a
+    // width before React re-renders keeps both.
+    const choosePen = (next: Partial<PenSettings>) => setPen(prev => ({...prev, ...next}));
 
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-ink/80 backdrop-blur-sm">
@@ -141,9 +146,9 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                     {PEN_COLORS.map(c => (
                         <button
                             key={c}
-                            onClick={() => setColor(c)}
+                            onClick={() => choosePen({color: c})}
                             className={`h-5 w-5 rounded-full transition-transform duration-150 ${
-                                color === c ? "scale-110 ring-2 ring-ink ring-offset-2 ring-offset-popover" : "hover:scale-105"
+                                pen.color === c ? "scale-110 ring-2 ring-ink ring-offset-2 ring-offset-popover" : "hover:scale-105"
                             }`}
                             style={{background: c}}
                             aria-label={`Pen colour ${c}`}
@@ -154,9 +159,9 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                     {PEN_WIDTHS.map(w => (
                         <button
                             key={w}
-                            onClick={() => setWidth(w)}
+                            onClick={() => choosePen({width: w})}
                             className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors duration-150 ${
-                                width === w ? "bg-accent" : "hover:bg-accent/60"
+                                pen.width === w ? "bg-accent" : "hover:bg-accent/60"
                             }`}
                             aria-label={`Pen width ${w}`}
                         >
