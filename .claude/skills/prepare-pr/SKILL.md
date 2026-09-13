@@ -48,6 +48,17 @@ if you are inventing the Verification section now, you did not actually validate
 A genuine residual risk or limitation the reviewer needs to know is the exception — one line under
 **What**, stated plainly.
 
+## Stacked PRs
+
+When the change is one layer of a stack, the PR's base is the layer below it, not `main`. Open it
+against that branch so the diff shows only this change — a stacked PR based on `main` shows the
+whole stack and is unreviewable.
+
+Add one line above **What** naming the parent (`Stacked on #19.`) and nothing more; the reviewer
+needs the order, not a retelling of the layers below. Each layer gets its own three sections and its
+own verification — a stack is a sequence of independently reviewable changes, and a body that leans
+on "see the parent PR" defeats the reason for stacking.
+
 ## Honesty rules
 
 - Never claim a human reviewed it if they did not.

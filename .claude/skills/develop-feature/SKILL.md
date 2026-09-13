@@ -1,14 +1,19 @@
 ---
 name: develop-feature
 description: >
-  The end-to-end playbook for building a feature or fixing a bug in this repo: understand, classify
-  the risk tier, plan, implement, validate, get independent review from fresh-context subagents, fix,
-  re-review, hand the human a walkthrough, and only then prepare a PR.
-  Use when starting any non-throwaway piece of work — a feature, a bug fix, a refactor — or when the
-  user says "build X", "fix Y", "implement the ticket", or names a Linear issue.
+  One-shot whole-feature build. Runs understand → implement → validate → review → walkthrough across
+  an entire feature in a single unbroken pass, with no human gate until the very end, producing one
+  large diff. Use at your own risk. `implement-change` is the default and is the right choice for
+  almost everything; reach for this one only when the user explicitly asks for a whole feature built
+  in one go and accepts reviewing it all at once.
 ---
 
-# Develop a feature
+# Develop a feature (one shot)
+
+> **Use at your own risk.** This skill builds an entire feature in one pass. The human sees nothing
+> until the end, so a wrong foundational decision is paid for across every downstream layer at once.
+> The default is `implement-change`, which plans the whole feature but executes and reviews one
+> coherent change at a time. Only stay here if that was explicitly overridden.
 
 The repo facts you need — architecture invariants, commands, coding conventions, landmines — are in
 `CLAUDE.md` and already loaded. Do not restate them here; apply them.

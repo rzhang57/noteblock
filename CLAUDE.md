@@ -79,8 +79,10 @@ Run the tests and the build for every area a change touches, and let the path-sc
 A UI behaviour or layout change additionally requires runtime verification in a real browser; unit
 tests are necessary but not sufficient.
 
-Longer procedures live in `.claude/skills/`, not here: `develop-feature` is the end-to-end playbook,
-with `ipc-change`, `block-type-change`, `verify-ui-change` and `prepare-pr` underneath it.
+Longer procedures live in `.claude/skills/`, not here. `implement-change` is the default playbook
+and works on one coherent reviewable change at a time — plan at feature level, execute at change
+level — with `ipc-change`, `block-type-change`, `verify-ui-change` and `prepare-pr` underneath it.
+`develop-feature` builds a whole feature in one unreviewed pass and is the exception, not the norm.
 
 ## Repo-Specific Landmines
 - **Binary freshness.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`.
