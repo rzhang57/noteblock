@@ -14,7 +14,9 @@ export function ImageBlock({block}: { block: Block }) {
     const [strokes, setStrokes] = useState<Stroke[]>(content?.strokes ?? []);
     const [scale, setScale] = useState(content?.scale ?? MAX_SCALE);
     const [editing, setEditing] = useState(false);
-    const [resizing, setResizing] = useState(false);
+    const scaleRef = useRef(content?.scale ?? MAX_SCALE);
+    // Click arrives after pointerup, so this outlives the gesture and drops a tick later.
+    const resizeGestureRef = useRef(false);
     const figureRef = useRef<HTMLDivElement>(null);
     const trackRef = useRef<HTMLDivElement>(null);
     const [box, setBox] = useState({w: 0, h: 0});
@@ -53,21 +55,21 @@ export function ImageBlock({block}: { block: Block }) {
         const track = trackRef.current;
         if (!track) return;
         const trackWidth = track.clientWidth;
-        setResizing(true);
+        resizeGestureRef.current = true;
 
         const onMove = (move: PointerEvent) => {
             const rect = track.getBoundingClientRect();
             const next = (move.clientX - rect.left) / trackWidth;
-            setScale(Math.min(MAX_SCALE, Math.max(MIN_SCALE, next)));
+            scaleRef.current = Math.min(MAX_SCALE, Math.max(MIN_SCALE, next));
+            setScale(scaleRef.current);
         };
         const onUp = () => {
-            setResizing(false);
             document.removeEventListener("pointermove", onMove);
             document.removeEventListener("pointerup", onUp);
-            setScale(current => {
-                persist({scale: current});
-                return current;
-            });
+            persist({scale: scaleRef.current});
+            setTimeout(() => {
+                resizeGestureRef.current = false;
+            }, 0);
         };
         document.addEventListener("pointermove", onMove);
         document.addEventListener("pointerup", onUp);
@@ -84,7 +86,7 @@ export function ImageBlock({block}: { block: Block }) {
                     ref={figureRef}
                     className="group/img relative cursor-pointer overflow-hidden rounded-lg"
                     style={{width: `${scale * 100}%`}}
-                    onClick={() => !resizing && setEditing(true)}
+                    onClick={() => !resizeGestureRef.current && setEditing(true)}
                 >
                     <img src={content.url} alt="" className="block w-full object-contain"/>
 
