@@ -170,8 +170,10 @@ they cannot discover. **Do not give them your reasoning, your self-assessment, o
 reviewers' findings.** The value is independent reconstruction; your account of what you built
 poisons it.
 
-`security-reviewer` fires whenever a trust boundary is in scope — auth, secrets, untrusted input,
-the IPC surface, filesystem paths, network exposure, destructive operations.
+Two reviewers fire outside their tier's default set. `architecture-reviewer` whenever the change
+adds a new pattern, layer or abstraction, even at STANDARD. `security-reviewer` whenever a trust
+boundary is in scope — auth, secrets, untrusted input, the IPC surface, filesystem paths, network
+exposure, destructive operations.
 
 Reviewers are advisory and read-only. **You own every edit.** Never let an agent patch the branch.
 
