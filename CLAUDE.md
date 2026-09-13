@@ -82,15 +82,16 @@ Be pragmatic. Match the surrounding code rather than importing conventions from 
 ## Validation
 Run the tests and the build for every area a change touches, and let the path-scoped CI go green.
 
-A UI behaviour or layout change additionally requires runtime verification in a real browser; unit
-tests are necessary but not sufficient.
+A UI behaviour or layout change additionally requires runtime verification in a real browser, and a
+sync behaviour change requires a two-device round trip; unit tests are necessary but not sufficient
+for either.
 
 Longer procedures live in `.claude/skills/`, not here. Three skills implement work, in order of how
 much control the engineer keeps: `implement-change` (one already-scoped increment, designed with the
 engineer before any code — the default), `develop-feature-incrementally` (plan a feature once, then
 one change per human review), and `develop-feature` (a whole feature in one unreviewed pass; the
-exception). Underneath all three sit `ipc-change`, `block-type-change`, `verify-ui-change` and
-`prepare-pr`.
+exception). Underneath all three sit `ipc-change`, `block-type-change`, `verify-ui-change`,
+`verify-sync-change` and `prepare-pr`.
 
 ## Repo-Specific Landmines
 - **Binary freshness.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`
@@ -111,6 +112,16 @@ exception). Underneath all three sit `ipc-change`, `block-type-change`, `verify-
 - MDXEditor's ref does not expose the Lexical editor; use `__lexicalEditor` on the contenteditable
   root. It also injects its stylesheet at runtime, after ours, so equal-specificity CSS loses to it.
 - `client/src/dev/mockBridge.ts` is in-memory and reseeds on every reload.
+- **Scripted multi-line replacements silently no-op on these files.** A `sed`/Python replace whose
+  pattern does not match changes nothing, reports nothing, and the result still compiles and still
+  passes. Use the Edit tool, which fails loudly, and grep for the change afterwards.
+- **Go does not flag an unused package-level function.** A fix can be written, reviewed, committed
+  and left wired to nothing while the build and the whole suite stay green. Assert the behaviour, not
+  the existence of the code.
+- **SQLite compares datetimes lexically, and `%f` rounds to milliseconds.** A local-offset timestamp
+  and a UTC one for the same instant do not order correctly, and two writes under a millisecond apart
+  compare equal. Everything is stored UTC via GORM's `NowFunc`, and anything accepting a cursor
+  normalises it.
 
 ## Project Context
 Linear (`linear.app/noteblock`) is the source of truth for project direction — reach it through the
