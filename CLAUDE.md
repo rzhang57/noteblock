@@ -25,6 +25,22 @@ CI is path-scoped: a change under `client/` runs the client workflow only, likew
 A change is not done until its workflow is green. `npm run lint` has pre-existing `no-explicit-any`
 errors so it is not a CI gate yet — run it locally and do not add new ones.
 
+## Pull Request Descriptions
+Three sections, in this order, and nothing else. Plus screenshots or a video for frontend changes.
+
+```
+## What
+## Why
+## Verification
+```
+
+A few lines each, bullets over prose, no emojis. A reviewer should be able to decide in under a
+minute — long bodies get skimmed, which is worse than short ones.
+
+Do not narrate the process, the alternatives weighed, or the bugs hit along the way. That goes in
+the commit body, where someone reading `git log` wants it. **Verification is evidence, not
+intent**: numbers, before/after, command output. "Tested locally" is not verification.
+
 ## Architecture Invariants
 Load-bearing. Breaking one produces confusing runtime failures rather than compile errors.
 

@@ -320,7 +320,7 @@ func TestMigrateRejectsAPendingMigrationBelowTheLedger(t *testing.T) {
 // Column order is not compared: ALTER TABLE appends, while AutoMigrate writes in field order.
 func TestMigratedSchemaMatchesTheModels(t *testing.T) {
 	automigrated := newTestDB(t)
-	if err := automigrated.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{}, &model.User{}, &model.SyncState{}); err != nil {
+	if err := automigrated.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{}, &model.User{}, &model.SyncState{}, &model.ImageUpload{}); err != nil {
 		t.Fatalf("automigrate: %v", err)
 	}
 
