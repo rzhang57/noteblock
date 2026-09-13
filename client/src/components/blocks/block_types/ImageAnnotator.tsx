@@ -1,7 +1,8 @@
 import {useCallback, useEffect, useRef, useState} from "react";
-import {X, Undo2, Pen} from "lucide-react";
+import {X, Undo2, Pen, Maximize2} from "lucide-react";
 import type {Stroke} from "@/types/Note.ts";
 import {loadPen, PEN_COLORS, PEN_WIDTHS, savePen, type PenSettings} from "./penSettings.ts";
+import {anchoredScroll, fitZoom, stepZoom, wheelZoom} from "./zoom.ts";
 
 function strokePath(stroke: Stroke, w: number, h: number): string {
     return stroke.points.map(([x, y]) => `${(x * w).toFixed(2)},${(y * h).toFixed(2)}`).join(" ");
@@ -19,7 +20,20 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
     const [active, setActive] = useState<Stroke | null>(null);
     const [pen, setPen] = useState<PenSettings>(loadPen);
     const surfaceRef = useRef<HTMLDivElement>(null);
+    const viewportRef = useRef<HTMLDivElement>(null);
     const [box, setBox] = useState({w: 0, h: 0});
+    const [natural, setNatural] = useState({w: 0, h: 0});
+    const [zoom, setZoom] = useState(1);
+    const [fit, setFit] = useState(1);
+    const zoomRef = useRef(1);
+
+    // Stroke widths are stored against the fitted view, so a stroke keeps the same thickness
+    // relative to the image whatever zoom it was drawn at or is later viewed at.
+    const strokeScale = fit > 0 ? zoom / fit : 1;
+
+    // Derived rather than observed: a ResizeObserver reports the previous size for the render
+    // that changes it, which lands strokes at the wrong place for a frame after every zoom.
+    const canvas = natural.w > 0 ? {w: natural.w * zoom, h: natural.h * zoom} : box;
 
     useEffect(() => {
         const el = surfaceRef.current;
@@ -36,11 +50,72 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
     }, [pen]);
 
     useEffect(() => {
+        zoomRef.current = zoom;
+    }, [zoom]);
+
+    const applyFit = useCallback(() => {
+        const viewport = viewportRef.current;
+        if (!viewport || natural.w === 0) return;
+
+        const next = fitZoom(natural, {w: viewport.clientWidth, h: viewport.clientHeight});
+        setFit(next);
+        setZoom(next);
+    }, [natural]);
+
+    useEffect(applyFit, [applyFit]);
+
+    // Ctrl+wheel is also how a trackpad pinch arrives. Without preventDefault the browser
+    // zooms the whole document underneath the overlay.
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+
+        const onWheel = (e: WheelEvent) => {
+            if (!e.ctrlKey && !e.metaKey) return;
+            e.preventDefault();
+
+            const current = zoomRef.current;
+            const next = wheelZoom(current, e.deltaY);
+            if (next === current) return;
+
+            const rect = viewport.getBoundingClientRect();
+            const {left, top} = anchoredScroll({
+                scrollLeft: viewport.scrollLeft,
+                scrollTop: viewport.scrollTop,
+                pointerX: e.clientX - rect.left,
+                pointerY: e.clientY - rect.top,
+            }, current, next);
+
+            zoomRef.current = next;
+            setZoom(next);
+            requestAnimationFrame(() => viewport.scrollTo(left, top));
+        };
+
+        viewport.addEventListener("wheel", onWheel, {passive: false});
+        return () => viewport.removeEventListener("wheel", onWheel);
+    }, []);
+
+    useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             if (e.key === "Escape") onClose();
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+
+            const chord = e.ctrlKey || e.metaKey;
+            if (chord && e.key.toLowerCase() === "z") {
                 e.preventDefault();
                 setDraft(prev => prev.slice(0, -1));
+            }
+            // Claimed only while the overlay is mounted, so page zoom is untouched elsewhere.
+            if (chord && (e.key === "=" || e.key === "+")) {
+                e.preventDefault();
+                setZoom(current => stepZoom(current, 1));
+            }
+            if (chord && e.key === "-") {
+                e.preventDefault();
+                setZoom(current => stepZoom(current, -1));
+            }
+            if (chord && e.key === "0") {
+                e.preventDefault();
+                setZoom(1);
             }
         };
         document.addEventListener("keydown", onKey);
@@ -62,7 +137,9 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
         } catch {
             /* empty */
         }
-        setActive({color: pen.color, width: pen.width, points: [pointAt(e)]});
+        // Stored against the fitted view, so zooming in draws genuinely finer strokes rather
+        // than the same thickness magnified.
+        setActive({color: pen.color, width: pen.width / strokeScale, points: [pointAt(e)]});
     };
 
     const onPointerMove = (e: React.PointerEvent) => {
@@ -91,6 +168,26 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                     Annotate
                 </div>
                 <div className="flex items-center gap-2">
+                    <div className="mr-1 flex items-center gap-1 text-[12px] text-paper/80">
+                        <button
+                            onClick={applyFit}
+                            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 transition-colors duration-150 hover:bg-paper/15"
+                            title="Fit to window"
+                        >
+                            <Maximize2 size={14}/>
+                            Fit
+                        </button>
+                        <button
+                            onClick={() => setZoom(1)}
+                            className="rounded-md px-2.5 py-1.5 transition-colors duration-150 hover:bg-paper/15"
+                            title="Actual size"
+                        >
+                            100%
+                        </button>
+                        <span className="w-12 text-right tabular-nums text-paper/60" aria-label="Zoom level">
+                            {Math.round(zoom * 100)}%
+                        </span>
+                    </div>
                     <button
                         onClick={() => setDraft(prev => prev.slice(0, -1))}
                         disabled={draft.length === 0}
@@ -116,9 +213,20 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                 </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 items-center justify-center px-6 pb-4">
-                <div ref={surfaceRef} className="relative max-h-full max-w-full touch-none select-none">
-                    <img src={url} alt="" className="block max-h-[75vh] max-w-full object-contain"/>
+            <div ref={viewportRef} className="flex min-h-0 flex-1 overflow-auto px-6 pb-4">
+                {/* m-auto, not justify-center: a centred flex container clips the start edge
+                    of an oversized child and no amount of scrolling reaches it. */}
+                <div
+                    ref={surfaceRef}
+                    className="relative m-auto h-fit w-fit shrink-0 touch-none select-none"
+                    style={natural.w > 0 ? {width: natural.w * zoom, height: natural.h * zoom} : undefined}
+                >
+                    <img
+                        src={url}
+                        alt=""
+                        className="block h-full w-full object-contain"
+                        onLoad={e => setNatural({w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight})}
+                    />
                     <svg
                         className="absolute inset-0 h-full w-full cursor-crosshair"
                         onPointerDown={onPointerDown}
@@ -129,10 +237,10 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                         {rendered.map((s, i) => (
                             <polyline
                                 key={i}
-                                points={strokePath(s, box.w, box.h)}
+                                points={strokePath(s, canvas.w, canvas.h)}
                                 fill="none"
                                 stroke={s.color}
-                                strokeWidth={s.width}
+                                strokeWidth={s.width * strokeScale}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                             />
