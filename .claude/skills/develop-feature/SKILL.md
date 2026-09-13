@@ -3,17 +3,26 @@ name: develop-feature
 description: >
   One-shot whole-feature build. Runs understand → implement → validate → review → walkthrough across
   an entire feature in a single unbroken pass, with no human gate until the very end, producing one
-  large diff. Use at your own risk. `implement-change` is the default and is the right choice for
-  almost everything; reach for this one only when the user explicitly asks for a whole feature built
-  in one go and accepts reviewing it all at once.
+  large diff. The least control of the three implementation skills. Use at your own risk, and only
+  when the user explicitly asks for a whole feature built in one go and accepts reviewing it all at
+  once. Otherwise use `implement-change` or `develop-feature-incrementally`.
 ---
 
 # Develop a feature (one shot)
 
 > **Use at your own risk.** This skill builds an entire feature in one pass. The human sees nothing
-> until the end, so a wrong foundational decision is paid for across every downstream layer at once.
-> The default is `implement-change`, which plans the whole feature but executes and reviews one
-> coherent change at a time. Only stay here if that was explicitly overridden.
+> until the end, so a wrong foundational decision gets paid for across every downstream layer at
+> once, and the diff that lands for review is the whole feature.
+
+Three skills implement work in this repo, in order of how much control the engineer keeps:
+
+| Skill | Unit of work | Human sees it |
+| --- | --- | --- |
+| `implement-change` | one increment they already scoped | design up front, then the finished change |
+| `develop-feature-incrementally` | a feature, planned once, built one change at a time | after every change |
+| `develop-feature` (this one) | a whole feature | once, at the end |
+
+Only stay here if the engineer explicitly chose it.
 
 The repo facts you need — architecture invariants, commands, coding conventions, landmines — are in
 `CLAUDE.md` and already loaded. Do not restate them here; apply them.

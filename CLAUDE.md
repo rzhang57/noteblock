@@ -79,10 +79,12 @@ Run the tests and the build for every area a change touches, and let the path-sc
 A UI behaviour or layout change additionally requires runtime verification in a real browser; unit
 tests are necessary but not sufficient.
 
-Longer procedures live in `.claude/skills/`, not here. `implement-change` is the default playbook
-and works on one coherent reviewable change at a time — plan at feature level, execute at change
-level — with `ipc-change`, `block-type-change`, `verify-ui-change` and `prepare-pr` underneath it.
-`develop-feature` builds a whole feature in one unreviewed pass and is the exception, not the norm.
+Longer procedures live in `.claude/skills/`, not here. Three skills implement work, in order of how
+much control the engineer keeps: `implement-change` (one already-scoped increment, designed with the
+engineer before any code — the default), `develop-feature-incrementally` (plan a feature once, then
+one change per human review), and `develop-feature` (a whole feature in one unreviewed pass; the
+exception). Underneath all three sit `ipc-change`, `block-type-change`, `verify-ui-change` and
+`prepare-pr`.
 
 ## Repo-Specific Landmines
 - **Binary freshness.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`.
