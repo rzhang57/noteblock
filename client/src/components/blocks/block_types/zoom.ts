@@ -27,12 +27,16 @@ export function wheelZoom(zoom: number, deltaY: number): number {
     return clampZoom(zoom * Math.exp(-bounded / 300));
 }
 
+// Proportional rather than a pixel inset, so the image keeps the same share of the surface at
+// every viewport size instead of looking cramped on a small one and lost on a large one.
+const FIT_MARGIN = 0.9;
+
 // Small images scale up rather than being left at natural size — a 200px screenshot is the
 // case that makes the annotator unusable, and capping fit at 1 would preserve exactly that.
 export function fitZoom(natural: Size, viewport: Size): number {
     if (natural.w <= 0 || natural.h <= 0 || viewport.w <= 0 || viewport.h <= 0) return 1;
 
-    return clampZoom(Math.min(viewport.w / natural.w, viewport.h / natural.h));
+    return clampZoom(Math.min(viewport.w / natural.w, viewport.h / natural.h) * FIT_MARGIN);
 }
 
 export interface Anchor {

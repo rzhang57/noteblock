@@ -40,12 +40,20 @@ describe("zoom", () => {
         expect(pinched).toBeGreaterThan(1)
     })
 
-    it("scales a small image up to fill the viewport", () => {
-        expect(fitZoom({w: 200, h: 100}, {w: 800, h: 600})).toBe(4)
+    // Deliberately short of filling it, so the image is not flush against the edges.
+    it("scales a small image up to nearly fill the viewport", () => {
+        expect(fitZoom({w: 200, h: 100}, {w: 800, h: 600})).toBeCloseTo(3.6, 10)
     })
 
     it("scales a large image down to fit", () => {
-        expect(fitZoom({w: 4000, h: 2000}, {w: 800, h: 600})).toBeCloseTo(0.2, 10)
+        expect(fitZoom({w: 4000, h: 2000}, {w: 800, h: 600})).toBeCloseTo(0.18, 10)
+    })
+
+    it("leaves the same proportional margin at any viewport size", () => {
+        const small = fitZoom({w: 200, h: 100}, {w: 400, h: 300})
+        const large = fitZoom({w: 200, h: 100}, {w: 1600, h: 1200})
+
+        expect(200 * small / 400).toBeCloseTo(200 * large / 1600, 10)
     })
 
     it("does not divide by an unmeasured image or viewport", () => {

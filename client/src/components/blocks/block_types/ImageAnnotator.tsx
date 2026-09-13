@@ -21,15 +21,11 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
     const [pen, setPen] = useState<PenSettings>(loadPen);
     const surfaceRef = useRef<HTMLDivElement>(null);
     const viewportRef = useRef<HTMLDivElement>(null);
+    const imgRef = useRef<HTMLImageElement>(null);
     const [box, setBox] = useState({w: 0, h: 0});
     const [natural, setNatural] = useState({w: 0, h: 0});
     const [zoom, setZoom] = useState(1);
-    const [fit, setFit] = useState(1);
     const zoomRef = useRef(1);
-
-    // Stroke widths are stored against the fitted view, so a stroke keeps the same thickness
-    // relative to the image whatever zoom it was drawn at or is later viewed at.
-    const strokeScale = fit > 0 ? zoom / fit : 1;
 
     // Derived rather than observed: a ResizeObserver reports the previous size for the render
     // that changes it, which lands strokes at the wrong place for a frame after every zoom.
@@ -53,13 +49,24 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
         zoomRef.current = zoom;
     }, [zoom]);
 
+    // An onLoad prop misses a cached or data-url image, which has already finished loading by
+    // the time React attaches the handler — the size then never arrives and fit never happens.
+    useEffect(() => {
+        const el = imgRef.current;
+        if (!el) return;
+
+        const read = () => setNatural({w: el.naturalWidth, h: el.naturalHeight});
+        if (el.complete && el.naturalWidth > 0) read();
+
+        el.addEventListener("load", read);
+        return () => el.removeEventListener("load", read);
+    }, [url]);
+
     const applyFit = useCallback(() => {
         const viewport = viewportRef.current;
         if (!viewport || natural.w === 0) return;
 
-        const next = fitZoom(natural, {w: viewport.clientWidth, h: viewport.clientHeight});
-        setFit(next);
-        setZoom(next);
+        setZoom(fitZoom(natural, {w: viewport.clientWidth, h: viewport.clientHeight}));
     }, [natural]);
 
     useEffect(applyFit, [applyFit]);
@@ -137,9 +144,10 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
         } catch {
             /* empty */
         }
-        // Stored against the fitted view, so zooming in draws genuinely finer strokes rather
-        // than the same thickness magnified.
-        setActive({color: pen.color, width: pen.width / strokeScale, points: [pointAt(e)]});
+        // Widths are natural-image pixels, the same anchor the 0..1 points use. Denominating
+        // them in view pixels would make a stroke change weight when the window resizes, and
+        // render differently on a laptop and a desktop once the image syncs between them.
+        setActive({color: pen.color, width: pen.width, points: [pointAt(e)]});
     };
 
     const onPointerMove = (e: React.PointerEvent) => {
@@ -221,12 +229,7 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                     className="relative m-auto h-fit w-fit shrink-0 touch-none select-none"
                     style={natural.w > 0 ? {width: natural.w * zoom, height: natural.h * zoom} : undefined}
                 >
-                    <img
-                        src={url}
-                        alt=""
-                        className="block h-full w-full object-contain"
-                        onLoad={e => setNatural({w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight})}
-                    />
+                    <img ref={imgRef} src={url} alt="" className="block h-full w-full object-contain"/>
                     <svg
                         className="absolute inset-0 h-full w-full cursor-crosshair"
                         onPointerDown={onPointerDown}
@@ -240,7 +243,7 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                                 points={strokePath(s, canvas.w, canvas.h)}
                                 fill="none"
                                 stroke={s.color}
-                                strokeWidth={s.width * strokeScale}
+                                strokeWidth={s.width * zoom}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                             />
