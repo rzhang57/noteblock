@@ -80,7 +80,8 @@ func NewServer() *http.Server {
 
 	// Declare Server config
 	server := &http.Server{
-		// Loopback until the endpoint authenticates: an empty request body returns the whole corpus.
+		// Loopback only: the sole client is a sidecar on this machine, and a bare ":port"
+		// binds every interface, which puts an unauthenticated /sync on the local network.
 		Addr:         fmt.Sprintf("127.0.0.1:%d", NewServer.port),
 		Handler:      NewServer.RegisterRoutes(),
 		IdleTimeout:  time.Minute,
