@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"log"
+	"sort"
 	"time"
 
 	"gorm.io/gorm"
@@ -30,6 +31,9 @@ func Migrate(db *gorm.DB, migrations []Migration) error {
 	var appliedIDs []string
 	if err := db.Table("schema_migrations").Pluck("id", &appliedIDs).Error; err != nil {
 		return fmt.Errorf("read applied migrations: %w", err)
+	}
+	if err := validateAgainstLedger(migrations, appliedIDs); err != nil {
+		return err
 	}
 	applied := make(map[string]bool, len(appliedIDs))
 	for _, id := range appliedIDs {
@@ -68,6 +72,9 @@ func validateOrder(migrations []Migration) error {
 		if m.ID == "" {
 			return fmt.Errorf("migration with empty ID")
 		}
+		if m.Up == nil {
+			return fmt.Errorf("migration %s has no Up function", m.ID)
+		}
 		if seen[m.ID] {
 			return fmt.Errorf("duplicate migration ID %s", m.ID)
 		}
@@ -76,6 +83,40 @@ func validateOrder(migrations []Migration) error {
 		}
 		seen[m.ID] = true
 		previous = m.ID
+	}
+
+	return nil
+}
+
+// A database only moves forward, so the ledger must be a prefix of what this build declares. Either
+// mismatch means the binary and the database disagree about what the schema already is.
+func validateAgainstLedger(migrations []Migration, appliedIDs []string) error {
+	if len(appliedIDs) == 0 {
+		return nil
+	}
+
+	// Sorted here rather than in the query, so no caller can quietly drop the ordering this needs.
+	applied := append([]string(nil), appliedIDs...)
+	sort.Strings(applied)
+
+	declared := make(map[string]bool, len(migrations))
+	for _, m := range migrations {
+		declared[m.ID] = true
+	}
+	for _, id := range applied {
+		if !declared[id] {
+			return fmt.Errorf("migration %s is applied but not declared by this build; the database is newer than the binary", id)
+		}
+	}
+
+	highestApplied := applied[len(applied)-1]
+	for _, m := range migrations {
+		if m.ID >= highestApplied {
+			break
+		}
+		if i := sort.SearchStrings(applied, m.ID); i == len(applied) || applied[i] != m.ID {
+			return fmt.Errorf("migration %s is pending but sorts below applied migration %s", m.ID, highestApplied)
+		}
 	}
 
 	return nil

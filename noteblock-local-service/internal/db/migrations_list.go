@@ -1,6 +1,10 @@
 package db
 
-import "gorm.io/gorm"
+import (
+	"fmt"
+
+	"gorm.io/gorm"
+)
 
 // Migrations apply in slice order; IDs must sort ascending. Never edit one that has shipped.
 var Migrations = []Migration{
@@ -20,6 +24,29 @@ func baseline(tx *gorm.DB) error {
 	for _, stmt := range stmts {
 		if err := tx.Exec(stmt).Error; err != nil {
 			return err
+		}
+	}
+
+	return assertBaselineColumns(tx)
+}
+
+var baselineColumns = []struct {
+	table   string
+	columns []string
+}{
+	{"folders", []string{"id", "name", "parent_id", "created_at", "updated_at"}},
+	{"notes", []string{"id", "title", "folder_id", "created_at", "updated_at"}},
+	{"blocks", []string{"id", "note_id", "type", "index", "created_at", "updated_at", "content"}},
+}
+
+// IF NOT EXISTS adopts a table without inspecting it, and AutoMigrate is no longer here to repair
+// drift, so a database older than the ledger would be recorded as migrated and never fixed.
+func assertBaselineColumns(tx *gorm.DB) error {
+	for _, t := range baselineColumns {
+		for _, column := range t.columns {
+			if !tx.Migrator().HasColumn(t.table, column) {
+				return fmt.Errorf("table %s is missing column %s; this database predates the migration ledger", t.table, column)
+			}
 		}
 	}
 
