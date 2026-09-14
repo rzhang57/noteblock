@@ -20,6 +20,12 @@ func newTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("open test db: %v", err)
 	}
 
+	// Production pins the pool to one so the foreign-keys pragma reaches the connection the
+	// migration transaction runs on. Without it here the rebuild tests do not exercise that.
+	if sqlDB, err := db.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(1)
+	}
+
 	// Windows cannot delete the TempDir while the connection still holds the file open.
 	t.Cleanup(func() {
 		if sqlDB, err := db.DB(); err == nil {

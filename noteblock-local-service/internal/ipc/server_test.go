@@ -326,3 +326,53 @@ func folderParent(t *testing.T, srv *Server, id string) *string {
 
 	return parent
 }
+
+// The note half of "move to top level" - the same shape as the defect that made creating one
+// impossible, and the path FolderTreeItem drives.
+func TestIPCServer_ANoteMovesToTopLevelOnAnEmptyFolder(t *testing.T) {
+	srv := setupTestServer(t)
+
+	created := srv.handle(Request{
+		ID: "1", Method: "note.create",
+		Params: mustRaw(t, map[string]any{"title": "Lecture", "folder_id": "f-top"}),
+	})
+	if created.Error != nil {
+		t.Fatalf("note.create failed: %+v", created.Error)
+	}
+	noteID := created.Result.(map[string]any)["id"].(string)
+
+	if got := noteFolder(t, srv, noteID); got == nil || *got != "f-top" {
+		t.Fatalf("note folder = %v, want f-top", got)
+	}
+
+	if res := srv.handle(Request{
+		ID: "2", Method: "note.update",
+		Params: mustRaw(t, map[string]any{"id": noteID, "folder_id": ""}),
+	}); res.Error != nil {
+		t.Fatalf("note.update to top level failed: %+v", res.Error)
+	}
+	if got := noteFolder(t, srv, noteID); got != nil {
+		t.Errorf("note stayed in %v, want top level", *got)
+	}
+
+	if res := srv.handle(Request{
+		ID: "3", Method: "note.update",
+		Params: mustRaw(t, map[string]any{"id": noteID, "title": "Lecture 2"}),
+	}); res.Error != nil {
+		t.Fatalf("note.update rename failed: %+v", res.Error)
+	}
+	if got := noteFolder(t, srv, noteID); got != nil {
+		t.Errorf("omitting folder_id moved the note to %v, want it left at top level", *got)
+	}
+}
+
+func noteFolder(t *testing.T, srv *Server, id string) *string {
+	t.Helper()
+
+	var folder *string
+	if err := srv.blockSvc.DB.Raw("SELECT folder_id FROM notes WHERE id = ?", id).Scan(&folder).Error; err != nil {
+		t.Fatalf("read folder: %v", err)
+	}
+
+	return folder
+}
