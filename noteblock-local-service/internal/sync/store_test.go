@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"server/internal/db"
 	"server/internal/model"
@@ -23,7 +22,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 
-	conn, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "test.sqlite")), &gorm.Config{NowFunc: db.NowUTC})
+	conn, err := db.Open(filepath.Join(t.TempDir(), "test.sqlite"))
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}
@@ -32,11 +31,6 @@ func newFixture(t *testing.T) *fixture {
 			sqlDB.Close()
 		}
 	})
-
-	conn.Exec("PRAGMA foreign_keys = ON")
-	if err := db.Migrate(conn, db.Migrations); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
 	if err := conn.Create(&model.Folder{ID: RootFolderID, Name: "Root"}).Error; err != nil {
 		t.Fatalf("seed root: %v", err)
 	}
@@ -214,7 +208,7 @@ func TestChangedSinceIsEmptyWhenNothingHasHappened(t *testing.T) {
 		t.Fatalf("changed since: %v", err)
 	}
 	if !changes.IsEmpty() {
-		t.Errorf("changes = %+v, want empty so the pass skips the request entirely", changes)
+		t.Errorf("changes = %+v, want nothing left to push once the cursor has caught up", changes)
 	}
 }
 

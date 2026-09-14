@@ -182,7 +182,6 @@ func TestSaveCursorsLeavesTheOtherCursorAlone(t *testing.T) {
 	}
 }
 
-func ptr(s string) *string { return &s }
 
 // The cursor is inclusive by design: re-sending a record is safe, dropping one is not.
 func TestChangedSinceIncludesARecordWrittenAtTheCursor(t *testing.T) {

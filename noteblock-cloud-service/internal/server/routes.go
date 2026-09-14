@@ -21,6 +21,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	r.GET("/health", s.healthHandler)
 
+	r.POST("/sync", s.syncHandler)
+
 	return r
 }
 
@@ -32,5 +34,15 @@ func (s *Server) HelloWorldHandler(c *gin.Context) {
 }
 
 func (s *Server) healthHandler(c *gin.Context) {
+	if s.db == nil {
+		if err := s.gorm.Exec("SELECT 1").Error; err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "down", "error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "up"})
+		return
+	}
+
 	c.JSON(http.StatusOK, s.db.Health())
 }

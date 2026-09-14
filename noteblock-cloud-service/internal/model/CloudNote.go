@@ -1,16 +1,18 @@
 package model
 
-import (
-	"time"
-)
+import "time"
 
+// ServerUpdatedAt drives the pull cursor and is written from the database clock; ClientUpdatedAt is
+// the device's own clock and is the only value LWW compares. Naming it ServerUpdatedAt rather than
+// UpdatedAt keeps GORM from overwriting it with the process clock.
+// Ids are opaque strings, not uuids: top-level notes carry the literal folder id "root",
+// which Postgres rejects outright as a uuid.
 type CloudNote struct {
-	ID        string `gorm:"type:uuid;primaryKey"`
-	UserID    string `gorm:"type:uuid;not null;index"`
-	FolderID  string `gorm:"type:uuid;not null;index"` // for querying notes by folder
-	Data      JSONB  `gorm:"type:jsonb;not null"`      // stores all note data
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID              string `gorm:"type:text;primaryKey"`
+	UserID          string `gorm:"type:text;not null;index"`
+	FolderID        string `gorm:"type:text;not null;index"`
+	Data            JSONB  `gorm:"type:jsonb;not null"`
+	ClientUpdatedAt time.Time
+	CreatedAt       time.Time
+	ServerUpdatedAt time.Time `gorm:"column:updated_at;index"`
 }
-
-type JSONB map[string]interface{}
