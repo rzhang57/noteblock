@@ -237,6 +237,13 @@ function normalizeContent(type: BlockType, content: unknown): Block["content"] {
     return type === "canvas" ? {data: {}} : {text: ""};
 }
 
+let cloudHost: string | null = null;
+
+function maskHost(host: string): string {
+    const [first, ...rest] = host.split(".");
+    return rest.length ? `${first.slice(0, 3)}***.${rest.join(".")}` : `${first.slice(0, 3)}***`;
+}
+
 export function installMockBridge() {
     const bridge = {
         local: {
@@ -340,6 +347,22 @@ export function installMockBridge() {
             asset: {
                 uploadImage: (payload: { filename: string; data_base64: string }) =>
                     delay({url: `data:image/png;base64,${payload.data_base64}`, filename: payload.filename}),
+            },
+        },
+        // Mirrors main's contract rather than storing anything: the password goes in and never
+        // comes back, so the dev harness cannot accidentally prove a leak impossible.
+        cloud: {
+            configure: (config: { host: string }) => {
+                if (!config || !config.host) fail("Missing host");
+                cloudHost = config.host;
+                return delay({configured: true, host: maskHost(cloudHost)});
+            },
+            status: () => delay(cloudHost
+                ? {configured: true, host: maskHost(cloudHost)}
+                : {configured: false, host: null}),
+            clear: () => {
+                cloudHost = null;
+                return delay({configured: false, host: null});
             },
         },
     };
