@@ -1,7 +1,10 @@
 package sync
 
 import (
+	"encoding/json"
+
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"server/internal/model"
 )
 
@@ -91,6 +94,12 @@ func applyNote(tx *gorm.DB, doc NoteDocument) error {
 		return err
 	}
 
+	// A tombstone carries no blocks, and the device that performed the delete keeps its own so a
+	// restored note comes back intact. Replacing here would destroy them everywhere else.
+	if doc.DeletedAt != nil {
+		return nil
+	}
+
 	return replaceBlocks(tx, doc)
 }
 
@@ -107,12 +116,27 @@ func replaceBlocks(tx *gorm.DB, doc NoteDocument) error {
 			UserID:  doc.UserID,
 			Type:    block.Type,
 			Index:   block.Index,
-			Content: string(block.Content),
+			Content: blockContent(block.Content),
 		}
-		if err := tx.Create(&row).Error; err != nil {
+		// A block id that still exists under another note would abort the pass and, because the
+		// cursors move inside it, wedge every later pass on the same payload.
+		if err := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "id"}},
+			UpdateAll: true,
+		}).Create(&row).Error; err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// An absent content field would store "", which is not valid JSON and fails to marshal on the next
+// scan - killing sync permanently and making the note unopenable.
+func blockContent(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return "{}"
+	}
+
+	return string(raw)
 }

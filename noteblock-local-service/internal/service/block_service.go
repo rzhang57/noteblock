@@ -93,24 +93,30 @@ func touchNote(tx *gorm.DB, noteID string) error {
 
 // TODO: for non-plugin blocks, we can assert type and json content fields by unmarshalling before storing
 func (s *BlockService) UpdateBlockContent(noteID string, blockID string, blockType string, content *json.RawMessage) (*model.Block, error) {
-	var block model.Block
-
-	err := s.DB.First(&block, "id = ? AND note_id = ?", blockID, noteID).Error
-	if err != nil {
-		return nil, err
-	}
-
 	jsonString, err := EncodeJsonToString(content)
 	if err != nil {
 		return nil, err
 	}
 
-	block.Type = blockType
-	block.Content = jsonString
+	// Read and write in one transaction: the sync goroutine is a second writer, and a pull landing
+	// between them deletes the row, leaving Save to update nothing and report success.
+	var block model.Block
 	if err := s.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(&block).Error; err != nil {
+		if err := tx.First(&block, "id = ? AND note_id = ?", blockID, noteID).Error; err != nil {
 			return err
 		}
+
+		block.Type = blockType
+		block.Content = jsonString
+
+		result := tx.Save(&block)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+
 		return touchNote(tx, noteID)
 	}); err != nil {
 		return nil, err

@@ -48,8 +48,8 @@ func NewServer() *http.Server {
 
 	// Declare Server config
 	server := &http.Server{
-		// default localhost 8080
-		Addr:         fmt.Sprintf(":%d", NewServer.port),
+		// Loopback until the endpoint authenticates: an empty request body returns the whole corpus.
+		Addr:         fmt.Sprintf("127.0.0.1:%d", NewServer.port),
 		Handler:      NewServer.RegisterRoutes(),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,

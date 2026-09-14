@@ -25,6 +25,8 @@ type syncResponse struct {
 }
 
 func (s *Server) syncHandler(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxSyncBody)
+
 	var req syncRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sync payload"})
@@ -77,6 +79,7 @@ func applyFolders(tx *gorm.DB, docs []model.JSONB, serverTime time.Time) error {
 		if !ok {
 			continue
 		}
+		clientUpdatedAt = clampToServerTime(clientUpdatedAt, serverTime)
 
 		var existing []model.CloudFolder
 		if err := tx.Where("id = ? AND user_id = ?", id, model.LocalUserID).Limit(1).Find(&existing).Error; err != nil {
@@ -105,6 +108,7 @@ func applyNotes(tx *gorm.DB, docs []model.JSONB, serverTime time.Time) error {
 		if !ok {
 			continue
 		}
+		clientUpdatedAt = clampToServerTime(clientUpdatedAt, serverTime)
 
 		var existing []model.CloudNote
 		if err := tx.Where("id = ? AND user_id = ?", id, model.LocalUserID).Limit(1).Find(&existing).Error; err != nil {
@@ -178,6 +182,21 @@ func notesChangedSince(tx *gorm.DB, since *time.Time) ([]model.JSONB, error) {
 	}
 
 	return docs, nil
+}
+
+const maxSyncBody = 32 << 20
+
+// A client stamp far in the future would win last-write-wins forever: no genuine edit could ever
+// exceed it, so the record could never be corrected on any device.
+const maxClockSkew = 5 * time.Minute
+
+// Clamped rather than rejected: the record is real work, it is only its clock that is wrong.
+func clampToServerTime(clientUpdatedAt, serverTime time.Time) time.Time {
+	if clientUpdatedAt.After(serverTime.Add(maxClockSkew)) {
+		return serverTime
+	}
+
+	return clientUpdatedAt
 }
 
 func identify(doc model.JSONB) (string, time.Time, bool) {

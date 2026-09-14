@@ -48,7 +48,13 @@ Load-bearing. Breaking one produces confusing runtime failures rather than compi
 - **A new IPC method must be registered in six places in lockstep.** Missing one fails at runtime,
   not at compile time — the most common source of bugs in this repo. See the `ipc-change` skill.
 - **Local IPC is strictly sequential** (`ipc/server.go`, one `scanner.Scan()` loop). A slow handler
-  head-of-line-blocks every request behind it. Assume no handler concurrency until that changes.
+  head-of-line-blocks every request behind it, so no two handlers ever run at once.
+- **The sync engine is a second writer.** `internal/sync` runs on its own goroutine against the same
+  `*gorm.DB`, so a handler can no longer assume it is alone: any read-modify-write must happen inside
+  one transaction and check `RowsAffected`, or a pull landing in between is silently lost.
+  `SetMaxOpenConns(1)` in `db.Open` serialises the two writers, and with more, SQLite returns
+  `database is locked` under ordinary use. It also means a `Transaction` body must use its `tx`;
+  reaching back to the root handle deadlocks the process rather than erroring.
 - Handlers return `Response`; use `rpcErr` for failures and `dbErrToRPC` to map GORM errors onto RPC
   codes rather than inventing new error semantics.
 

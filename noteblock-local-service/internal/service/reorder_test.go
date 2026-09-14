@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"server/internal/model"
 	"server/internal/model/dto"
@@ -23,8 +24,12 @@ func TestReorderBlocksAdvancesTheNote(t *testing.T) {
 		t.Fatalf("create second block: %v", err)
 	}
 
-	var before string
-	conn.Raw("SELECT updated_at FROM notes WHERE id = ?", note.ID).Scan(&before)
+	// Backdated rather than sampled: the Windows clock can return the same instant for two
+	// consecutive writes, which makes a before/after comparison a coin flip.
+	stale := time.Now().UTC().Add(-time.Hour)
+	if err := conn.Model(&model.Note{}).Where("id = ?", note.ID).Update("updated_at", stale).Error; err != nil {
+		t.Fatalf("backdate note: %v", err)
+	}
 
 	if err := blocks.ReorderBlocks(note.ID, []dto.BlockDTO{
 		{ID: first.ID, Index: 1},
@@ -33,9 +38,11 @@ func TestReorderBlocksAdvancesTheNote(t *testing.T) {
 		t.Fatalf("reorder: %v", err)
 	}
 
-	var after string
-	conn.Raw("SELECT updated_at FROM notes WHERE id = ?", note.ID).Scan(&after)
-	if after == before {
+	var after time.Time
+	if err := conn.Model(&model.Note{}).Where("id = ?", note.ID).Pluck("updated_at", &after).Error; err != nil {
+		t.Fatalf("read updated_at: %v", err)
+	}
+	if !after.After(stale) {
 		t.Error("reordering blocks did not advance notes.updated_at; sync will never see it")
 	}
 }
