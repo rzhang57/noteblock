@@ -32,9 +32,9 @@ func InitDb() *gorm.DB {
 	}
 	db.Exec("PRAGMA foreign_keys = ON")
 
-	//////TODO: remove in production
-	//db.Migrator().DropTable(&model.Block{}, &model.Note{}, &model.Folder{})
-	db.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{})
+	if err := Migrate(db, Migrations); err != nil {
+		log.Fatalf("failed to migrate: %v", err)
+	}
 
 	var count int64
 	if err := db.Model(&model.Folder{}).Where("id = ?", "root").Count(&count).Error; err != nil {

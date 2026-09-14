@@ -10,6 +10,7 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"server/internal/db"
 	"server/internal/model"
 	"server/internal/model/dto"
 	"server/internal/service"
@@ -20,11 +21,11 @@ func setupTestServer(t *testing.T) *Server {
 
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "ipc_test.sqlite")
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	conn, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to open test sqlite db: %v", err)
 	}
-	sqlDB, err := db.DB()
+	sqlDB, err := conn.DB()
 	if err != nil {
 		t.Fatalf("failed to get sql db handle: %v", err)
 	}
@@ -32,10 +33,10 @@ func setupTestServer(t *testing.T) *Server {
 		_ = sqlDB.Close()
 	})
 
-	if err := db.AutoMigrate(&model.Block{}, &model.Note{}, &model.Folder{}); err != nil {
+	if err := db.Migrate(conn, db.Migrations); err != nil {
 		t.Fatalf("failed to migrate test schema: %v", err)
 	}
-	if err := db.Create(&model.Folder{ID: "root", Name: "Root"}).Error; err != nil {
+	if err := conn.Create(&model.Folder{ID: "root", Name: "Root"}).Error; err != nil {
 		t.Fatalf("failed to create root folder: %v", err)
 	}
 
@@ -44,9 +45,9 @@ func setupTestServer(t *testing.T) *Server {
 		_ = os.Unsetenv("NOTE_DB_PATH")
 	})
 
-	noteSvc := &service.NoteService{DB: db}
-	folderSvc := &service.FolderService{DB: db, NoteService: noteSvc}
-	blockSvc := &service.BlockService{DB: db}
+	noteSvc := &service.NoteService{DB: conn}
+	folderSvc := &service.FolderService{DB: conn, NoteService: noteSvc}
+	blockSvc := &service.BlockService{DB: conn}
 	return NewServer(noteSvc, folderSvc, blockSvc)
 }
 
