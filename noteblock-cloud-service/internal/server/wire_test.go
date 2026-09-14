@@ -98,3 +98,42 @@ func TestAClientStampFarInTheFutureIsClampedToServerTime(t *testing.T) {
 		t.Error("a record stamped in the year 9999 cannot be corrected by any later edit")
 	}
 }
+
+// What a peer actually compares is the stamp inside the document, not the column the cloud orders
+// by. Clamping only the column leaves every device that pulls the record permanently unable to
+// correct it.
+func TestTheClampReachesTheDocumentPeersRead(t *testing.T) {
+	_, r := newSyncServer(t)
+
+	post := func(body string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/sync", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(rec, req)
+		return rec
+	}
+
+	const poisoned = `{"since":null,"folders":[],"notes":[{"id":"n1","title":"Poisoned","folder_id":"f1","user_id":"00000000-0000-0000-0000-000000000001","updated_at":"9999-01-01T00:00:00Z","blocks":[]}]}`
+	if rec := post(poisoned); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	var pulled struct {
+		Notes []map[string]any `json:"notes"`
+	}
+	if err := json.Unmarshal(post(`{"since":null,"notes":[],"folders":[]}`).Body.Bytes(), &pulled); err != nil {
+		t.Fatalf("decode pull: %v", err)
+	}
+	if len(pulled.Notes) != 1 {
+		t.Fatalf("got %d notes, want 1", len(pulled.Notes))
+	}
+
+	stamp, _ := pulled.Notes[0]["updated_at"].(string)
+	parsed, err := time.Parse(time.RFC3339Nano, stamp)
+	if err != nil {
+		t.Fatalf("updated_at %q does not parse: %v", stamp, err)
+	}
+	if parsed.After(time.Now().UTC().Add(time.Hour)) {
+		t.Errorf("peers receive updated_at %s; every device that pulls this can never correct the record", stamp)
+	}
+}

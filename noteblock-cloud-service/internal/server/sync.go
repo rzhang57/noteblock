@@ -79,7 +79,7 @@ func applyFolders(tx *gorm.DB, docs []model.JSONB, serverTime time.Time) error {
 		if !ok {
 			continue
 		}
-		clientUpdatedAt = clampToServerTime(clientUpdatedAt, serverTime)
+		clientUpdatedAt = clampAndStamp(doc, clientUpdatedAt, serverTime)
 
 		var existing []model.CloudFolder
 		if err := tx.Where("id = ? AND user_id = ?", id, model.LocalUserID).Limit(1).Find(&existing).Error; err != nil {
@@ -108,7 +108,7 @@ func applyNotes(tx *gorm.DB, docs []model.JSONB, serverTime time.Time) error {
 		if !ok {
 			continue
 		}
-		clientUpdatedAt = clampToServerTime(clientUpdatedAt, serverTime)
+		clientUpdatedAt = clampAndStamp(doc, clientUpdatedAt, serverTime)
 
 		var existing []model.CloudNote
 		if err := tx.Where("id = ? AND user_id = ?", id, model.LocalUserID).Limit(1).Find(&existing).Error; err != nil {
@@ -190,13 +190,17 @@ const maxSyncBody = 32 << 20
 // exceed it, so the record could never be corrected on any device.
 const maxClockSkew = 5 * time.Minute
 
-// Clamped rather than rejected: the record is real work, it is only its clock that is wrong.
-func clampToServerTime(clientUpdatedAt, serverTime time.Time) time.Time {
-	if clientUpdatedAt.After(serverTime.Add(maxClockSkew)) {
-		return serverTime
+// Clamped rather than rejected: the record is real work, it is only its clock that is wrong. The
+// stamp is rewritten in the document too, because that copy is what peers compare - clamping only
+// the column would leave every device that pulls it unable to ever win against its own record.
+func clampAndStamp(doc model.JSONB, clientUpdatedAt, serverTime time.Time) time.Time {
+	if !clientUpdatedAt.After(serverTime.Add(maxClockSkew)) {
+		return clientUpdatedAt
 	}
 
-	return clientUpdatedAt
+	doc["updated_at"] = serverTime.Format(cursorLayout)
+
+	return serverTime
 }
 
 func identify(doc model.JSONB) (string, time.Time, bool) {

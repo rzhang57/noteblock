@@ -9,6 +9,7 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // SQLite compares datetimes lexically, so a local-offset timestamp and a UTC one for the same
@@ -18,12 +19,21 @@ func utcNow() time.Time {
 }
 
 // Open is the single place the connection is configured, so tests cannot drift from production.
+// GORM logs to stdout by default, which is the IPC protocol stream. A slow-query warning there
+// would be parsed as a response.
+func stderrLogger() logger.Interface {
+	return logger.New(log.New(os.Stderr, "", log.LstdFlags), logger.Config{
+		SlowThreshold: 200 * time.Millisecond,
+		LogLevel:      logger.Warn,
+	})
+}
+
 func Open(dbPath string) (*gorm.DB, error) {
 	// Pragmas belong in the DSN, not an Exec: they are per-connection, and an Exec only
 	// configures whichever pooled connection happened to serve it.
 	dsn := dbPath + "?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000"
 
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{NowFunc: utcNow})
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{NowFunc: utcNow, Logger: stderrLogger()})
 	if err != nil {
 		return nil, err
 	}
