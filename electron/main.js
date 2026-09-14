@@ -1,7 +1,8 @@
-const { app, BrowserWindow, ipcMain, protocol, net } = require("electron")
+const { app, BrowserWindow, ipcMain, protocol, net, safeStorage } = require("electron")
 const { spawn } = require("child_process")
 const nodeNet = require("net")
 const { randomUUID } = require("crypto")
+const fs = require("fs")
 const path = require("path")
 const { pathToFileURL } = require("url")
 
@@ -86,13 +87,68 @@ function freePort() {
     })
 }
 
+const CLOUD_CONFIG_FIELDS = ["host", "port", "database", "user", "password", "schema"]
+
+function cloudConfigPath() {
+    return path.join(app.getPath("userData"), "cloud-config.enc")
+}
+
+// A database password, so it goes through the OS keychain rather than sitting in a JSON file next
+// to the notes. This is not a secret from whoever is logged into this machine — it cannot be.
+function readCloudConfig() {
+    try {
+        if (!fs.existsSync(cloudConfigPath()) || !safeStorage.isEncryptionAvailable()) return null
+        return JSON.parse(safeStorage.decryptString(fs.readFileSync(cloudConfigPath())))
+    } catch (err) {
+        console.error("[cloud-config] unreadable, ignoring:", err.message)
+        return null
+    }
+}
+
+function writeCloudConfig(config) {
+    if (!safeStorage.isEncryptionAvailable()) {
+        throw new Error("This system has no secure storage available, so the password cannot be saved")
+    }
+    for (const field of CLOUD_CONFIG_FIELDS) {
+        if (!config || typeof config[field] !== "string" || config[field] === "") {
+            throw new Error(`Missing ${field}`)
+        }
+    }
+    fs.mkdirSync(path.dirname(cloudConfigPath()), { recursive: true })
+    fs.writeFileSync(cloudConfigPath(), safeStorage.encryptString(JSON.stringify(config)))
+}
+
 // Postgres if it is configured, otherwise a local file, so the app works with nothing provisioned.
+// Saved configuration wins over the ambient environment: it is the thing the user set deliberately.
 function cloudEnv(port) {
     const env = { ...process.env, PORT: String(port) }
+    const saved = readCloudConfig()
+
+    if (saved) {
+        env.BLUEPRINT_DB_HOST = saved.host
+        env.BLUEPRINT_DB_PORT = saved.port
+        env.BLUEPRINT_DB_DATABASE = saved.database
+        env.BLUEPRINT_DB_USERNAME = saved.user
+        env.BLUEPRINT_DB_PASSWORD = saved.password
+        env.BLUEPRINT_DB_SCHEMA = saved.schema
+        delete env.BLUEPRINT_DB_SQLITE_PATH
+        return env
+    }
+
     if (!env.BLUEPRINT_DB_HOST) {
         env.BLUEPRINT_DB_SQLITE_PATH = path.join(getDataPath(), "cloud.sqlite")
     }
     return env
+}
+
+async function restartCloudProcess() {
+    if (cloudProcess && !cloudProcess.killed) cloudProcess.kill()
+    await startCloudProcess()
+    if (goProcess && !goProcess.killed) {
+        // The sidecar reads the URL once at startup, so it has to come back up behind the new port.
+        goProcess.kill()
+        startBackendProcess()
+    }
 }
 
 async function startCloudProcess() {
@@ -101,7 +157,10 @@ async function startCloudProcess() {
 
     cloudProcess = spawn(binaryPath("cloud-api", "../noteblock-cloud-service/bin"), [], {
         stdio: ["ignore", "pipe", "pipe"],
-        env: cloudEnv(port)
+        env: cloudEnv(port),
+        // Never the directory the app happened to be launched from: the service reads .env from its
+        // working directory, and a planted one could redirect image uploads elsewhere.
+        cwd: getDataPath()
     })
 
     cloudProcess.on("error", (err) => {
@@ -193,7 +252,30 @@ function registerLocalImageProtocol() {
     })
 }
 
+function maskedHost(host) {
+    const [first, ...rest] = host.split(".")
+    return rest.length ? `${first.slice(0, 3)}***.${rest.join(".")}` : `${first.slice(0, 3)}***`
+}
+
 function registerRendererHandlers() {
+    // The password crosses this boundary once, inbound. There is deliberately no read path back.
+    ipcMain.handle("cloud:configure", async (_event, config) => {
+        writeCloudConfig(config)
+        await restartCloudProcess()
+        return { configured: true, host: maskedHost(config.host) }
+    })
+
+    ipcMain.handle("cloud:status", () => {
+        const saved = readCloudConfig()
+        return saved ? { configured: true, host: maskedHost(saved.host) } : { configured: false, host: null }
+    })
+
+    ipcMain.handle("cloud:clear", async () => {
+        fs.rmSync(cloudConfigPath(), { force: true })
+        await restartCloudProcess()
+        return { configured: false, host: null }
+    })
+
     ipcMain.handle("local:call", async (_event, payload) => {
         if (!payload || typeof payload.method !== "string") {
             throw new Error("Invalid local IPC payload")

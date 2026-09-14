@@ -31,6 +31,26 @@ declare global {
                     uploadImage: (payload: { filename: string; data_base64: string }) => Promise<{ url: string }>
                 }
             }
+            cloud: {
+                configure: (config: CloudDatabaseConfig) => Promise<CloudStatus>
+                status: () => Promise<CloudStatus>
+                clear: () => Promise<CloudStatus>
+            }
         }
     }
+}
+
+export interface CloudDatabaseConfig {
+    host: string
+    port: string
+    database: string
+    user: string
+    password: string
+    schema: string
+}
+
+// The password is write-only across the bridge; only whether one is set and a masked host come back.
+export interface CloudStatus {
+    configured: boolean
+    host: string | null
 }

@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	_ "github.com/joho/godotenv/autoload"
 
 	"gorm.io/gorm"
 
