@@ -10,7 +10,7 @@ import (
 type NoteDocument struct {
 	ID        string          `json:"id"`
 	Title     string          `json:"title"`
-	FolderID  string          `json:"folder_id"`
+	FolderID  *string         `json:"folder_id"`
 	UserID    string          `json:"user_id"`
 	UpdatedAt time.Time       `json:"updated_at"`
 	DeletedAt *time.Time      `json:"deleted_at,omitempty"`

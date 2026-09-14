@@ -17,6 +17,6 @@ type BlockDTO struct {
 type NoteDTO struct {
 	ID       string     `json:"id"`
 	Title    string     `json:"title"`
-	FolderID string     `json:"folder_id"`
+	FolderID *string    `json:"folder_id"`
 	Blocks   []BlockDTO `json:"blocks"`
 }

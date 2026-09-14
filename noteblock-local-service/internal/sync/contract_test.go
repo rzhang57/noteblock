@@ -23,7 +23,7 @@ func TestAWriteDuringTheExchangeIsNotSkipped(t *testing.T) {
 	var once sync.Once
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		once.Do(func() {
-			if _, err := f.notes.NewNote("mid-flight", RootFolderID); err != nil {
+			if _, err := f.notes.NewNote("mid-flight", nil); err != nil {
 				t.Errorf("write during exchange: %v", err)
 			}
 		})
@@ -62,7 +62,7 @@ func TestAWriteDuringTheExchangeIsNotSkipped(t *testing.T) {
 func TestServerRejectionDoesNotMarkWorkPushed(t *testing.T) {
 	f := newFixture(t)
 
-	if _, err := f.notes.NewNote("unsent", RootFolderID); err != nil {
+	if _, err := f.notes.NewNote("unsent", nil); err != nil {
 		t.Fatalf("create note: %v", err)
 	}
 
@@ -105,7 +105,7 @@ func TestAnUnapplicablePullLeavesTheCursorsAlone(t *testing.T) {
 			Notes: []NoteDocument{{
 				ID:        "orphan",
 				Title:     "Points nowhere",
-				FolderID:  "no-such-folder",
+				FolderID:  ptr("no-such-folder"),
 				UserID:    model.LocalUserID,
 				UpdatedAt: time.Now().UTC(),
 				Blocks:    []BlockDocument{},
@@ -138,7 +138,7 @@ func TestAFolderRoundTripsAndItsDeleteFollows(t *testing.T) {
 	engine := newEngineFor(t, f, cloud)
 	folders := &service.FolderService{DB: f.conn, NoteService: f.notes}
 
-	created, err := folders.CreateNewFolder("Term", ptr(RootFolderID))
+	created, err := folders.CreateNewFolder("Term", nil)
 	if err != nil {
 		t.Fatalf("create folder: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestAFolderRoundTripsAndItsDeleteFollows(t *testing.T) {
 	cloud.folders[created.ID] = FolderDocument{
 		ID:        created.ID,
 		Name:      "Term",
-		ParentID:  ptr(RootFolderID),
+		ParentID:  nil,
 		UserID:    model.LocalUserID,
 		UpdatedAt: deletedAt,
 		DeletedAt: &deletedAt,
@@ -200,7 +200,7 @@ func TestSyncPassesRunAlongsideLocalWrites(t *testing.T) {
 					return
 				default:
 				}
-				if _, err := f.notes.NewNote(fmt.Sprintf("w%d-n%d", w, i), RootFolderID); err != nil {
+				if _, err := f.notes.NewNote(fmt.Sprintf("w%d-n%d", w, i), nil); err != nil {
 					errs <- err
 					return
 				}
@@ -246,7 +246,7 @@ func TestSyncPassesRunAlongsideLocalWrites(t *testing.T) {
 func TestAPulledTombstoneKeepsTheBlocksOnDisk(t *testing.T) {
 	f := newFixture(t)
 
-	note, err := f.notes.NewNote("Doomed", RootFolderID)
+	note, err := f.notes.NewNote("Doomed", nil)
 	if err != nil {
 		t.Fatalf("create note: %v", err)
 	}
@@ -260,7 +260,7 @@ func TestAPulledTombstoneKeepsTheBlocksOnDisk(t *testing.T) {
 		return Apply(tx, Changes{Notes: []NoteDocument{{
 			ID:        note.ID,
 			Title:     "Doomed",
-			FolderID:  RootFolderID,
+			FolderID:  nil,
 			UserID:    model.LocalUserID,
 			UpdatedAt: deletedAt,
 			DeletedAt: &deletedAt,
@@ -290,7 +290,7 @@ func TestABlockWithNoContentDoesNotPoisonTheNextScan(t *testing.T) {
 		return Apply(tx, Changes{Notes: []NoteDocument{{
 			ID:        "n-poison",
 			Title:     "From the other device",
-			FolderID:  RootFolderID,
+			FolderID:  nil,
 			UserID:    model.LocalUserID,
 			UpdatedAt: stamp,
 			Blocks:    []BlockDocument{{ID: "b1", Type: "text", Index: 0}},

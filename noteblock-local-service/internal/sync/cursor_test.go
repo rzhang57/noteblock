@@ -13,7 +13,7 @@ func TestChangedSinceSeesAWriteAgainstAUTCCursor(t *testing.T) {
 	f := newFixture(t)
 	cursor := time.Now().UTC().Add(-time.Hour)
 
-	if _, err := f.notes.NewNote("Fresh", RootFolderID); err != nil {
+	if _, err := f.notes.NewNote("Fresh", nil); err != nil {
 		t.Fatalf("create note: %v", err)
 	}
 
@@ -36,7 +36,7 @@ func TestChangedSinceComparesInstantsNotStoredText(t *testing.T) {
 
 	if err := f.conn.Exec(
 		"INSERT INTO notes (id, title, folder_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-		"legacy", "Legacy", RootFolderID, model.LocalUserID, written, written,
+		"legacy", "Legacy", nil, model.LocalUserID, written, written,
 	).Error; err != nil {
 		t.Fatalf("seed legacy row: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestChangedSinceReportsFolderCreatesRenamesAndDeletes(t *testing.T) {
 	f := newFixture(t)
 	folders := &service.FolderService{DB: f.conn, NoteService: f.notes}
 
-	created, err := folders.CreateNewFolder("Term", ptr(RootFolderID))
+	created, err := folders.CreateNewFolder("Term", nil)
 	if err != nil {
 		t.Fatalf("create folder: %v", err)
 	}
@@ -69,8 +69,8 @@ func TestChangedSinceReportsFolderCreatesRenamesAndDeletes(t *testing.T) {
 	if changes.Folders[0].Name != "Term" {
 		t.Errorf("name = %q, want Term", changes.Folders[0].Name)
 	}
-	if changes.Folders[0].ParentID == nil || *changes.Folders[0].ParentID != RootFolderID {
-		t.Errorf("parent = %v, want root", changes.Folders[0].ParentID)
+	if changes.Folders[0].ParentID != nil {
+		t.Errorf("parent = %v, want a top-level folder", changes.Folders[0].ParentID)
 	}
 
 	cursor := time.Now().UTC()
@@ -106,13 +106,13 @@ func TestChangedSinceReportsFolderCreatesRenamesAndDeletes(t *testing.T) {
 func TestChangedSinceSeesANoteRename(t *testing.T) {
 	f := newFixture(t)
 
-	note, err := f.notes.NewNote("Before", RootFolderID)
+	note, err := f.notes.NewNote("Before", nil)
 	if err != nil {
 		t.Fatalf("create note: %v", err)
 	}
 
 	cursor := time.Now().UTC()
-	if _, err := f.notes.UpdateNoteMetaData(note.ID, "After", RootFolderID); err != nil {
+	if _, err := f.notes.UpdateNoteMetaData(note.ID, "After", nil); err != nil {
 		t.Fatalf("rename note: %v", err)
 	}
 
@@ -128,7 +128,7 @@ func TestChangedSinceSeesANoteRename(t *testing.T) {
 func TestTombstonedNoteDoesNotCarryItsBlocks(t *testing.T) {
 	f := newFixture(t)
 
-	note, err := f.notes.NewNote("Doomed", RootFolderID)
+	note, err := f.notes.NewNote("Doomed", nil)
 	if err != nil {
 		t.Fatalf("create note: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestSaveCursorsLeavesTheOtherCursorAlone(t *testing.T) {
 func TestChangedSinceIncludesARecordWrittenAtTheCursor(t *testing.T) {
 	f := newFixture(t)
 
-	note, err := f.notes.NewNote("At the boundary", RootFolderID)
+	note, err := f.notes.NewNote("At the boundary", nil)
 	if err != nil {
 		t.Fatalf("create note: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestChangedSinceReturnsNotesOldestFirst(t *testing.T) {
 	f := newFixture(t)
 
 	for _, title := range []string{"first", "second", "third"} {
-		if _, err := f.notes.NewNote(title, RootFolderID); err != nil {
+		if _, err := f.notes.NewNote(title, nil); err != nil {
 			t.Fatalf("create %s: %v", title, err)
 		}
 		time.Sleep(2 * time.Millisecond)

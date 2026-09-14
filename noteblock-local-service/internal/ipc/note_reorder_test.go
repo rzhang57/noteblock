@@ -2,6 +2,7 @@ package ipc
 
 import (
 	"testing"
+	"time"
 )
 
 // A reorder that the handler later rejects must not survive, or it is a local edit sync never sees.
@@ -12,7 +13,7 @@ func TestNoteUpdateNeverLeavesARejectedReorderBehind(t *testing.T) {
 	seedNote(t, srv, "Beta")
 
 	before := blockIndexes(t, srv, noteID)
-	beforeUpdatedAt := noteUpdatedAt(t, srv, noteID)
+	beforeUpdatedAt := backdateNote(t, srv, noteID)
 
 	res := srv.handle(Request{
 		ID:     "reorder-conflict",
@@ -37,7 +38,7 @@ func TestNoteUpdateNeverLeavesARejectedReorderBehind(t *testing.T) {
 			t.Errorf("block %s moved from index %d to %d on a rejected update", id, index, after[id])
 		}
 	}
-	if noteUpdatedAt(t, srv, noteID) != beforeUpdatedAt {
+	if !noteUpdatedAt(t, srv, noteID).Equal(beforeUpdatedAt) {
 		t.Error("a rejected note.update advanced notes.updated_at")
 	}
 }
@@ -46,7 +47,7 @@ func TestNoteUpdateReorderAdvancesTheNoteTimestamp(t *testing.T) {
 	srv := setupTestServer(t)
 
 	noteID, blockIDs := seedNoteWithTwoBlocks(t, srv, "Alpha")
-	beforeUpdatedAt := noteUpdatedAt(t, srv, noteID)
+	beforeUpdatedAt := backdateNote(t, srv, noteID)
 
 	res := srv.handle(Request{
 		ID:     "reorder",
@@ -67,7 +68,7 @@ func TestNoteUpdateReorderAdvancesTheNoteTimestamp(t *testing.T) {
 	if indexes[blockIDs[0]] != 1 || indexes[blockIDs[1]] != 0 {
 		t.Fatalf("blocks were not reordered: %v", indexes)
 	}
-	if noteUpdatedAt(t, srv, noteID) == beforeUpdatedAt {
+	if !noteUpdatedAt(t, srv, noteID).After(beforeUpdatedAt) {
 		t.Error("a block reorder did not advance notes.updated_at; sync will never see it")
 	}
 }
@@ -78,7 +79,7 @@ func seedNote(t *testing.T, srv *Server, title string) string {
 	res := srv.handle(Request{
 		ID:     "seed-note-" + title,
 		Method: "note.create",
-		Params: mustRaw(t, map[string]any{"title": title, "folder_id": "root"}),
+		Params: mustRaw(t, map[string]any{"title": title}),
 	})
 	if res.Error != nil {
 		t.Fatalf("note.create failed: %+v", res.Error)
@@ -132,13 +133,25 @@ func blockIndexes(t *testing.T, srv *Server, noteID string) map[string]int {
 	return indexes
 }
 
-func noteUpdatedAt(t *testing.T, srv *Server, noteID string) string {
+func noteUpdatedAt(t *testing.T, srv *Server, noteID string) time.Time {
 	t.Helper()
 
-	var updatedAt string
+	var updatedAt time.Time
 	if err := srv.blockSvc.DB.Raw("SELECT updated_at FROM notes WHERE id = ?", noteID).Scan(&updatedAt).Error; err != nil {
 		t.Fatalf("read note updated_at: %v", err)
 	}
 
-	return updatedAt
+	return updatedAt.UTC()
+}
+
+// Sampling before and after is a coin flip: WAL commits land inside one clock tick.
+func backdateNote(t *testing.T, srv *Server, noteID string) time.Time {
+	t.Helper()
+
+	stale := time.Now().UTC().Add(-time.Hour).Truncate(time.Millisecond)
+	if err := srv.blockSvc.DB.Exec("UPDATE notes SET updated_at = ? WHERE id = ?", stale, noteID).Error; err != nil {
+		t.Fatalf("backdate note: %v", err)
+	}
+
+	return stale
 }

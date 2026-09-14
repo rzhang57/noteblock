@@ -94,9 +94,13 @@ func TestPassPushesLocalWorkAndAdvancesBothCursors(t *testing.T) {
 	cloud := newFakeCloud(t)
 	engine := newEngineFor(t, f, cloud)
 
-	if _, err := f.notes.NewNote("CS341", RootFolderID); err != nil {
+	if _, err := f.notes.NewNote("CS341", nil); err != nil {
 		t.Fatalf("create note: %v", err)
 	}
+
+	// The cursor is inclusive to the millisecond, so a note written in the same millisecond as
+	// the scan is deliberately re-sent. Settling is only observable once the clock has moved past it.
+	time.Sleep(2 * time.Millisecond)
 
 	if err := engine.Pass(context.Background()); err != nil {
 		t.Fatalf("pass: %v", err)
@@ -123,9 +127,14 @@ func TestASettledDeviceStopsSendingWork(t *testing.T) {
 	cloud := newFakeCloud(t)
 	engine := newEngineFor(t, f, cloud)
 
-	if _, err := f.notes.NewNote("CS341", RootFolderID); err != nil {
+	if _, err := f.notes.NewNote("CS341", nil); err != nil {
 		t.Fatalf("create note: %v", err)
 	}
+
+	// The cursor compares milliseconds and is inclusive, so a note written in the same millisecond
+	// as the scan is deliberately re-sent. Settling is only observable once the clock moves past it.
+	time.Sleep(2 * time.Millisecond)
+
 	if err := engine.Pass(context.Background()); err != nil {
 		t.Fatalf("first pass: %v", err)
 	}
@@ -153,7 +162,7 @@ func TestPulledRecordsKeepTheirIncomingTimestamp(t *testing.T) {
 	cloud.notes["remote-1"] = NoteDocument{
 		ID:        "remote-1",
 		Title:     "From the other device",
-		FolderID:  RootFolderID,
+		FolderID:  nil,
 		UserID:    model.LocalUserID,
 		UpdatedAt: remoteUpdatedAt,
 		Blocks:    []BlockDocument{},
@@ -196,7 +205,7 @@ func TestPulledNoteArrivesWithItsBlocks(t *testing.T) {
 	cloud.notes["remote-1"] = NoteDocument{
 		ID:        "remote-1",
 		Title:     "Lecture",
-		FolderID:  RootFolderID,
+		FolderID:  nil,
 		UserID:    model.LocalUserID,
 		UpdatedAt: time.Now().UTC(),
 		Blocks: []BlockDocument{
@@ -230,7 +239,7 @@ func TestAPulledNoteReplacesItsWholeBlockSet(t *testing.T) {
 	cloud := newFakeCloud(t)
 	engine := newEngineFor(t, f, cloud)
 
-	note, err := f.notes.NewNote("Shared", RootFolderID)
+	note, err := f.notes.NewNote("Shared", nil)
 	if err != nil {
 		t.Fatalf("create note: %v", err)
 	}
@@ -244,7 +253,7 @@ func TestAPulledNoteReplacesItsWholeBlockSet(t *testing.T) {
 	cloud.notes[note.ID] = NoteDocument{
 		ID:        note.ID,
 		Title:     "Shared",
-		FolderID:  RootFolderID,
+		FolderID:  nil,
 		UserID:    model.LocalUserID,
 		UpdatedAt: time.Now().Add(time.Hour).UTC(),
 		Blocks:    []BlockDocument{{ID: "only", Type: "text", Index: 0, Content: json.RawMessage(`{"text":"remote"}`)}},
@@ -272,7 +281,7 @@ func TestAnOlderRemoteRecordDoesNotOverwriteNewerLocalWork(t *testing.T) {
 	cloud := newFakeCloud(t)
 	engine := newEngineFor(t, f, cloud)
 
-	note, err := f.notes.NewNote("Local wins", RootFolderID)
+	note, err := f.notes.NewNote("Local wins", nil)
 	if err != nil {
 		t.Fatalf("create note: %v", err)
 	}
@@ -280,7 +289,7 @@ func TestAnOlderRemoteRecordDoesNotOverwriteNewerLocalWork(t *testing.T) {
 	cloud.notes[note.ID] = NoteDocument{
 		ID:        note.ID,
 		Title:     "Stale remote",
-		FolderID:  RootFolderID,
+		FolderID:  nil,
 		UserID:    model.LocalUserID,
 		UpdatedAt: time.Now().Add(-time.Hour).UTC(),
 		Blocks:    []BlockDocument{},
@@ -304,7 +313,7 @@ func TestAFailedPassLeavesTheCursorsAlone(t *testing.T) {
 	f := newFixture(t)
 	engine := NewEngine(f.conn, "http://127.0.0.1:1", time.Hour)
 
-	if _, err := f.notes.NewNote("CS341", RootFolderID); err != nil {
+	if _, err := f.notes.NewNote("CS341", nil); err != nil {
 		t.Fatalf("create note: %v", err)
 	}
 
@@ -330,7 +339,7 @@ func TestATombstonePropagatesAndHidesTheNote(t *testing.T) {
 	cloud.notes["gone"] = NoteDocument{
 		ID:        "gone",
 		Title:     "Deleted elsewhere",
-		FolderID:  RootFolderID,
+		FolderID:  nil,
 		UserID:    model.LocalUserID,
 		UpdatedAt: deletedAt,
 		DeletedAt: &deletedAt,

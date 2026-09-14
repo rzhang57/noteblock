@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 	"server/internal/db"
 	"server/internal/model"
 	"server/internal/model/dto"
@@ -21,11 +19,11 @@ func setupTestServer(t *testing.T) *Server {
 
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "ipc_test.sqlite")
-	conn, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	database, err := db.Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open test sqlite db: %v", err)
 	}
-	sqlDB, err := conn.DB()
+	sqlDB, err := database.DB()
 	if err != nil {
 		t.Fatalf("failed to get sql db handle: %v", err)
 	}
@@ -33,11 +31,8 @@ func setupTestServer(t *testing.T) *Server {
 		_ = sqlDB.Close()
 	})
 
-	if err := db.Migrate(conn, db.Migrations); err != nil {
-		t.Fatalf("failed to migrate test schema: %v", err)
-	}
-	if err := conn.Create(&model.Folder{ID: "root", Name: "Root"}).Error; err != nil {
-		t.Fatalf("failed to create root folder: %v", err)
+	if err := database.Create(&model.Folder{ID: "f-top", Name: "Coursework"}).Error; err != nil {
+		t.Fatalf("failed to seed folder: %v", err)
 	}
 
 	_ = os.Setenv("NOTE_DB_PATH", tmpDir)
@@ -45,9 +40,9 @@ func setupTestServer(t *testing.T) *Server {
 		_ = os.Unsetenv("NOTE_DB_PATH")
 	})
 
-	noteSvc := &service.NoteService{DB: conn}
-	folderSvc := &service.FolderService{DB: conn, NoteService: noteSvc}
-	blockSvc := &service.BlockService{DB: conn}
+	noteSvc := &service.NoteService{DB: database}
+	folderSvc := &service.FolderService{DB: database, NoteService: noteSvc}
+	blockSvc := &service.BlockService{DB: database}
 	return NewServer(noteSvc, folderSvc, blockSvc)
 }
 
@@ -66,7 +61,7 @@ func TestIPCServer_SmokeCRUDFlow(t *testing.T) {
 	createFolderRes := srv.handle(Request{
 		ID:     "1",
 		Method: "folder.create",
-		Params: mustRaw(t, map[string]any{"name": "Projects", "parent_id": "root"}),
+		Params: mustRaw(t, map[string]any{"name": "Projects", "parent_id": "f-top"}),
 	})
 	if createFolderRes.Error != nil {
 		t.Fatalf("folder.create failed: %+v", createFolderRes.Error)
@@ -179,7 +174,7 @@ func TestIPCServer_HandlerPanicIsContainedAndServerKeepsServing(t *testing.T) {
 
 	in := strings.NewReader(
 		`{"id":"1","method":"test.panic","params":{}}` + "\n" +
-			`{"id":"2","method":"folder.get","params":{"id":"root"}}` + "\n")
+			`{"id":"2","method":"folder.get","params":{"id":"f-top"}}` + "\n")
 	var out bytes.Buffer
 
 	if err := s.Run(in, &out); err != nil {
@@ -201,4 +196,183 @@ func TestIPCServer_HandlerPanicIsContainedAndServerKeepsServing(t *testing.T) {
 	if nextRes.ID != "2" || nextRes.Error != nil {
 		t.Fatalf("expected the request after the panic to succeed, got %+v", nextRes)
 	}
+}
+
+// folder.tree is now the sidebar's only load path, and a new IPC method has to be exercised at the
+// dispatcher, not just at the service wrapper.
+func TestIPCServer_FolderTreeSynthesizesTheTopLevel(t *testing.T) {
+	srv := setupTestServer(t)
+
+	topRes := srv.handle(Request{
+		ID: "1", Method: "folder.create",
+		Params: mustRaw(t, map[string]any{"name": "Term", "parent_id": ""}),
+	})
+	if topRes.Error != nil {
+		t.Fatalf("folder.create failed: %+v", topRes.Error)
+	}
+	topID := topRes.Result.(map[string]any)["id"].(string)
+
+	nestedRes := srv.handle(Request{
+		ID: "2", Method: "folder.create",
+		Params: mustRaw(t, map[string]any{"name": "Week 1", "parent_id": topID}),
+	})
+	if nestedRes.Error != nil {
+		t.Fatalf("nested folder.create failed: %+v", nestedRes.Error)
+	}
+	nestedID := nestedRes.Result.(map[string]any)["id"].(string)
+
+	noteRes := srv.handle(Request{
+		ID: "3", Method: "note.create",
+		Params: mustRaw(t, map[string]any{"title": "Loose note", "folder_id": ""}),
+	})
+	if noteRes.Error != nil {
+		t.Fatalf("top-level note.create failed: %+v", noteRes.Error)
+	}
+
+	treeRes := srv.handle(Request{ID: "4", Method: "folder.tree", Params: mustRaw(t, map[string]any{})})
+	if treeRes.Error != nil {
+		t.Fatalf("folder.tree failed: %+v", treeRes.Error)
+	}
+
+	tree, err := json.Marshal(treeRes.Result)
+	if err != nil {
+		t.Fatalf("marshal tree: %v", err)
+	}
+	var got struct {
+		ID       string  `json:"id"`
+		ParentID *string `json:"parent_id"`
+		Children []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"children"`
+		Notes []struct {
+			ID    string `json:"id"`
+			Title string `json:"title"`
+		} `json:"notes"`
+	}
+	if err := json.Unmarshal(tree, &got); err != nil {
+		t.Fatalf("decode tree: %v", err)
+	}
+
+	if got.ParentID != nil {
+		t.Errorf("tree parent_id = %v, want null", *got.ParentID)
+	}
+	var sawTop, sawNested bool
+	for _, c := range got.Children {
+		sawTop = sawTop || c.ID == topID
+		sawNested = sawNested || c.ID == nestedID
+	}
+	if !sawTop {
+		t.Errorf("children = %+v, want the top-level folder among them", got.Children)
+	}
+	if sawNested {
+		t.Error("a nested folder was reported at the top level")
+	}
+	if len(got.Notes) != 1 || got.Notes[0].Title != "Loose note" {
+		t.Errorf("notes = %+v, want the top-level note", got.Notes)
+	}
+}
+
+func TestIPCServer_EmptyParentMeansTopLevelAndOmittedMeansUnchanged(t *testing.T) {
+	srv := setupTestServer(t)
+
+	parent := srv.handle(Request{
+		ID: "1", Method: "folder.create",
+		Params: mustRaw(t, map[string]any{"name": "Parent", "parent_id": ""}),
+	})
+	parentID := parent.Result.(map[string]any)["id"].(string)
+
+	child := srv.handle(Request{
+		ID: "2", Method: "folder.create",
+		Params: mustRaw(t, map[string]any{"name": "Child", "parent_id": parentID}),
+	})
+	if child.Error != nil {
+		t.Fatalf("folder.create failed: %+v", child.Error)
+	}
+	childID := child.Result.(map[string]any)["id"].(string)
+
+	if got := folderParent(t, srv, childID); got == nil || *got != parentID {
+		t.Fatalf("child parent = %v, want %s; a supplied parent was ignored", got, parentID)
+	}
+
+	if res := srv.handle(Request{
+		ID: "3", Method: "folder.update",
+		Params: mustRaw(t, map[string]any{"current_id": childID, "name": "Child"}),
+	}); res.Error != nil {
+		t.Fatalf("folder.update failed: %+v", res.Error)
+	}
+	if got := folderParent(t, srv, childID); got == nil || *got != parentID {
+		t.Errorf("omitting parent_id moved the folder to %v, want it left under %s", got, parentID)
+	}
+
+	if res := srv.handle(Request{
+		ID: "4", Method: "folder.update",
+		Params: mustRaw(t, map[string]any{"current_id": childID, "name": "Child", "parent_id": ""}),
+	}); res.Error != nil {
+		t.Fatalf("folder.update to top level failed: %+v", res.Error)
+	}
+	if got := folderParent(t, srv, childID); got != nil {
+		t.Errorf("an explicit empty parent left the folder under %v, want top level", *got)
+	}
+}
+
+func folderParent(t *testing.T, srv *Server, id string) *string {
+	t.Helper()
+
+	var parent *string
+	if err := srv.blockSvc.DB.Raw("SELECT parent_id FROM folders WHERE id = ?", id).Scan(&parent).Error; err != nil {
+		t.Fatalf("read parent: %v", err)
+	}
+
+	return parent
+}
+
+// The note half of "move to top level" - the same shape as the defect that made creating one
+// impossible, and the path FolderTreeItem drives.
+func TestIPCServer_ANoteMovesToTopLevelOnAnEmptyFolder(t *testing.T) {
+	srv := setupTestServer(t)
+
+	created := srv.handle(Request{
+		ID: "1", Method: "note.create",
+		Params: mustRaw(t, map[string]any{"title": "Lecture", "folder_id": "f-top"}),
+	})
+	if created.Error != nil {
+		t.Fatalf("note.create failed: %+v", created.Error)
+	}
+	noteID := created.Result.(map[string]any)["id"].(string)
+
+	if got := noteFolder(t, srv, noteID); got == nil || *got != "f-top" {
+		t.Fatalf("note folder = %v, want f-top", got)
+	}
+
+	if res := srv.handle(Request{
+		ID: "2", Method: "note.update",
+		Params: mustRaw(t, map[string]any{"id": noteID, "folder_id": ""}),
+	}); res.Error != nil {
+		t.Fatalf("note.update to top level failed: %+v", res.Error)
+	}
+	if got := noteFolder(t, srv, noteID); got != nil {
+		t.Errorf("note stayed in %v, want top level", *got)
+	}
+
+	if res := srv.handle(Request{
+		ID: "3", Method: "note.update",
+		Params: mustRaw(t, map[string]any{"id": noteID, "title": "Lecture 2"}),
+	}); res.Error != nil {
+		t.Fatalf("note.update rename failed: %+v", res.Error)
+	}
+	if got := noteFolder(t, srv, noteID); got != nil {
+		t.Errorf("omitting folder_id moved the note to %v, want it left at top level", *got)
+	}
+}
+
+func noteFolder(t *testing.T, srv *Server, id string) *string {
+	t.Helper()
+
+	var folder *string
+	if err := srv.blockSvc.DB.Raw("SELECT folder_id FROM notes WHERE id = ?", id).Scan(&folder).Error; err != nil {
+		t.Fatalf("read folder: %v", err)
+	}
+
+	return folder
 }

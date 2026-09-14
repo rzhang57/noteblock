@@ -8,10 +8,6 @@ import (
 	"server/internal/model"
 )
 
-// RootFolderID is a per-device fixture seeded by InitDb, not user data. Both machines create
-// their own row under this id, so syncing it would make each seed look like an edit to the other.
-const RootFolderID = "root"
-
 type Store struct{ DB *gorm.DB }
 
 func (s *Store) Cursors() (Cursors, error) {
@@ -71,7 +67,7 @@ func (s *Store) ChangedSince(since *time.Time) (Changes, error) {
 }
 
 func (s *Store) changedFolders(since *time.Time) ([]FolderDocument, error) {
-	query := s.DB.Unscoped().Model(&model.Folder{}).Where("id != ?", RootFolderID)
+	query := s.DB.Unscoped().Model(&model.Folder{})
 	if since != nil {
 		query = query.Where(cursorExpr, *since)
 	}

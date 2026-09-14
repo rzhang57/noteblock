@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("noteblock", {
         folder: {
             create: (payload) => callLocal("folder.create", payload),
             get: (id) => callLocal("folder.get", { id }),
+            tree: () => callLocal("folder.tree", {}),
             update: (payload) => callLocal("folder.update", payload),
             delete: (id) => callLocal("folder.delete", { id }),
         },

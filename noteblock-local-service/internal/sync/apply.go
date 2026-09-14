@@ -34,10 +34,24 @@ func Apply(tx *gorm.DB, incoming Changes) error {
 	return nil
 }
 
-func applyFolder(tx *gorm.DB, doc FolderDocument) error {
-	if doc.ID == RootFolderID {
+// Databases synced before the root folder was dropped still carry documents pointing at it. The
+// row no longer exists anywhere, so leaving the reference intact fails the deferred foreign key
+// check at commit and wedges every later pass on the same payload.
+const legacyRootID = "root"
+
+func withoutLegacyRoot(id *string) *string {
+	if id != nil && *id == legacyRootID {
 		return nil
 	}
+
+	return id
+}
+
+func applyFolder(tx *gorm.DB, doc FolderDocument) error {
+	if doc.ID == legacyRootID {
+		return nil
+	}
+	doc.ParentID = withoutLegacyRoot(doc.ParentID)
 
 	var existing []model.Folder
 	if err := tx.Unscoped().Where("id = ?", doc.ID).Limit(1).Find(&existing).Error; err != nil {
@@ -69,6 +83,8 @@ func applyNote(tx *gorm.DB, doc NoteDocument) error {
 	if err := tx.Unscoped().Where("id = ?", doc.ID).Limit(1).Find(&existing).Error; err != nil {
 		return err
 	}
+
+	doc.FolderID = withoutLegacyRoot(doc.FolderID)
 
 	columns := map[string]any{
 		"title":      doc.Title,

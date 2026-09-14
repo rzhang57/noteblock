@@ -66,7 +66,7 @@ func TestDeletedNoteDisappearsFromItsFolderListing(t *testing.T) {
 		t.Fatalf("delete note: %v", err)
 	}
 
-	tree, err := folders.GetFolderDtoById("root")
+	tree, err := folders.GetFolderDtoById("f-top")
 	if err != nil {
 		t.Fatalf("get folder tree: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestDeletingAFolderTombstonesEveryDescendant(t *testing.T) {
 	folders := newFolderService(conn)
 	notes := &NoteService{DB: conn}
 
-	root := model.Folder{ID: "root", Name: "Root"}
+	root := model.Folder{ID: "f-top", Name: "Coursework"}
 	if err := conn.Create(&root).Error; err != nil {
 		t.Fatalf("seed root: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestDeletingAFolderTombstonesEveryDescendant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create child: %v", err)
 	}
-	note, err := notes.NewNote("Midterm", child.ID)
+	note, err := notes.NewNote("Midterm", &child.ID)
 	if err != nil {
 		t.Fatalf("create note: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestRootTreeExcludesDeletedChildFolders(t *testing.T) {
 	conn := newServiceTestDB(t)
 	folders := newFolderService(conn)
 
-	root := model.Folder{ID: "root", Name: "Root"}
+	root := model.Folder{ID: "f-top", Name: "Coursework"}
 	if err := conn.Create(&root).Error; err != nil {
 		t.Fatalf("seed root: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestRootTreeExcludesDeletedChildFolders(t *testing.T) {
 		t.Fatalf("delete folder: %v", err)
 	}
 
-	tree, err := folders.GetFolderDtoById("root")
+	tree, err := folders.GetFolderDtoById("f-top")
 	if err != nil {
 		t.Fatalf("get tree: %v", err)
 	}

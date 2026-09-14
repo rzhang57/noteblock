@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"server/internal/model"
+
 	"time"
 
 	"gorm.io/driver/sqlite"
@@ -72,20 +72,6 @@ func InitDb() *gorm.DB {
 	db, err := Open(dbPath)
 	if err != nil {
 		log.Fatalf("failed to open DB: %v", err)
-	}
-
-	var count int64
-	if err := db.Unscoped().Model(&model.Folder{}).Where("id = ?", "root").Count(&count).Error; err != nil {
-		log.Fatalf("failed to check for root folder: %v", err)
-	}
-	if count == 0 {
-		if err := db.Create(&model.Folder{
-			ID:   "root",
-			Name: "Root",
-		}).Error; err != nil {
-			log.Fatalf("failed to create root folder: %v", err)
-		}
-		log.Println("Created root folder with ID 'root'")
 	}
 
 	return db

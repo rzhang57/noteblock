@@ -29,17 +29,16 @@ func openAgainstContainer(t *testing.T) *gorm.DB {
 	return db
 }
 
-// Ids are opaque strings, and top-level notes carry the literal folder id "root". Declaring
-// those columns as uuid makes Postgres reject the default case outright, which the SQLite
-// suites cannot see because SQLite ignores the declared type.
+// Ids are opaque strings chosen by the client. Declaring those columns as uuid makes Postgres
+// reject them outright, which the SQLite suites cannot see because SQLite ignores declared types.
 func TestRecordsWithNonUuidIdsArePersistable(t *testing.T) {
 	db := openAgainstContainer(t)
 
 	note := model.CloudNote{
 		ID:              "9564241e-b8c1-4179-b525-debbb5e09b7a",
 		UserID:          model.LocalUserID,
-		FolderID:        "root",
-		Data:            model.JSONB{"id": "9564241e-b8c1-4179-b525-debbb5e09b7a", "folder_id": "root"},
+		FolderID:        nil,
+		Data:            model.JSONB{"id": "9564241e-b8c1-4179-b525-debbb5e09b7a", "folder_id": nil},
 		ClientUpdatedAt: time.Now().UTC(),
 		ServerUpdatedAt: time.Now().UTC(),
 	}
@@ -67,7 +66,7 @@ func TestJsonbRoundTripsThroughPostgres(t *testing.T) {
 	stored := model.CloudNote{
 		ID:              "jsonb-round-trip",
 		UserID:          model.LocalUserID,
-		FolderID:        "root",
+		FolderID:        nil,
 		Data:            model.JSONB{"title": "CS341", "blocks": []any{map[string]any{"content": map[string]any{"text": "hello"}}}},
 		ClientUpdatedAt: time.Now().UTC(),
 		ServerUpdatedAt: time.Now().UTC(),
