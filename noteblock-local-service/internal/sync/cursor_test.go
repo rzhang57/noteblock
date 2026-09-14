@@ -183,3 +183,50 @@ func TestSaveCursorsLeavesTheOtherCursorAlone(t *testing.T) {
 }
 
 func ptr(s string) *string { return &s }
+
+// The cursor is inclusive by design: re-sending a record is safe, dropping one is not.
+func TestChangedSinceIncludesARecordWrittenAtTheCursor(t *testing.T) {
+	f := newFixture(t)
+
+	note, err := f.notes.NewNote("At the boundary", RootFolderID)
+	if err != nil {
+		t.Fatalf("create note: %v", err)
+	}
+
+	var stored time.Time
+	if err := f.conn.Model(&model.Note{}).Where("id = ?", note.ID).Pluck("updated_at", &stored).Error; err != nil {
+		t.Fatalf("read updated_at: %v", err)
+	}
+
+	changes, err := f.store.ChangedSince(&stored)
+	if err != nil {
+		t.Fatalf("changed since: %v", err)
+	}
+	if len(changes.Notes) != 1 {
+		t.Fatalf("got %d notes, want the record at the cursor instant", len(changes.Notes))
+	}
+}
+
+func TestChangedSinceReturnsNotesOldestFirst(t *testing.T) {
+	f := newFixture(t)
+
+	for _, title := range []string{"first", "second", "third"} {
+		if _, err := f.notes.NewNote(title, RootFolderID); err != nil {
+			t.Fatalf("create %s: %v", title, err)
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	changes, err := f.store.ChangedSince(nil)
+	if err != nil {
+		t.Fatalf("changed since: %v", err)
+	}
+	if len(changes.Notes) != 3 {
+		t.Fatalf("got %d notes, want 3", len(changes.Notes))
+	}
+	for i, want := range []string{"first", "second", "third"} {
+		if changes.Notes[i].Title != want {
+			t.Errorf("note %d = %q, want %q; the scan is not ordered by change time", i, changes.Notes[i].Title, want)
+		}
+	}
+}
