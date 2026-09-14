@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"gorm.io/gorm"
-	"server/internal/model"
 )
 
 // Migrations apply in slice order; IDs must sort ascending. Never edit one that has shipped.
@@ -58,6 +57,10 @@ func assertBaselineColumns(tx *gorm.DB) error {
 }
 
 // Nothing reads these columns yet; they exist so adding auth later is not a second migration.
+// Pinned as a literal: a shipped migration must not change behaviour because a Go constant moved.
+// ownership_test.go asserts this still equals model.LocalUserID.
+const localUserID0002 = "00000000-0000-0000-0000-000000000001"
+
 func userOwnership(tx *gorm.DB) error {
 	stmts := []string{
 		"CREATE TABLE IF NOT EXISTS `users` (`id` uuid,`name` text,`created_at` datetime,`updated_at` datetime,PRIMARY KEY (`id`))",
@@ -77,7 +80,7 @@ func userOwnership(tx *gorm.DB) error {
 
 	if err := tx.Exec(
 		"INSERT OR IGNORE INTO `users` (`id`, `name`, `created_at`, `updated_at`) VALUES (?, ?, datetime('now'), datetime('now'))",
-		model.LocalUserID, "Local",
+		localUserID0002, "Local",
 	).Error; err != nil {
 		return err
 	}
@@ -85,7 +88,7 @@ func userOwnership(tx *gorm.DB) error {
 	for _, table := range []string{"folders", "notes", "blocks"} {
 		if err := tx.Exec(
 			"UPDATE `"+table+"` SET `user_id` = ? WHERE `user_id` IS NULL",
-			model.LocalUserID,
+			localUserID0002,
 		).Error; err != nil {
 			return err
 		}

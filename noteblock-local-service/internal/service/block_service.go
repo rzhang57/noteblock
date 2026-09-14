@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"server/internal/model"
+	"server/internal/model/dto"
 	"time"
 )
 
@@ -61,9 +62,33 @@ func (s *BlockService) CreateNewBlock(noteID string, blockType string, index int
 	return block, nil
 }
 
+// Reordering is a block write like any other, so it belongs in one transaction with the note touch
+// rather than in the handler, where it silently bypassed both.
+func (s *BlockService) ReorderBlocks(noteID string, blocks []dto.BlockDTO) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		for _, block := range blocks {
+			if err := tx.Model(&model.Block{}).
+				Where("id = ? AND note_id = ?", block.ID, noteID).
+				Update("index", block.Index).Error; err != nil {
+				return err
+			}
+		}
+
+		return touchNote(tx, noteID)
+	})
+}
+
 // The sync scan reads notes.updated_at, so block writes have to advance it too.
 func touchNote(tx *gorm.DB, noteID string) error {
-	return tx.Model(&model.Note{}).Where("id = ?", noteID).Update("updated_at", time.Now()).Error
+	result := tx.Model(&model.Note{}).Where("id = ?", noteID).Update("updated_at", time.Now().UTC())
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
 
 // TODO: for non-plugin blocks, we can assert type and json content fields by unmarshalling before storing

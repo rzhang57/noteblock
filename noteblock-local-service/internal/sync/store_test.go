@@ -23,7 +23,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 
-	conn, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "test.sqlite")), &gorm.Config{})
+	conn, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "test.sqlite")), &gorm.Config{NowFunc: db.NowUTC})
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}

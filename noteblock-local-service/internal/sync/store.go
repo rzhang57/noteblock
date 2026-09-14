@@ -26,14 +26,31 @@ func (s *Store) Cursors() (Cursors, error) {
 	}, nil
 }
 
+// Only the cursors the caller set are written, so advancing one does not blank the other.
 func SaveCursors(tx *gorm.DB, c Cursors) error {
+	updates := map[string]any{}
+	if c.LastPushedLocal != nil {
+		updates["last_pushed_local"] = c.LastPushedLocal
+	}
+	if c.LastPulledServer != "" {
+		updates["last_pulled_server"] = c.LastPulledServer
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+
 	return tx.Model(&model.SyncState{}).
 		Where("id = ?", model.SyncStateID).
-		Updates(map[string]any{
-			"last_pushed_local":  c.LastPushedLocal,
-			"last_pulled_server": c.LastPulledServer,
-		}).Error
+		Updates(updates).Error
 }
+
+// SQLite compares datetimes as text, and Go writes variable-width fractional seconds with a local
+// offset, so both sides are normalised to a fixed-width UTC string before comparing.
+const cursorExpr = `strftime('%Y-%m-%dT%H:%M:%f', updated_at) >= strftime('%Y-%m-%dT%H:%M:%f', ?)`
+
+// The comparison resolves to a millisecond, so a record written in the same millisecond as the
+// cursor is sent again rather than skipped; applying a change twice is idempotent, losing one is not.
+const cursorOrder = `strftime('%Y-%m-%dT%H:%M:%f', updated_at)`
 
 // ChangedSince reads Unscoped so tombstones are included; they are the only record that a
 // delete happened. A nil since means everything.
@@ -54,11 +71,11 @@ func (s *Store) ChangedSince(since *time.Time) (Changes, error) {
 func (s *Store) changedFolders(since *time.Time) ([]FolderDocument, error) {
 	query := s.DB.Unscoped().Model(&model.Folder{}).Where("id != ?", RootFolderID)
 	if since != nil {
-		query = query.Where("updated_at > ?", *since)
+		query = query.Where(cursorExpr, *since)
 	}
 
 	var folders []model.Folder
-	if err := query.Order("updated_at").Find(&folders).Error; err != nil {
+	if err := query.Order(cursorOrder).Find(&folders).Error; err != nil {
 		return nil, err
 	}
 
@@ -80,19 +97,23 @@ func (s *Store) changedFolders(since *time.Time) ([]FolderDocument, error) {
 func (s *Store) changedNotes(since *time.Time) ([]NoteDocument, error) {
 	query := s.DB.Unscoped().Model(&model.Note{})
 	if since != nil {
-		query = query.Where("updated_at > ?", *since)
+		query = query.Where(cursorExpr, *since)
 	}
 
 	var notes []model.Note
-	if err := query.Order("updated_at").Find(&notes).Error; err != nil {
+	if err := query.Order(cursorOrder).Find(&notes).Error; err != nil {
 		return nil, err
 	}
 	if len(notes) == 0 {
 		return []NoteDocument{}, nil
 	}
 
+	// A tombstone does not need to carry the body it is deleting, and the payload would only grow.
 	ids := make([]string, 0, len(notes))
 	for _, n := range notes {
+		if n.DeletedAt.Valid {
+			continue
+		}
 		ids = append(ids, n.ID)
 	}
 

@@ -117,3 +117,10 @@ func TestOwnershipMigrationIsIdempotent(t *testing.T) {
 		t.Errorf("user count = %d after two runs, want 1", userCount)
 	}
 }
+
+// 0002 inlines the id so a Go constant cannot silently change a shipped migration.
+func TestMigrationUserIDMatchesTheModelConstant(t *testing.T) {
+	if localUserID0002 != model.LocalUserID {
+		t.Errorf("migration id = %q, model constant = %q; the backfill and the app disagree about the local user", localUserID0002, model.LocalUserID)
+	}
+}

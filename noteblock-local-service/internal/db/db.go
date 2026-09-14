@@ -5,10 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"server/internal/model"
+	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
+
+// Timestamps are the sync cursor, and SQLite compares them as text, so a local offset would make
+// ordering depend on where the user is sitting.
+func NowUTC() time.Time { return time.Now().UTC() }
 
 func InitDb() *gorm.DB {
 	// Check if Electron gave us a NOTE_DB_PATH
@@ -26,7 +31,7 @@ func InitDb() *gorm.DB {
 	dbPath := filepath.Join(basePath, "noteblock.sqlite")
 	log.Println("Using database at:", dbPath)
 
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{NowFunc: NowUTC})
 	if err != nil {
 		panic("failed to open DB: " + err.Error())
 	}
@@ -37,7 +42,7 @@ func InitDb() *gorm.DB {
 	}
 
 	var count int64
-	if err := db.Model(&model.Folder{}).Where("id = ?", "root").Count(&count).Error; err != nil {
+	if err := db.Unscoped().Model(&model.Folder{}).Where("id = ?", "root").Count(&count).Error; err != nil {
 		log.Fatalf("failed to check for root folder: %v", err)
 	}
 	if count == 0 {

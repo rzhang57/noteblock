@@ -158,5 +158,13 @@ func deleteFolderRecursive(db *gorm.DB, folderID string, service *NoteService) e
 // GORM's soft delete writes only deleted_at, so a tombstone would carry a stale updated_at
 // and could lose LWW against an older edit on another device.
 func touchFolder(tx *gorm.DB, folderID string) error {
-	return tx.Model(&model.Folder{}).Where("id = ?", folderID).Update("updated_at", time.Now()).Error
+	result := tx.Model(&model.Folder{}).Where("id = ?", folderID).Update("updated_at", time.Now().UTC())
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
