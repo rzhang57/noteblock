@@ -9,6 +9,9 @@ import (
 // Migrations apply in slice order; IDs must sort ascending. Never edit one that has shipped.
 var Migrations = []Migration{
 	{ID: "0001_baseline", Up: baseline},
+	{ID: "0002_user_ownership", Up: userOwnership},
+	{ID: "0003_tombstones", Up: tombstones},
+	{ID: "0004_sync_state", Up: syncState},
 }
 
 // Mirrors what AutoMigrate had already created, so an existing database adopts the ledger untouched.
@@ -47,6 +50,82 @@ func assertBaselineColumns(tx *gorm.DB) error {
 			if !tx.Migrator().HasColumn(t.table, column) {
 				return fmt.Errorf("table %s is missing column %s; this database predates the migration ledger", t.table, column)
 			}
+		}
+	}
+
+	return nil
+}
+
+// Nothing reads these columns yet; they exist so adding auth later is not a second migration.
+// Pinned as a literal: a shipped migration must not change behaviour because a Go constant moved.
+// ownership_test.go asserts this still equals model.LocalUserID.
+const localUserID0002 = "00000000-0000-0000-0000-000000000001"
+
+func userOwnership(tx *gorm.DB) error {
+	stmts := []string{
+		"CREATE TABLE IF NOT EXISTS `users` (`id` uuid,`name` text,`created_at` datetime,`updated_at` datetime,PRIMARY KEY (`id`))",
+		"ALTER TABLE `folders` ADD COLUMN `user_id` uuid",
+		"ALTER TABLE `notes` ADD COLUMN `user_id` uuid",
+		"ALTER TABLE `blocks` ADD COLUMN `user_id` uuid",
+		"CREATE INDEX IF NOT EXISTS `idx_folders_user_id` ON `folders`(`user_id`)",
+		"CREATE INDEX IF NOT EXISTS `idx_notes_user_id` ON `notes`(`user_id`)",
+		"CREATE INDEX IF NOT EXISTS `idx_blocks_user_id` ON `blocks`(`user_id`)",
+	}
+
+	for _, stmt := range stmts {
+		if err := tx.Exec(stmt).Error; err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Exec(
+		"INSERT OR IGNORE INTO `users` (`id`, `name`, `created_at`, `updated_at`) VALUES (?, ?, datetime('now'), datetime('now'))",
+		localUserID0002, "Local",
+	).Error; err != nil {
+		return err
+	}
+
+	for _, table := range []string{"folders", "notes", "blocks"} {
+		if err := tx.Exec(
+			"UPDATE `"+table+"` SET `user_id` = ? WHERE `user_id` IS NULL",
+			localUserID0002,
+		).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// last_pushed_local is a local clock value and last_pulled_server an opaque server token;
+// they live in different clock domains and are never compared.
+func syncState(tx *gorm.DB) error {
+	stmts := []string{
+		"CREATE TABLE IF NOT EXISTS `sync_states` (`id` integer PRIMARY KEY CHECK (`id` = 1),`last_pushed_local` datetime,`last_pulled_server` text)",
+		"INSERT OR IGNORE INTO `sync_states` (`id`, `last_pushed_local`, `last_pulled_server`) VALUES (1, NULL, '')",
+	}
+
+	for _, stmt := range stmts {
+		if err := tx.Exec(stmt).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Blocks are excluded: a note carries its whole block set, so a missing block is already a delete.
+func tombstones(tx *gorm.DB) error {
+	stmts := []string{
+		"ALTER TABLE `folders` ADD COLUMN `deleted_at` datetime",
+		"ALTER TABLE `notes` ADD COLUMN `deleted_at` datetime",
+		"CREATE INDEX IF NOT EXISTS `idx_folders_deleted_at` ON `folders`(`deleted_at`)",
+		"CREATE INDEX IF NOT EXISTS `idx_notes_deleted_at` ON `notes`(`deleted_at`)",
+	}
+
+	for _, stmt := range stmts {
+		if err := tx.Exec(stmt).Error; err != nil {
+			return err
 		}
 	}
 

@@ -70,8 +70,10 @@ func (s *NoteService) UpdateNoteMetaData(id string, title string, folderId strin
 // TODO: NB-31 - implement UpdateNoteContents to update a note's title, block content, and folder ID
 // for this, we might just be editing the individual blocks so this might not be necessary?
 
+// Blocks are left in place: the tombstoned note hides them from every read, and a note
+// that comes back needs them intact.
 func (s *NoteService) DeleteNoteTx(tx *gorm.DB, id string) error {
-	if err := tx.Where("note_id = ?", id).Delete(&model.Block{}).Error; err != nil {
+	if err := touchNote(tx, id); err != nil {
 		return err
 	}
 	return tx.Where("id = ?", id).Delete(&model.Note{}).Error
@@ -83,12 +85,8 @@ func (s *NoteService) DeleteNote(id string) error {
 	if err := s.DB.First(&note, "id = ?", id).Error; err != nil {
 		return err
 	}
-	err := s.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("note_id = ?", id).Delete(&model.Block{}).Error; err != nil {
-			return err
-		}
-		return tx.Delete(&note).Error
-	})
 
-	return err
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		return s.DeleteNoteTx(tx, id)
+	})
 }

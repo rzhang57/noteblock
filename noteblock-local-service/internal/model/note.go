@@ -10,8 +10,10 @@ type Note struct {
 	ID        string `gorm:"type:uuid;primaryKey"`
 	Title     string
 	FolderID  string `gorm:"type:uuid;not null;index"`
+	UserID    string `gorm:"type:uuid;index"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 
 	// 1:1 relationship w Folder - uses FolderID as foreign key to match primary key in Folder table
 	// struct = foreign key in this table -> primary key in other table
@@ -23,6 +25,11 @@ type Note struct {
 }
 
 func (n *Note) BeforeCreate(*gorm.DB) (err error) {
-	n.ID = uuid.New().String()
+	if n.ID == "" {
+		n.ID = uuid.New().String()
+	}
+	if n.UserID == "" {
+		n.UserID = LocalUserID
+	}
 	return
 }

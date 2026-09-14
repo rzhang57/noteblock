@@ -22,7 +22,7 @@ func (s *Server) blockCreate(req Request) Response {
 	}
 	block, err := s.blockSvc.CreateNewBlock(body.NoteID, body.Type, body.Index, raw)
 	if err != nil {
-		return rpcErr(req.ID, "INTERNAL", "Failed to create block")
+		return dbErrToRPC(req.ID, err, "Failed to create block")
 	}
 	return Response{
 		ID: req.ID,
@@ -80,7 +80,7 @@ func (s *Server) blockDelete(req Request) Response {
 		return rpcErr(req.ID, "BAD_REQUEST", "Missing note ID or block ID")
 	}
 	if err := s.blockSvc.DeleteBlock(body.NoteID, body.BlockID); err != nil {
-		return rpcErr(req.ID, "INTERNAL", "Failed to delete block")
+		return dbErrToRPC(req.ID, err, "Failed to delete block")
 	}
 	return Response{
 		ID:     req.ID,

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"server/internal/model"
+	"server/internal/model/dto"
+	"time"
 )
 
 type BlockService struct {
@@ -48,11 +50,45 @@ func (s *BlockService) CreateNewBlock(noteID string, blockType string, index int
 		Content: jsonString,
 	}
 
-	if err := s.DB.Create(block).Error; err != nil {
+	if err := s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(block).Error; err != nil {
+			return err
+		}
+		return touchNote(tx, noteID)
+	}); err != nil {
 		return nil, err
 	}
 
 	return block, nil
+}
+
+// Reordering is a block write like any other, so it belongs in one transaction with the note touch
+// rather than in the handler, where it silently bypassed both.
+func (s *BlockService) ReorderBlocks(noteID string, blocks []dto.BlockDTO) error {
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		for _, block := range blocks {
+			if err := tx.Model(&model.Block{}).
+				Where("id = ? AND note_id = ?", block.ID, noteID).
+				Update("index", block.Index).Error; err != nil {
+				return err
+			}
+		}
+
+		return touchNote(tx, noteID)
+	})
+}
+
+// The sync scan reads notes.updated_at, so block writes have to advance it too.
+func touchNote(tx *gorm.DB, noteID string) error {
+	result := tx.Model(&model.Note{}).Where("id = ?", noteID).Update("updated_at", time.Now().UTC())
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
 
 // TODO: for non-plugin blocks, we can assert type and json content fields by unmarshalling before storing
@@ -71,13 +107,23 @@ func (s *BlockService) UpdateBlockContent(noteID string, blockID string, blockTy
 
 	block.Type = blockType
 	block.Content = jsonString
-	if err := s.DB.Save(&block).Error; err != nil {
+	if err := s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&block).Error; err != nil {
+			return err
+		}
+		return touchNote(tx, noteID)
+	}); err != nil {
 		return nil, err
 	}
 
-	return &block, err
+	return &block, nil
 }
 
 func (s *BlockService) DeleteBlock(noteID string, blockID string) error {
-	return s.DB.Delete(&model.Block{}, "id = ? AND note_id = ?", blockID, noteID).Error
+	return s.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&model.Block{}, "id = ? AND note_id = ?", blockID, noteID).Error; err != nil {
+			return err
+		}
+		return touchNote(tx, noteID)
+	})
 }

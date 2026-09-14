@@ -9,6 +9,7 @@ import (
 type Block struct {
 	ID        string `gorm:"type:uuid;primaryKey"`
 	NoteID    string `gorm:"type:uuid;not null;index"`
+	UserID    string `gorm:"type:uuid;index"`
 	Type      string
 	Index     int
 	CreatedAt time.Time
@@ -17,6 +18,11 @@ type Block struct {
 }
 
 func (b *Block) BeforeCreate(*gorm.DB) (err error) {
-	b.ID = uuid.New().String()
+	if b.ID == "" {
+		b.ID = uuid.New().String()
+	}
+	if b.UserID == "" {
+		b.UserID = LocalUserID
+	}
 	return
 }
