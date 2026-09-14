@@ -126,7 +126,7 @@ func (e *Engine) pass(ctx context.Context) (bool, error) {
 
 	page := paginate(outgoing, e.Focused(), MaxNotesPerPass)
 
-	// A partial page has more waiting, so the cursor stops at the batch's high-water mark
+	// A partial page has more waiting, so the cursor stops short of what was held back
 	// and the next tick carries on from there rather than skipping the remainder.
 	pushedThrough := scanStart
 	if !page.Complete {
