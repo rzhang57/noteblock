@@ -24,28 +24,17 @@
     "productName": "Noteblock",
     "files": [
       "electron/**/*",
+      "!electron/**/*.test.ts",
       "client/dist/**/*"
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/icons/noteblock.ico",
-      "extraResources": [
-        {
-          "from": "noteblock-local-service/bin/noteblock-server.exe",
-          "to": "noteblock-server.exe"
-        }
-      ]
+      "icon": "assets/icons/noteblock.ico"
     },
     "mac": {
       "target": "dmg",
       "icon": "assets/icons/noteblock.icns",
-      "category": "public.app-category.productivity",
-      "extraResources": [
-        {
-          "from": "noteblock-local-service/bin/noteblock-server",
-          "to": "noteblock-server"
-        }
-      ]
+      "category": "public.app-category.productivity"
     },
     "extraResources": [
       {
