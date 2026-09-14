@@ -13,6 +13,7 @@ func (s *Server) noteCreate(req Request) Response {
 	if err := parseParams(req.Params, &body); err != nil {
 		return rpcErr(req.ID, "BAD_REQUEST", "Invalid params")
 	}
+	body.FolderID = topLevelIfNilOrEmpty(body.FolderID)
 
 	existingNotesInFolder, err := s.noteSvc.ListNotesByFolderId(body.FolderID)
 	if err != nil {

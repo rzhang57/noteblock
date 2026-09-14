@@ -98,6 +98,10 @@ func TestPassPushesLocalWorkAndAdvancesBothCursors(t *testing.T) {
 		t.Fatalf("create note: %v", err)
 	}
 
+	// The cursor is inclusive to the millisecond, so a note written in the same millisecond as
+	// the scan is deliberately re-sent. Settling is only observable once the clock has moved past it.
+	time.Sleep(2 * time.Millisecond)
+
 	if err := engine.Pass(context.Background()); err != nil {
 		t.Fatalf("pass: %v", err)
 	}
@@ -126,6 +130,11 @@ func TestASettledDeviceStopsSendingWork(t *testing.T) {
 	if _, err := f.notes.NewNote("CS341", nil); err != nil {
 		t.Fatalf("create note: %v", err)
 	}
+
+	// The cursor compares milliseconds and is inclusive, so a note written in the same millisecond
+	// as the scan is deliberately re-sent. Settling is only observable once the clock moves past it.
+	time.Sleep(2 * time.Millisecond)
+
 	if err := engine.Pass(context.Background()); err != nil {
 		t.Fatalf("first pass: %v", err)
 	}

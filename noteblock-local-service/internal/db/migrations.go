@@ -52,8 +52,8 @@ func Migrate(db *gorm.DB, migrations []Migration) error {
 
 		// PRAGMA foreign_keys is a no-op inside a transaction, so it has to be set out here.
 		if m.RebuildsTables {
-			if err := db.Exec("PRAGMA foreign_keys = OFF").Error; err != nil {
-				return fmt.Errorf("migration %s: disable foreign keys: %w", m.ID, err)
+			if err := disableForeignKeys(db); err != nil {
+				return fmt.Errorf("migration %s: %w", m.ID, err)
 			}
 		}
 
@@ -84,6 +84,25 @@ func Migrate(db *gorm.DB, migrations []Migration) error {
 		}
 
 		log.Printf("applied migration %s", m.ID)
+	}
+
+	return nil
+}
+
+// The pragma is per-connection and this is an Exec, so it only reaches the connection the
+// migration will run on because db.Open pins the pool to one. Read it back rather than trust
+// that: if enforcement is still on, the rebuild cascades and takes every block with it.
+func disableForeignKeys(db *gorm.DB) error {
+	if err := db.Exec("PRAGMA foreign_keys = OFF").Error; err != nil {
+		return fmt.Errorf("disable foreign keys: %w", err)
+	}
+
+	var enabled int
+	if err := db.Raw("PRAGMA foreign_keys").Scan(&enabled).Error; err != nil {
+		return fmt.Errorf("read back foreign_keys: %w", err)
+	}
+	if enabled != 0 {
+		return fmt.Errorf("foreign keys still enforced; a table rebuild here would cascade")
 	}
 
 	return nil

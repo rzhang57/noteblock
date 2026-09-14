@@ -29,9 +29,8 @@ func openAgainstContainer(t *testing.T) *gorm.DB {
 	return db
 }
 
-// Ids are opaque strings, and top-level notes carry the literal folder id "root". Declaring
-// those columns as uuid makes Postgres reject the default case outright, which the SQLite
-// suites cannot see because SQLite ignores the declared type.
+// Ids are opaque strings chosen by the client. Declaring those columns as uuid makes Postgres
+// reject them outright, which the SQLite suites cannot see because SQLite ignores declared types.
 func TestRecordsWithNonUuidIdsArePersistable(t *testing.T) {
 	db := openAgainstContainer(t)
 

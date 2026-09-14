@@ -8,7 +8,8 @@ describe("LocalIpcClient", () => {
                 local: {
                     folder: {
                         create: vi.fn().mockResolvedValue({id: "f1"}),
-                        get: vi.fn().mockResolvedValue({id: "root"}),
+                        get: vi.fn().mockResolvedValue({id: "f1"}),
+                        tree: vi.fn().mockResolvedValue({id: "", parent_id: null, children: [], notes: []}),
                         update: vi.fn().mockResolvedValue({id: "f1", name: "Updated"}),
                         delete: vi.fn().mockResolvedValue({}),
                     },
@@ -31,11 +32,18 @@ describe("LocalIpcClient", () => {
         }
     })
 
+    it("reaches the preload bridge for the synthesized tree", async () => {
+        const tree = await localIpcClient.folder.tree()
+
+        expect(window.noteblock.local.folder.tree).toHaveBeenCalledWith()
+        expect(tree.parent_id).toBeNull()
+    })
+
     it("forwards folder and note requests to preload APIs", async () => {
-        await localIpcClient.folder.get("root")
+        await localIpcClient.folder.get("f1")
         await localIpcClient.note.create({title: "A", folder_id: "root"})
 
-        expect(window.noteblock.local.folder.get).toHaveBeenCalledWith("root")
+        expect(window.noteblock.local.folder.get).toHaveBeenCalledWith("f1")
         expect(window.noteblock.local.note.create).toHaveBeenCalledWith({title: "A", folder_id: "root"})
     })
 

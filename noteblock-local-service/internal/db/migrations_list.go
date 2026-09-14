@@ -147,9 +147,11 @@ func dropRootFolder(tx *gorm.DB) error {
 		"CREATE INDEX IF NOT EXISTS `idx_notes_user_id` ON `notes`(`user_id`)",
 		"CREATE INDEX IF NOT EXISTS `idx_notes_deleted_at` ON `notes`(`deleted_at`)",
 
-		// Reparent before deleting, or the rows point at a folder that is gone.
-		"UPDATE `notes` SET `folder_id` = NULL WHERE `folder_id` = 'root'",
-		"UPDATE `folders` SET `parent_id` = NULL WHERE `parent_id` = 'root'",
+		// Reparent before deleting, or the rows point at a folder that is gone. updated_at moves with
+		// them: the cursor on a synced device is already past these rows, so without it the repair
+		// never reaches the cloud and the two sides disagree about the parent forever.
+		"UPDATE `notes` SET `folder_id` = NULL, `updated_at` = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE `folder_id` = 'root'",
+		"UPDATE `folders` SET `parent_id` = NULL, `updated_at` = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE `parent_id` = 'root'",
 		"DELETE FROM `folders` WHERE `id` = 'root'",
 	}
 

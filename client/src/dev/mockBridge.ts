@@ -124,7 +124,6 @@ const AMORTIZED = `## Three methods
 The dynamic array doubling argument is the canonical example.`;
 
 function seed() {
-    folders.set("root", {id: "root", name: "root", parent_id: ""});
 
     const coursework = seedFolder("Coursework", null);
     const cs341 = seedFolder("CS 341", coursework);
@@ -143,7 +142,7 @@ function seed() {
         textBlock(0, "Books I keep meaning to finish.\n\n- *The Design of Everyday Things*\n- *Thinking in Systems*\n- *A Philosophy of Software Design*"),
     ]);
 
-    const scenarios = seedFolder("Rendering scenarios", "root");
+    const scenarios = seedFolder("Rendering scenarios", null);
     seedNote("Paragraphs", scenarios, [textBlock(0, PARAGRAPHS)]);
     seedNote("Unordered lists", scenarios, [textBlock(0, UNORDERED)]);
     seedNote("Ordered lists", scenarios, [textBlock(0, ORDERED)]);
