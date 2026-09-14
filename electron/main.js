@@ -252,7 +252,11 @@ app.whenReady().then(async () => {
 // next launch pushes it. A slow quit is a worse bug than a few seconds of staleness elsewhere.
 function flushSync() {
     return Promise.race([
-        sendBackendRequest("sync.flush", {})
+        // sendBackendRequest throws synchronously when the sidecar is gone, and this runs after
+        // preventDefault: an escaping throw means app.quit() is never re-issued and the app
+        // cannot be closed at all.
+        Promise.resolve()
+            .then(() => sendBackendRequest("sync.flush", {}))
             .then((result) => console.error("[shutdown] sync flush:", JSON.stringify(result)))
             .catch((err) => console.error("[shutdown] sync flush failed:", err.message)),
         new Promise((resolve) => setTimeout(() => {

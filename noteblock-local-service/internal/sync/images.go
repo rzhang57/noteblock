@@ -3,6 +3,7 @@ package sync
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -26,6 +27,15 @@ func ImagesDir() string {
 }
 
 // Filenames are already <uuid>_<original>, unique across devices, so they are the storage key.
+// The peer chooses this name, and the Electron protocol handler serves whatever is in the images
+// directory with a content type derived from its extension. Anything that is not an image is
+// not something this device should be fetching and writing there.
+var imageExtensions = map[string]bool{".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".webp": true, ".svg": true}
+
+func isImageName(name string) bool {
+	return imageExtensions[strings.ToLower(filepath.Ext(name))]
+}
+
 func imageFilenames(docs []NoteDocument) []string {
 	seen := map[string]bool{}
 	var names []string
@@ -43,7 +53,7 @@ func imageFilenames(docs []NoteDocument) []string {
 				continue
 			}
 			name := strings.TrimPrefix(content.URL, imageURLPrefix)
-			if name == "" || name == content.URL || name != filepath.Base(name) || seen[name] {
+			if name == "" || name == content.URL || name != filepath.Base(name) || !isImageName(name) || seen[name] {
 				continue
 			}
 
@@ -57,7 +67,7 @@ func imageFilenames(docs []NoteDocument) []string {
 
 // Images ride their own requests, never the note payload, so one large paste cannot push a
 // sync body past the point where it stops fitting in a single round trip.
-func (e *Engine) pushImages(ctx context.Context, outgoing Changes) {
+func (e *Engine) pushImages(ctx context.Context, outgoing Changes) error {
 	for _, name := range imageFilenames(outgoing.Notes) {
 		var uploaded []model.ImageUpload
 		if err := e.DB.Where("filename = ?", name).Limit(1).Find(&uploaded).Error; err != nil {
@@ -77,8 +87,9 @@ func (e *Engine) pushImages(ctx context.Context, outgoing Changes) {
 		err = e.Client.PutImage(ctx, name, file)
 		file.Close()
 		if err != nil {
-			log.Printf("sync images: upload %s: %v", name, err)
-			continue
+			// Failing the pass keeps the note pending: shipping it now would describe bytes the
+			// peer cannot fetch, and the cursor would move past it.
+			return fmt.Errorf("upload image %s: %w", name, err)
 		}
 
 		record := model.ImageUpload{Filename: name, UploadedAt: time.Now().UTC()}
@@ -86,6 +97,8 @@ func (e *Engine) pushImages(ctx context.Context, outgoing Changes) {
 			log.Printf("sync images: record %s: %v", name, err)
 		}
 	}
+
+	return nil
 }
 
 // Fetched eagerly so the Electron protocol handler needs no changes: by the time the renderer

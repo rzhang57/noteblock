@@ -162,7 +162,9 @@ func (e *Engine) Focused() string {
 
 func (e *Engine) exchange(ctx context.Context, cursors Cursors, outgoing Changes, scanStart time.Time) error {
 	// Before the push, so a note never lands on the server describing bytes that are not there.
-	e.pushImages(ctx, outgoing)
+	if err := e.pushImages(ctx, outgoing); err != nil {
+		return err
+	}
 
 	res, err := e.Client.Sync(ctx, cursors.LastPulledServer, outgoing)
 	if err != nil {

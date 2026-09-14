@@ -2,6 +2,8 @@ package service
 
 import (
 	"encoding/json"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,5 +68,18 @@ func TestBlockWritesFailAgainstATombstonedNote(t *testing.T) {
 	conn.Model(&model.Block{}).Where("note_id = ?", note.ID).Count(&orphans)
 	if orphans != 0 {
 		t.Errorf("%d blocks attached to a tombstoned note, want 0", orphans)
+	}
+}
+
+func TestSavedImageNamesCannotEscapeTheImagesDirectory(t *testing.T) {
+	t.Setenv("NOTE_DB_PATH", t.TempDir())
+	blocks := &BlockService{DB: newServiceTestDB(t)}
+
+	url, err := blocks.SaveImageBytes(filepath.Join("..", "..", "escaped.png"), []byte("x"))
+	if err != nil {
+		t.Fatalf("save image: %v", err)
+	}
+	if strings.Contains(url, "..") {
+		t.Errorf("url = %q, want a name confined to the images directory", url)
 	}
 }

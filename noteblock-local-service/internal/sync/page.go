@@ -14,8 +14,9 @@ type Page struct {
 	Through  *time.Time
 }
 
-// A full batch cannot advance the cursor to the scan time — everything after it would be
-// skipped — so it advances to the batch's own high-water mark instead.
+// The cursor is derived from what was held back, never from what was sent: prioritise reorders the
+// batch around the focused note, so the newest record sent says nothing about whether an older one
+// is still pending. Taking the high-water mark of the batch strands every older note behind it.
 func paginate(changes Changes, focusNoteID string, limit int) Page {
 	notes := prioritise(changes.Notes, focusNoteID)
 
@@ -23,22 +24,25 @@ func paginate(changes Changes, focusNoteID string, limit int) Page {
 		return Page{Changes: Changes{Notes: notes, Folders: changes.Folders}, Complete: true}
 	}
 
-	batch := notes[:limit]
+	sent, held := notes[:limit:limit], notes[limit:]
 
-	sent := batch
-	boundary := maxUpdatedAt(batch)
-
-	// Only when a record that did not fit shares the boundary instant: a strict `>` cursor set
-	// there would skip it, so everything at that instant waits for the next pass instead.
-	if anyAt(notes[limit:], boundary) {
-		if trimmed := dropAt(batch, boundary); len(trimmed) > 0 {
-			sent = trimmed
+	// A single instant cannot be split: no cursor separates two records that share one. Grow the
+	// batch past the limit until the oldest held-back instant is one nothing in the batch shares.
+	for len(held) > 0 {
+		boundary := minUpdatedAt(held)
+		if !anyAt(sent, boundary) {
+			break
 		}
+		sent, held = moveInstant(sent, held, boundary)
 	}
 
-	// The cursor follows what was sent, never the batch: anything held back must still be
-	// on the far side of it next pass.
-	through := maxUpdatedAt(sent)
+	if len(held) == 0 {
+		return Page{Changes: Changes{Notes: sent, Folders: changes.Folders}, Complete: true}
+	}
+
+	// Inclusive cursor: parking on the oldest held-back instant re-sends whatever shares it.
+	// Applying a change twice is idempotent; advancing past one is not recoverable.
+	through := minUpdatedAt(held)
 
 	return Page{
 		Changes:  Changes{Notes: sent, Folders: changes.Folders},
@@ -69,26 +73,28 @@ func prioritise(notes []NoteDocument, focusNoteID string) []NoteDocument {
 	return notes
 }
 
-func maxUpdatedAt(notes []NoteDocument) time.Time {
-	var max time.Time
-	for _, note := range notes {
-		if note.UpdatedAt.After(max) {
-			max = note.UpdatedAt
+func moveInstant(sent, held []NoteDocument, at time.Time) ([]NoteDocument, []NoteDocument) {
+	keptBack := make([]NoteDocument, 0, len(held))
+	for _, note := range held {
+		if note.UpdatedAt.Equal(at) {
+			sent = append(sent, note)
+			continue
 		}
+		keptBack = append(keptBack, note)
 	}
 
-	return max
+	return sent, keptBack
 }
 
-func dropAt(notes []NoteDocument, at time.Time) []NoteDocument {
-	kept := make([]NoteDocument, 0, len(notes))
-	for _, note := range notes {
-		if !note.UpdatedAt.Equal(at) {
-			kept = append(kept, note)
+func minUpdatedAt(notes []NoteDocument) time.Time {
+	min := notes[0].UpdatedAt
+	for _, note := range notes[1:] {
+		if note.UpdatedAt.Before(min) {
+			min = note.UpdatedAt
 		}
 	}
 
-	return kept
+	return min
 }
 
 func anyAt(notes []NoteDocument, at time.Time) bool {

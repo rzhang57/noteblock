@@ -103,6 +103,8 @@ func (c *Client) PutImage(ctx context.Context, key string, body io.Reader) error
 
 // Written aside and renamed so a failed fetch cannot leave a truncated image where the
 // protocol handler would happily serve it.
+const maxImageBytes = 25 << 20
+
 func (c *Client) GetImage(ctx context.Context, key string, dest string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.imageURL(key), nil)
 	if err != nil {
@@ -125,9 +127,16 @@ func (c *Client) GetImage(ctx context.Context, key string, dest string) error {
 	}
 	defer os.Remove(tmp.Name())
 
-	if _, err := io.Copy(tmp, res.Body); err != nil {
+	// The server chooses these bytes, so the write is capped the same way the upload is; without
+	// it a peer can fill the disk of every device that pulls.
+	written, err := io.Copy(tmp, io.LimitReader(res.Body, maxImageBytes+1))
+	if err != nil {
 		tmp.Close()
 		return err
+	}
+	if written > maxImageBytes {
+		tmp.Close()
+		return fmt.Errorf("image %s exceeds %d bytes", key, maxImageBytes)
 	}
 	if err := tmp.Close(); err != nil {
 		return err

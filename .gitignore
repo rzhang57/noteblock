@@ -31,3 +31,12 @@ client/.env.local
 
 # Playwright MCP scratch output
 .playwright-mcp/
+
+# godotenv autoloads from the working directory, which is the repo root under npm run dev,
+# so a real Supabase password lands here rather than in the service directory.
+.env
+.env.*
+!.env.example
+
+noteblock-cloud-service/bin/
+noteblock-local-service/bin/

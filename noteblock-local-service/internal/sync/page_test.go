@@ -40,7 +40,7 @@ func TestAShortBatchSendsEverythingAndReportsComplete(t *testing.T) {
 	}
 }
 
-func TestAFullBatchStopsAtItsOwnHighWaterMark(t *testing.T) {
+func TestAFullBatchParksTheCursorOnTheOldestHeldBackRecord(t *testing.T) {
 	base := time.Now().UTC()
 	changes := Changes{Notes: notesAt(base, base.Add(time.Second), base.Add(2*time.Second))}
 
@@ -52,36 +52,30 @@ func TestAFullBatchStopsAtItsOwnHighWaterMark(t *testing.T) {
 	if page.Through == nil {
 		t.Fatal("a partial page must say how far the cursor may move")
 	}
-	// Advancing to the scan time here would skip the third note forever.
-	if !page.Through.Equal(base.Add(time.Second)) {
-		t.Errorf("through = %v, want the batch's last timestamp", page.Through)
+	// Inclusive cursor, so it may sit exactly on the held-back record.
+	if !page.Through.Equal(base.Add(2 * time.Second)) {
+		t.Errorf("through = %v, want the oldest held-back timestamp", page.Through)
 	}
 }
 
-// A strict `>` cursor set to the boundary instant would skip whichever records sharing it
-// did not fit, so they are held back for the next pass instead.
-func TestRecordsStraddlingTheBoundaryTimestampAreHeldBack(t *testing.T) {
+// No cursor separates two records sharing an instant, so the batch grows to swallow it whole
+// rather than stranding one or looping on it forever.
+func TestAnIndivisibleInstantIsSentWholeEvenPastTheLimit(t *testing.T) {
 	base := time.Now().UTC()
 	shared := base.Add(time.Second)
-	// The third and fourth share an instant, and only the third fits.
 	changes := Changes{Notes: notesAt(base, base.Add(500*time.Millisecond), shared, shared)}
 
 	page := paginate(changes, "", 3)
 
-	if len(page.Changes.Notes) != 2 {
-		t.Fatalf("sent %v, want the two before the straddled boundary", idsOf(page.Changes.Notes))
+	if len(page.Changes.Notes) != 4 {
+		t.Fatalf("sent %v, want the shared instant carried whole", idsOf(page.Changes.Notes))
 	}
-	if page.Through.Equal(shared) {
-		t.Error("cursor advanced onto the straddled instant; the record that did not fit is now unreachable")
-	}
-	if !page.Through.Equal(base.Add(500 * time.Millisecond)) {
-		t.Errorf("through = %v, want the last timestamp actually sent", page.Through)
+	if !page.Complete {
+		t.Error("nothing is left, so the page is complete")
 	}
 }
 
-// Trimming is only warranted when a record outside the batch shares the boundary. Otherwise
-// it costs a whole round trip per pass for nothing.
-func TestABoundarySharedOnlyInsideTheBatchIsNotTrimmed(t *testing.T) {
+func TestABoundarySharedOnlyInsideTheBatchNeedsNoGrowth(t *testing.T) {
 	base := time.Now().UTC()
 	shared := base.Add(time.Second)
 	changes := Changes{Notes: notesAt(base, shared, shared, base.Add(2*time.Second))}
@@ -91,24 +85,53 @@ func TestABoundarySharedOnlyInsideTheBatchIsNotTrimmed(t *testing.T) {
 	if len(page.Changes.Notes) != 3 {
 		t.Errorf("sent %v, want the whole batch", idsOf(page.Changes.Notes))
 	}
-	if !page.Through.Equal(shared) {
-		t.Errorf("through = %v, want %v", page.Through, shared)
+	if !page.Through.Equal(base.Add(2 * time.Second)) {
+		t.Errorf("through = %v, want the held-back record's timestamp", page.Through)
 	}
 }
 
-// Holding them all back would mean no progress at all, so a batch that is entirely one
-// instant goes as it is.
-func TestABatchThatIsEntirelyOneInstantStillGoes(t *testing.T) {
+func TestABatchThatIsEntirelyOneInstantGoesInOnePass(t *testing.T) {
 	at := time.Now().UTC()
 	changes := Changes{Notes: notesAt(at, at, at, at)}
 
 	page := paginate(changes, "", 2)
 
-	if len(page.Changes.Notes) != 2 {
-		t.Fatalf("sent %d notes, want the batch rather than nothing", len(page.Changes.Notes))
+	if len(page.Changes.Notes) != 4 {
+		t.Fatalf("sent %d notes, want all of them; the instant cannot be split", len(page.Changes.Notes))
 	}
-	if !page.Through.Equal(at) {
-		t.Errorf("through = %v, want %v", page.Through, at)
+	if !page.Complete {
+		t.Error("the whole change set went, so the page is complete")
+	}
+}
+
+// The invariant the whole design exists to protect, stated directly: a note that was not sent
+// must still be at or after the cursor, or the next scan will never return it.
+func TestNoHeldBackNoteEverFallsBelowTheCursor(t *testing.T) {
+	base := time.Now().UTC()
+	var notes []NoteDocument
+	for i := range 60 {
+		notes = append(notes, NoteDocument{
+			ID:        string(rune('A'+i%26)) + string(rune('0'+i/26)),
+			UpdatedAt: base.Add(time.Duration(i) * time.Second),
+		})
+	}
+
+	for _, focus := range []string{"", notes[59].ID, notes[0].ID, notes[30].ID} {
+		page := paginate(Changes{Notes: notes}, focus, MaxNotesPerPass)
+		if page.Complete {
+			continue
+		}
+
+		sent := map[string]bool{}
+		for _, n := range page.Changes.Notes {
+			sent[n.ID] = true
+		}
+		for _, n := range notes {
+			if !sent[n.ID] && n.UpdatedAt.Before(*page.Through) {
+				t.Errorf("focus %q: %s was held back but sits below the cursor %v; it will never be scanned again",
+					focus, n.ID, page.Through)
+			}
+		}
 	}
 }
 
