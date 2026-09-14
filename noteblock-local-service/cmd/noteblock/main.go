@@ -23,13 +23,16 @@ func main() {
 	fSvc := &service.FolderService{DB: dbConn, NoteService: nSvc}
 	bSvc := &service.BlockService{DB: dbConn}
 
+	server := ipc.NewServer(nSvc, fSvc, bSvc)
+
 	if engine := newSyncEngine(dbConn); engine != nil {
 		ctx, stop := context.WithCancel(context.Background())
 		defer stop()
+
+		server.SetFlusher(engine)
 		go engine.Run(ctx)
 	}
 
-	server := ipc.NewServer(nSvc, fSvc, bSvc)
 	if err := server.Run(os.Stdin, os.Stdout); err != nil {
 		// stderr: stdout is the IPC protocol.
 		log.Fatalf("ipc server terminated: %v", err)

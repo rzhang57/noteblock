@@ -15,7 +15,7 @@ so they may arrive out of order.
 ## Essential Commands
 - `npm run dev` (root): rebuilds the local Go binary, then runs Vite and Electron together.
 - `npm run build` (root): builds the client and packages via `electron-builder`.
-- `npm run build:local-service` (root): rebuilds the sidecar binary alone.
+- `npm run build:services` (root): rebuilds both Go binaries alone.
 - `cd client && npm test` / `npm run lint` / `npm run build` (the last type-checks via `tsc -b`).
 - `cd noteblock-local-service && go test ./...` — includes the IPC round-trip smoke tests.
 - `cd noteblock-local-service && go build -o bin/noteblock-server.exe ./cmd/noteblock` (Windows).
@@ -24,6 +24,22 @@ so they may arrive out of order.
 CI is path-scoped: a change under `client/` runs the client workflow only, likewise per Go service.
 A change is not done until its workflow is green. `npm run lint` has pre-existing `no-explicit-any`
 errors so it is not a CI gate yet — run it locally and do not add new ones.
+
+## Pull Request Descriptions
+Three sections, in this order, and nothing else. Plus screenshots or a video for frontend changes.
+
+```
+## What
+## Why
+## Verification
+```
+
+A few lines each, bullets over prose, no emojis. A reviewer should be able to decide in under a
+minute — long bodies get skimmed, which is worse than short ones.
+
+Do not narrate the process, the alternatives weighed, or the bugs hit along the way. That goes in
+the commit body, where someone reading `git log` wants it. **Verification is evidence, not
+intent**: numbers, before/after, command output. "Tested locally" is not verification.
 
 ## Architecture Invariants
 Load-bearing. Breaking one produces confusing runtime failures rather than compile errors.
@@ -82,20 +98,22 @@ Be pragmatic. Match the surrounding code rather than importing conventions from 
 ## Validation
 Run the tests and the build for every area a change touches, and let the path-scoped CI go green.
 
-A UI behaviour or layout change additionally requires runtime verification in a real browser; unit
-tests are necessary but not sufficient.
+A UI behaviour or layout change additionally requires runtime verification in a real browser, and a
+sync behaviour change requires a two-device round trip; unit tests are necessary but not sufficient
+for either.
 
 Longer procedures live in `.claude/skills/`, not here. Three skills implement work, in order of how
 much control the engineer keeps: `implement-change` (one already-scoped increment, designed with the
 engineer before any code — the default), `develop-feature-incrementally` (plan a feature once, then
 one change per human review), and `develop-feature` (a whole feature in one unreviewed pass; the
-exception). Underneath all three sit `ipc-change`, `block-type-change`, `verify-ui-change` and
-`prepare-pr`.
+exception). Underneath all three sit `ipc-change`, `block-type-change`, `verify-ui-change`,
+`verify-sync-change` and `prepare-pr`.
 
 ## Repo-Specific Landmines
-- **Binary freshness.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`.
+- **Binary freshness.** Electron dev launches `noteblock-local-service/bin/noteblock-server(.exe)`
+  and `noteblock-cloud-service/bin/cloud-api(.exe)`.
   A stale binary means debugging code that is no longer on disk — run `npm run dev` or
-  `npm run build:local-service` first.
+  `npm run build:services` first.
 - **`gofmt -l` reports every Go file on Windows.** A CRLF artifact, not real drift; git normalizes on
   commit. Do not "fix" it — the whole-file diffs bury the real change. Check with `gofmt -d <file>`
   and see whether the diff is anything other than `^M`.
@@ -110,6 +128,16 @@ exception). Underneath all three sit `ipc-change`, `block-type-change`, `verify-
 - MDXEditor's ref does not expose the Lexical editor; use `__lexicalEditor` on the contenteditable
   root. It also injects its stylesheet at runtime, after ours, so equal-specificity CSS loses to it.
 - `client/src/dev/mockBridge.ts` is in-memory and reseeds on every reload.
+- **Scripted multi-line replacements silently no-op on these files.** A `sed`/Python replace whose
+  pattern does not match changes nothing, reports nothing, and the result still compiles and still
+  passes. Use the Edit tool, which fails loudly, and grep for the change afterwards.
+- **Go does not flag an unused package-level function.** A fix can be written, reviewed, committed
+  and left wired to nothing while the build and the whole suite stay green. Assert the behaviour, not
+  the existence of the code.
+- **SQLite compares datetimes lexically, and `%f` rounds to milliseconds.** A local-offset timestamp
+  and a UTC one for the same instant do not order correctly, and two writes under a millisecond apart
+  compare equal. Everything is stored UTC via GORM's `NowFunc`, and anything accepting a cursor
+  normalises it.
 
 ## Project Context
 Linear (`linear.app/noteblock`) is the source of truth for project direction — reach it through the

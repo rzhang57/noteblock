@@ -1,10 +1,16 @@
 const { app, BrowserWindow, ipcMain, protocol, net } = require("electron")
 const { spawn } = require("child_process")
+const nodeNet = require("net")
 const { randomUUID } = require("crypto")
 const path = require("path")
 const { pathToFileURL } = require("url")
 
 let goProcess
+let cloudProcess
+let cloudBaseUrl = ""
+
+// Comfortably inside the sidecar 3s flush timeout, so the race is decided by the sidecar.
+const SHUTDOWN_FLUSH_MS = 4000
 let responseBuffer = ""
 const pendingRequests = new Map()
 
@@ -62,18 +68,62 @@ function getDataPath() {
     return app.isPackaged ? app.getPath("userData") : path.join(__dirname, "..")
 }
 
-function startBackendProcess() {
-    const isWin = process.platform === "win32"
-    const backendFile = isWin ? "noteblock-server.exe" : "noteblock-server"
-    const backendPath = app.isPackaged
-        ? path.join(process.resourcesPath, backendFile)
-        : path.join(__dirname, "../noteblock-local-service/bin", backendFile)
+function binaryPath(name, devDir) {
+    const file = process.platform === "win32" ? `${name}.exe` : name
+    return app.isPackaged
+        ? path.join(process.resourcesPath, file)
+        : path.join(__dirname, devDir, file)
+}
 
-    goProcess = spawn(backendPath, [], {
+function freePort() {
+    return new Promise((resolve, reject) => {
+        const server = nodeNet.createServer()
+        server.on("error", reject)
+        server.listen(0, "127.0.0.1", () => {
+            const { port } = server.address()
+            server.close(() => resolve(port))
+        })
+    })
+}
+
+// Postgres if it is configured, otherwise a local file, so the app works with nothing provisioned.
+function cloudEnv(port) {
+    const env = { ...process.env, PORT: String(port) }
+    if (!env.BLUEPRINT_DB_HOST) {
+        env.BLUEPRINT_DB_SQLITE_PATH = path.join(getDataPath(), "cloud.sqlite")
+    }
+    return env
+}
+
+async function startCloudProcess() {
+    const port = await freePort()
+    cloudBaseUrl = `http://127.0.0.1:${port}`
+
+    cloudProcess = spawn(binaryPath("cloud-api", "../noteblock-cloud-service/bin"), [], {
+        stdio: ["ignore", "pipe", "pipe"],
+        env: cloudEnv(port)
+    })
+
+    cloudProcess.on("error", (err) => {
+        console.error("Failed to start cloud service:", err)
+    })
+
+    // Gin logs to stdout. It must never reach the JSON-lines parser, so both streams are
+    // consumed here and neither is wired to the correlator.
+    for (const stream of [cloudProcess.stdout, cloudProcess.stderr]) {
+        if (!stream) continue
+        stream.setEncoding("utf8")
+        stream.on("data", (chunk) => console.error("[cloud-service]", chunk.trim()))
+    }
+}
+
+function startBackendProcess() {
+    goProcess = spawn(binaryPath("noteblock-server", "../noteblock-local-service/bin"), [], {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
             ...process.env,
-            NOTE_DB_PATH: getDataPath()
+            NOTE_DB_PATH: getDataPath(),
+            NOTEBLOCK_CLOUD_URL: cloudBaseUrl
         }
     })
 
@@ -189,15 +239,50 @@ function createWindow() {
     }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
     registerLocalImageProtocol()
+    // The sidecar needs the cloud url at spawn time, so the port has to be settled first.
+    await startCloudProcess()
     startBackendProcess()
     registerRendererHandlers()
     createWindow()
 })
 
+// Best effort, never a durability mechanism: the edit is already committed locally and the
+// next launch pushes it. A slow quit is a worse bug than a few seconds of staleness elsewhere.
+function flushSync() {
+    return Promise.race([
+        // sendBackendRequest throws synchronously when the sidecar is gone, and this runs after
+        // preventDefault: an escaping throw means app.quit() is never re-issued and the app
+        // cannot be closed at all.
+        Promise.resolve()
+            .then(() => sendBackendRequest("sync.flush", {}))
+            .then((result) => console.error("[shutdown] sync flush:", JSON.stringify(result)))
+            .catch((err) => console.error("[shutdown] sync flush failed:", err.message)),
+        new Promise((resolve) => setTimeout(() => {
+            console.error("[shutdown] sync flush timed out, quitting anyway")
+            resolve()
+        }, SHUTDOWN_FLUSH_MS))
+    ])
+}
+
+let quitting = false
+
+app.on("before-quit", (event) => {
+    if (quitting) return
+
+    event.preventDefault()
+    quitting = true
+
+    flushSync().finally(() => {
+        // Sidecar first: it is the thing that talks to the cloud service.
+        if (goProcess && !goProcess.killed) goProcess.kill()
+        if (cloudProcess && !cloudProcess.killed) cloudProcess.kill()
+        app.quit()
+    })
+})
+
 app.on("will-quit", () => {
-    if (goProcess && !goProcess.killed) {
-        goProcess.kill()
-    }
+    if (goProcess && !goProcess.killed) goProcess.kill()
+    if (cloudProcess && !cloudProcess.killed) cloudProcess.kill()
 })

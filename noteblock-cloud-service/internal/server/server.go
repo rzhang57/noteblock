@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -12,14 +14,16 @@ import (
 
 	"gorm.io/gorm"
 
+	"noteblock-cloud-service/internal/blob"
 	"noteblock-cloud-service/internal/database"
 )
 
 type Server struct {
 	port int
 
-	db   database.Service
-	gorm *gorm.DB
+	db    database.Service
+	gorm  *gorm.DB
+	blobs blob.Store
 }
 
 // The raw database/sql handle only knows how to reach Postgres, so in local sqlite mode
@@ -32,6 +36,33 @@ func maybeLegacyDB() database.Service {
 	return database.New()
 }
 
+// S3 when a bucket is configured, otherwise files next to the database, so images work
+// with nothing provisioned.
+func mustBlobStore() blob.Store {
+	if os.Getenv("BLOB_S3_BUCKET") != "" {
+		store, err := blob.NewS3(context.Background())
+		if err != nil {
+			log.Fatalf("blob storage unavailable: %v", err)
+		}
+		return store
+	}
+
+	store, err := blob.NewFile(blobDir())
+	if err != nil {
+		log.Fatalf("blob storage unavailable: %v", err)
+	}
+
+	return store
+}
+
+func blobDir() string {
+	if dir := os.Getenv("BLOB_FILE_DIR"); dir != "" {
+		return dir
+	}
+
+	return filepath.Join(filepath.Dir(os.Getenv("BLUEPRINT_DB_SQLITE_PATH")), "cloud-images")
+}
+
 func NewServer() *http.Server {
 	port, _ := strconv.Atoi(os.Getenv("PORT"))
 	gormDB, err := database.OpenGorm()
@@ -42,13 +73,15 @@ func NewServer() *http.Server {
 	NewServer := &Server{
 		port: port,
 
-		db:   maybeLegacyDB(),
-		gorm: gormDB,
+		db:    maybeLegacyDB(),
+		blobs: mustBlobStore(),
+		gorm:  gormDB,
 	}
 
 	// Declare Server config
 	server := &http.Server{
-		// Loopback until the endpoint authenticates: an empty request body returns the whole corpus.
+		// Loopback only: the sole client is a sidecar on this machine, and a bare ":port"
+		// binds every interface, which puts an unauthenticated /sync on the local network.
 		Addr:         fmt.Sprintf("127.0.0.1:%d", NewServer.port),
 		Handler:      NewServer.RegisterRoutes(),
 		IdleTimeout:  time.Minute,

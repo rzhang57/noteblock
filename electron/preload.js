@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld("noteblock", {
             update: (noteId, blockId, payload) => callLocal("block.update", { note_id: noteId, block_id: blockId, ...payload }),
             delete: (noteId, blockId) => callLocal("block.delete", { note_id: noteId, block_id: blockId }),
         },
+        sync: {
+            focus: (noteId) => callLocal("sync.focus", { note_id: noteId }),
+        },
         asset: {
             uploadImage: (payload) => callLocal("asset.uploadImage", payload),
         },

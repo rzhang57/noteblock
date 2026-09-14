@@ -17,7 +17,9 @@ type BlockService struct {
 
 func (s *BlockService) SaveImageBytes(fileName string, data []byte) (string, error) {
 	newImageUuid := uuid.NewString()
-	imageName := newImageUuid + "_" + fileName
+	// The name reaches here from the renderer; without Base a "../.." escapes the images directory,
+	// which sync now also writes into.
+	imageName := newImageUuid + "_" + filepath.Base(fileName)
 
 	basePath := os.Getenv("NOTE_DB_PATH")
 	if basePath == "" {

@@ -334,6 +334,9 @@ export function installMockBridge() {
                     return delay(undefined);
                 },
             },
+            sync: {
+                focus: (noteId: string | null) => delay({note_id: noteId ?? ""}),
+            },
             asset: {
                 uploadImage: (payload: { filename: string; data_base64: string }) =>
                     delay({url: `data:image/png;base64,${payload.data_base64}`, filename: payload.filename}),

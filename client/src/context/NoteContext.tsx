@@ -16,6 +16,12 @@ export const NoteProvider = ({children}: { children: ReactNode }) => {
     });
     const [noteTitle, setNoteTitle] = useState<string | null>(null);
 
+    // Tells the sidecar which note is on screen so sync sends it before the rest of the backlog.
+    useEffect(() => {
+        NoteService.focus(selectedNoteId).catch(() => {
+        });
+    }, [selectedNoteId]);
+
     useEffect(() => {
         if (selectedNoteId) {
             localStorage.setItem('selectedNoteId', selectedNoteId);

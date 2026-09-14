@@ -43,6 +43,11 @@ export const localIpcClient = {
             return window.noteblock.local.block.delete(noteId, blockId)
         },
     },
+    sync: {
+        focus(noteId: string | null) {
+            return window.noteblock.local.sync.focus(noteId)
+        },
+    },
     asset: {
         uploadImage(payload: { filename: string; data_base64: string }) {
             return window.noteblock.local.asset.uploadImage(payload)

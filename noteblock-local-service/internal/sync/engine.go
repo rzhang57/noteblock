@@ -3,13 +3,16 @@ package sync
 import (
 	"context"
 	"log"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"gorm.io/gorm"
 )
 
 const DefaultInterval = 30 * time.Second
+
+// A bound rather than a target: a batch that somehow makes no progress must not spin.
+const maxBatchesPerPass = 200
 
 type Engine struct {
 	DB       *gorm.DB
@@ -19,7 +22,9 @@ type Engine struct {
 
 	// One pass at a time: concurrent passes would race on both cursors and on the
 	// single SQLite writer, and one could advance a cursor past records the other has not applied.
-	running sync.Mutex
+	// A channel rather than a Mutex so a flush can wait for the slot under its own deadline.
+	running chan struct{}
+	focus   atomic.Value
 }
 
 func NewEngine(db *gorm.DB, baseURL string, interval time.Duration) *Engine {
@@ -32,6 +37,7 @@ func NewEngine(db *gorm.DB, baseURL string, interval time.Duration) *Engine {
 		Store:    &Store{DB: db},
 		Client:   NewClient(baseURL),
 		Interval: interval,
+		running:  make(chan struct{}, 1),
 	}
 }
 
@@ -57,15 +63,56 @@ func (e *Engine) Run(ctx context.Context) {
 	}
 }
 
+// Pass is the ticker's entry point: if one is already running there is nothing useful to add,
+// so it yields. Use Flush when the caller needs the work actually done.
 func (e *Engine) Pass(ctx context.Context) error {
-	if !e.running.TryLock() {
+	select {
+	case e.running <- struct{}{}:
+		defer func() { <-e.running }()
+	default:
 		return nil
 	}
-	defer e.running.Unlock()
 
+	return e.drain(ctx)
+}
+
+// Flush waits for the in-flight pass instead of yielding to it. Shutdown calls this, and
+// reporting success after skipping the work would be a lie told at the one moment it matters.
+func (e *Engine) Flush(ctx context.Context) error {
+	select {
+	case e.running <- struct{}{}:
+		defer func() { <-e.running }()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	return e.drain(ctx)
+}
+
+// Batches are drained inside the one slot rather than one per tick, so a first sync finishes
+// in one go instead of taking interval × corpus/batch to catch up.
+func (e *Engine) drain(ctx context.Context) error {
+	for range maxBatchesPerPass {
+		complete, err := e.pass(ctx)
+		if err != nil {
+			return err
+		}
+		if complete {
+			return nil
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+	}
+
+	// More still waiting, but the next tick can have it; looping forever would be worse.
+	return nil
+}
+
+func (e *Engine) pass(ctx context.Context) (bool, error) {
 	cursors, err := e.Store.Cursors()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Captured before the scan so anything written during the round trip is caught next pass
@@ -74,21 +121,58 @@ func (e *Engine) Pass(ctx context.Context) error {
 
 	outgoing, err := e.Store.ChangedSince(cursors.LastPushedLocal)
 	if err != nil {
-		return err
+		return false, err
+	}
+
+	page := paginate(outgoing, e.Focused(), MaxNotesPerPass)
+
+	// A partial page has more waiting, so the cursor stops short of what was held back
+	// and the next tick carries on from there rather than skipping the remainder.
+	pushedThrough := scanStart
+	if !page.Complete {
+		pushedThrough = *page.Through
 	}
 
 	// Always exchange, even with nothing to push: the pull is how this device learns
 	// whether the other one has news.
-	return e.exchange(ctx, cursors, outgoing, scanStart)
+	if err := e.exchange(ctx, cursors, page.Changes, pushedThrough); err != nil {
+		return false, err
+	}
+
+	return page.Complete, nil
+}
+
+// Focus names the note on screen so the next pass sends it first. Setting it kicks a pass,
+// because the point is that the note you just opened reaches the other device quickly.
+func (e *Engine) Focus(ctx context.Context, noteID string) {
+	e.focus.Store(noteID)
+
+	go func() {
+		if err := e.Pass(context.WithoutCancel(ctx)); err != nil {
+			log.Printf("sync: %v", err)
+		}
+	}()
+}
+
+func (e *Engine) Focused() string {
+	focused, _ := e.focus.Load().(string)
+
+	return focused
 }
 
 func (e *Engine) exchange(ctx context.Context, cursors Cursors, outgoing Changes, scanStart time.Time) error {
+	// Before the push, so a note never lands on the server describing bytes that are not there.
+	if err := e.pushImages(ctx, outgoing); err != nil {
+		return err
+	}
+
 	res, err := e.Client.Sync(ctx, cursors.LastPulledServer, outgoing)
 	if err != nil {
 		return err
 	}
 
 	incoming := Changes{Notes: res.Notes, Folders: res.Folders}
+	e.fetchImages(ctx, incoming)
 
 	// Both cursors advance in the same transaction that applies the pull. Advancing either
 	// one early loses data silently; advancing late costs one redundant round trip.

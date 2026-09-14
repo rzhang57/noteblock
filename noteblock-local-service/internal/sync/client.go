@@ -5,7 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -75,4 +79,72 @@ func (c *Client) Sync(ctx context.Context, since string, changes Changes) (respo
 	}
 
 	return decoded, nil
+}
+
+func (c *Client) PutImage(ctx context.Context, key string, body io.Reader) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.imageURL(key), body)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	res, err := c.HTTP.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("image upload returned %s", res.Status)
+	}
+
+	return nil
+}
+
+// Written aside and renamed so a failed fetch cannot leave a truncated image where the
+// protocol handler would happily serve it.
+const maxImageBytes = 25 << 20
+
+func (c *Client) GetImage(ctx context.Context, key string, dest string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.imageURL(key), nil)
+	if err != nil {
+		return err
+	}
+
+	res, err := c.HTTP.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("image fetch returned %s", res.Status)
+	}
+
+	tmp, err := os.CreateTemp(filepath.Dir(dest), ".partial-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+
+	// The server chooses these bytes, so the write is capped the same way the upload is; without
+	// it a peer can fill the disk of every device that pulls.
+	written, err := io.Copy(tmp, io.LimitReader(res.Body, maxImageBytes+1))
+	if err != nil {
+		tmp.Close()
+		return err
+	}
+	if written > maxImageBytes {
+		tmp.Close()
+		return fmt.Errorf("image %s exceeds %d bytes", key, maxImageBytes)
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+
+	return os.Rename(tmp.Name(), dest)
+}
+
+func (c *Client) imageURL(key string) string {
+	return c.BaseURL + "/images/" + url.PathEscape(key)
 }
