@@ -89,7 +89,9 @@ jobs:
       - name: Stamp the version
         run: npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version
 
-      - run: npm run build
+      # electron-builder publishes on its own once it sees CI and a GitHub remote, which would race
+      # the release job and write notes of its own. The release below is the only publisher.
+      - run: npm run build -- --publish never
 
       - uses: actions/upload-artifact@v4
         with:
