@@ -1,6 +1,6 @@
 export {}
 
-import type {BlockType} from "./Note"
+import type {Block, BlockType} from "./Note"
 
 declare global {
     interface Window {
@@ -20,8 +20,8 @@ declare global {
                     delete: (id: string) => Promise<any>
                 }
                 block: {
-                    create: (noteId: string, payload: { type: BlockType; index: number; content: unknown }) => Promise<any>
-                    update: (noteId: string, blockId: string, payload: { type: BlockType; content: unknown }) => Promise<any>
+                    create: (noteId: string, payload: { type: BlockType; index: number; content: unknown }) => Promise<Block>
+                    update: (noteId: string, blockId: string, payload: { type: BlockType; content: unknown }) => Promise<Block>
                     delete: (noteId: string, blockId: string) => Promise<any>
                 }
                 sync: {

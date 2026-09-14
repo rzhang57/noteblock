@@ -1,6 +1,7 @@
 package ipc
 
 import (
+	"server/internal/model/dto"
 	"testing"
 	"time"
 )
@@ -107,7 +108,7 @@ func seedNoteWithTwoBlocks(t *testing.T, srv *Server, title string) (string, []s
 		if res.Error != nil {
 			t.Fatalf("block.create failed: %+v", res.Error)
 		}
-		ids = append(ids, res.Result.(map[string]any)["id"].(string))
+		ids = append(ids, res.Result.(dto.BlockDTO).ID)
 	}
 
 	return noteID, ids

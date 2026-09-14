@@ -1,6 +1,10 @@
 package ipc
 
-import "encoding/base64"
+import (
+	"encoding/base64"
+
+	"server/internal/mapper"
+)
 
 func (s *Server) blockCreate(req Request) Response {
 	var body struct {
@@ -24,15 +28,12 @@ func (s *Server) blockCreate(req Request) Response {
 	if err != nil {
 		return dbErrToRPC(req.ID, err, "Failed to create block")
 	}
-	return Response{
-		ID: req.ID,
-		Result: map[string]any{
-			"id":      block.ID,
-			"note_id": block.NoteID,
-			"type":    block.Type,
-			"index":   block.Index,
-		},
+	blockDTO, err := mapper.ToBlockDTO(*block)
+	if err != nil {
+		return rpcErr(req.ID, "INTERNAL", "Failed to map block to DTO")
 	}
+
+	return Response{ID: req.ID, Result: blockDTO}
 }
 
 func (s *Server) blockUpdate(req Request) Response {
@@ -57,15 +58,12 @@ func (s *Server) blockUpdate(req Request) Response {
 	if err != nil {
 		return dbErrToRPC(req.ID, err, "Failed to update block")
 	}
-	return Response{
-		ID: req.ID,
-		Result: map[string]any{
-			"id":      block.ID,
-			"note_id": block.NoteID,
-			"type":    block.Type,
-			"index":   block.Index,
-		},
+	blockDTO, err := mapper.ToBlockDTO(*block)
+	if err != nil {
+		return rpcErr(req.ID, "INTERNAL", "Failed to map block to DTO")
 	}
+
+	return Response{ID: req.ID, Result: blockDTO}
 }
 
 func (s *Server) blockDelete(req Request) Response {
