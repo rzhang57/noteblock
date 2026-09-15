@@ -247,6 +247,12 @@ the PR's Verification section.
 - Exercising the sidecar through the app? Rebuild the binary first — stale means testing code that
   is no longer on disk.
 - Changed UI behaviour or layout? Use `verify-ui-change`. Unit tests do not close this out.
+  **This is a gate, not a suggestion.** Anything a user sees or clicks - a new component, a fix to
+  an existing one, a layout or styling change - is not validated until a Playwright run has driven
+  it in a real browser and printed measured values. Re-run that script against the pre-fix code and
+  name the checks that flip; a UI fix nothing catches is one nothing will notice losing. If the
+  browser could not be driven at all, say so in the gate under Validation rather than letting the
+  unit tests imply coverage.
 
 If a test cannot fail when the implementation is wrong, it is not validation. For a bug fix, prove a
 new test fails against the old behaviour.
@@ -291,16 +297,32 @@ exists so the human can take ownership efficiently.
 
 ## 12. Human ownership gate
 
-Present briefly, in this order:
+The engineer is about to own code they did not write. What they need first is **what it does and
+where it lives** — not what was wrong with it. Findings come last: they describe work that is already
+finished, and leading with them buries the things the owner actually has to carry.
 
-1. what changed and why, in behavioural terms
-2. where this change sits in the feature graph, and what it unblocks
-3. the validation evidence — real numbers and command output
-4. review findings: what was fixed, what was rejected and why
-5. the walkthrough's reading order and its questions
-6. anything you are still unsure about
+Present in this order:
 
-Then **stop and wait**. Green tests and satisfied agents are not authorization. The human is the
+1. **What was built.** The behaviour, before to after, in terms a user would notice. Three or four
+   sentences. Not a list of commits.
+2. **How it flows.** The walkthrough's diagram, carried over verbatim. If there is none, draw it:
+   entry point, each hop, the boundaries it crosses, where state is written, and what this change
+   added. A change with genuinely no flow says so in one line instead.
+3. **Where it lives.** The files that matter, grouped by purpose, one line each on why that file had
+   to change, and the two or three worth opening first.
+4. **Where it sits in the graph** — what this node depended on, and what it unblocks next.
+5. **Validation.** The real commands and their real output — numbers, not adjectives. Say plainly
+   what you could not verify and why, rather than letting silence imply coverage.
+6. **What to know before you own it.** The invariants this now rests on, the riskiest lines, and
+   anything deliberately deferred.
+7. **Questions you should be able to answer** — the walkthrough's, verbatim.
+8. **Findings, last.** What review caught, what you fixed, what you rejected and why. A few lines.
+   Summarise; do not reproduce each reviewer's report.
+
+The first three are the ones that get squeezed when the message runs long, and the ones the engineer
+cannot reconstruct from anywhere else. If you are cutting, cut findings, never flow.
+
+Then **stop and wait**. Green tests and satisfied agents are not authorization. The engineer is the
 code owner, and the point of the whole loop is that they can defend the diff afterwards.
 
 ## 13. PR-ready, then stop, then re-plan
@@ -313,6 +335,38 @@ did not.
 this one is still in review. The whole point of planning the graph up front was to make each step
 small enough to be reviewed on its own; running ahead spends that advantage and puts the next change
 on a foundation nobody has signed off.
+
+## 14. Once it is merged, rebuild what is installed
+
+**The engineer runs the installed app, not the branch.** A merged fix they cannot see is not a fix,
+and the next bug they report will be against the stale build — which is how an afternoon gets spent
+reproducing something that is already repaired.
+
+After the merge lands, rebuild the artifacts the change actually touches:
+
+| Changed | Rebuild |
+| --- | --- |
+| a Go service | `npm run build:services` (root) — Electron launches the binaries from `bin/` |
+| `client/` only, for dev | `cd client && npm run build` |
+| anything the engineer runs as the installed desktop app | `npm run build` (root), then run `dist/Noteblock Setup <version>.exe` |
+
+Then confirm it: launch it, check the app and both sidecars are up, and say which build is now
+installed. A silent reinstall is indistinguishable from having done nothing.
+
+**Check what the installed build actually was before you replace it.** The engineer may be running a
+branch build of unmerged work — a feature they are living with while it waits for review. Installing
+main over it removes that feature with no warning, and the first they learn of it is when something
+they were using yesterday is gone. If the build being replaced contains anything not in main, say so
+and let them choose: merge it first, install a build with both, or keep the branch build for now.
+
+Installing replaces the app but keeps `%APPDATA%/Noteblock`, so notes survive; back the database up
+first anyway when the change touches sync, storage or migrations, and tell the engineer where the
+backup is.
+
+If `electron-builder` fails with `EBUSY … copyfile … noteblock-server.exe`, it is a packaging config
+fault rather than a locked file: two `extraResources` entries resolving to the same destination make
+it copy one binary twice, concurrently. Deleting `dist/` appears to help and does not — it only
+shifts the timing. Look for a duplicate destination before blaming Defender or hunting for a process.
 
 When the engineer comes back, **re-plan before continuing**:
 

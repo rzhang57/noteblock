@@ -52,6 +52,40 @@ from 12px to 20px, sibling alignment unchanged at left: 264" is.
 Take a screenshot as well when the change is visual — it is useful in the PR — but never as the
 basis of the claim.
 
+## Leave a runnable script behind, not a session transcript
+
+Drive the page from a **Playwright script you can re-run**, not from one-off tool calls. A script
+re-runs after the next fix, and against the pre-fix code — which is the only way to show a UI fix is
+load-bearing rather than decorative.
+
+Every check prints `PASS`/`FAIL` with the measured value beside it, and the script exits non-zero if
+any failed, so "13 passed, 0 failed" is a result rather than a claim. Then **revert the change and
+re-run**: a fix nothing catches is a fix nothing will notice losing. Name the checks that flip.
+
+## When the Playwright MCP is unavailable
+
+It is down often enough to plan for, and so is the Chrome extension. Neither is a reason to skip
+this step and neither is a reason to install browsers:
+
+```bash
+cd "$SCRATCHPAD/pw" && npm init -y
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright@1.49.1
+# then, in the script:
+const browser = await chromium.launch({channel: "chrome"})   # the user's installed Chrome
+```
+
+Keep the script in the scratchpad, never in the repo.
+
+## Reaching states the seed data hides
+
+`client/src/dev/mockBridge.ts` seeds a populated library, so the empty-state and first-run branches
+never render and a component that is missing from them looks fine. Add a query-param knob
+(`?empty=1`) or seed the state you need — an unreachable branch is untested, not working.
+
+Keep the mock's method shapes **and its behaviour** identical to `electron/preload.js`. A mock whose
+logic has drifted from the real implementation will pass a check the real app fails; that has
+already happened here with host masking.
+
 ## Reporting
 
 State what you drove, what you measured, and the before/after numbers. Those numbers are the

@@ -42,9 +42,13 @@ greps, and running the suites — nothing that writes to the tree.
   change proven only against mocks is not proven.
 - **Pure logic extracted from components** — `penSettings.ts` / `zoom.ts` are the pattern: geometry,
   sizing and serialisation tested directly. Prefer this over asserting through the DOM.
-- **UI behaviour** — no unit test closes this out; runtime browser verification is required, and
-  layout claims need measured numbers. If the change is visual and the evidence is a screenshot,
-  that is a gap.
+- **UI behaviour** — no unit test closes this out; a Playwright run against a real browser is
+  required, and layout claims need measured numbers. If the change is visual and the evidence is a
+  screenshot, or an assertion with no number beside it, that is a gap — report it as one. Check that
+  the run covers the state the change is *for*, not only the convenient one: the seeded mock library
+  hides the empty-state and first-run branches, and a component missing from those renders fine in
+  every check that never reaches them. A claim that the browser was unavailable is a gap, not an
+  exemption.
 - **Bug fixes** — there must be a test that fails against the old behaviour. If it would have passed
   before the fix, it does not protect the fix.
 
