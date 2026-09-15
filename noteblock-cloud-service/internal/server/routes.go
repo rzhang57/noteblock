@@ -48,5 +48,13 @@ func (s *Server) healthHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, s.db.Health())
+	health := s.db.Health()
+	// A body saying "down" behind a 200 reads as reachable to every caller that checks the status
+	// code - including the setup probe in electron/main.js, whose whole job is to not be fooled.
+	if health["status"] == "down" {
+		c.JSON(http.StatusServiceUnavailable, health)
+		return
+	}
+
+	c.JSON(http.StatusOK, health)
 }

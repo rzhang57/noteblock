@@ -31,4 +31,9 @@ contextBridge.exposeInMainWorld("noteblock", {
             uploadImage: (payload) => callLocal("asset.uploadImage", payload),
         },
     },
+    cloud: {
+        configure: (config) => ipcRenderer.invoke("cloud:configure", config),
+        status: () => ipcRenderer.invoke("cloud:status"),
+        clear: () => ipcRenderer.invoke("cloud:clear"),
+    },
 })

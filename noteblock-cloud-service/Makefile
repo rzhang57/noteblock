@@ -10,8 +10,9 @@ build:
 	@go build -o main.exe cmd/api/main.go
 
 # Run the application
+# The compose Postgres serves plaintext, and the service now requires TLS by default.
 run:
-	@go run cmd/api/main.go
+	@BLUEPRINT_DB_SSLMODE=disable go run cmd/api/main.go
 # Create DB container
 docker-run:
 	@docker compose up --build

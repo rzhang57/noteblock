@@ -2,6 +2,7 @@ package sync
 
 import (
 	"encoding/json"
+	"log"
 	"time"
 
 	"gorm.io/gorm"
@@ -38,6 +39,28 @@ func SaveCursors(tx *gorm.DB, c Cursors) error {
 	return tx.Model(&model.SyncState{}).
 		Where("id = ?", model.SyncStateID).
 		Updates(updates).Error
+}
+
+// The reset is a spawn-time decision, not a running one: a reset that races an in-flight pass is
+// silently undone when that pass saves the cursors it started with.
+const ResetEnv = "NOTEBLOCK_SYNC_RESET"
+
+// ResetCursorsIfRequested must run before the engine exists, so nothing can be in flight.
+func ResetCursorsIfRequested(tx *gorm.DB, requested string) error {
+	if requested == "" {
+		return nil
+	}
+
+	log.Println("sync: clearing cursors, this device re-pushes its whole library")
+	return ResetCursors(tx)
+}
+
+// SaveCursors only writes what the caller set, so clearing needs its own path: switching cloud
+// databases has to put this device back to "has synced nothing".
+func ResetCursors(tx *gorm.DB) error {
+	return tx.Model(&model.SyncState{}).
+		Where("id = ?", model.SyncStateID).
+		Updates(map[string]any{"last_pushed_local": nil, "last_pulled_server": ""}).Error
 }
 
 // SQLite compares datetimes as text, and Go writes variable-width fractional seconds with a local

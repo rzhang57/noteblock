@@ -1,8 +1,11 @@
-const { app, BrowserWindow, ipcMain, protocol, net } = require("electron")
+const { app, BrowserWindow, dialog, ipcMain, protocol, net, safeStorage } = require("electron")
 const { spawn } = require("child_process")
 const nodeNet = require("net")
 const { randomUUID } = require("crypto")
+const fs = require("fs")
 const path = require("path")
+const {createStore} = require("./cloudConfig")
+const {createCloudSetup} = require("./cloudSetup")
 const { pathToFileURL } = require("url")
 
 let goProcess
@@ -86,62 +89,127 @@ function freePort() {
     })
 }
 
-// Postgres if it is configured, otherwise a local file, so the app works with nothing provisioned.
-function cloudEnv(port) {
-    const env = { ...process.env, PORT: String(port) }
-    if (!env.BLUEPRINT_DB_HOST) {
-        env.BLUEPRINT_DB_SQLITE_PATH = path.join(getDataPath(), "cloud.sqlite")
+// The credential deliberately does not live under getDataPath(): in dev that is the repo itself,
+// and an encrypted password has no business in a working tree.
+const cloudConfig = createStore({
+    fs,
+    safeStorage,
+    userDataPath: () => app.getPath("userData"),
+    dataPath: getDataPath,
+})
+
+// Allocated once. If it moved per restart the sidecar would have to restart too just to learn the
+// new url, taking local reads and writes down for a change that is purely about the cloud.
+let cloudPort
+
+function waitForExit(child, timeoutMs = 5000) {
+    if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve()
+
+    return new Promise((resolve) => {
+        const done = () => {
+            clearTimeout(timer)
+            resolve()
+        }
+        const timer = setTimeout(done, timeoutMs)
+        child.once("exit", done)
+    })
+}
+
+async function restartCloud() {
+    const old = cloudProcess
+    cloudProcess = undefined
+    if (old && !old.killed) {
+        old.kill()
+        // The replacement rebinds the same port, and the socket is not free until its previous
+        // holder is actually gone: binding too early kills the new child on a correct config.
+        await waitForExit(old)
     }
-    return env
+
+    await startCloudProcess()
 }
 
 async function startCloudProcess() {
-    const port = await freePort()
-    cloudBaseUrl = `http://127.0.0.1:${port}`
+    if (!cloudPort) cloudPort = await freePort()
+    cloudBaseUrl = `http://127.0.0.1:${cloudPort}`
 
-    cloudProcess = spawn(binaryPath("cloud-api", "../noteblock-cloud-service/bin"), [], {
+    const child = spawn(binaryPath("cloud-api", "../noteblock-cloud-service/bin"), [], {
         stdio: ["ignore", "pipe", "pipe"],
-        env: cloudEnv(port)
+        env: cloudConfig.environment(cloudPort, process.env),
+        // Never the directory the app happened to be launched from: the service reads .env from its
+        // working directory, and a planted one could redirect image uploads elsewhere.
+        cwd: getDataPath()
+    })
+    cloudProcess = child
+
+    child.on("error", (err) => {
+        console.error("Failed to start cloud service:", err)
     })
 
-    cloudProcess.on("error", (err) => {
-        console.error("Failed to start cloud service:", err)
+    // The service exits on a database it cannot open, and a stale handle here would make the next
+    // restart think it still had something to kill.
+    child.on("exit", (code) => {
+        if (cloudProcess === child) cloudProcess = undefined
+        console.error(`[cloud-service] exited (code=${code})`)
     })
 
     // Gin logs to stdout. It must never reach the JSON-lines parser, so both streams are
     // consumed here and neither is wired to the correlator.
-    for (const stream of [cloudProcess.stdout, cloudProcess.stderr]) {
+    for (const stream of [child.stdout, child.stderr]) {
         if (!stream) continue
         stream.setEncoding("utf8")
         stream.on("data", (chunk) => console.error("[cloud-service]", chunk.trim()))
     }
 }
 
-function startBackendProcess() {
-    goProcess = spawn(binaryPath("noteblock-server", "../noteblock-local-service/bin"), [], {
+function failPendingRequests(reason) {
+    const err = new Error(reason)
+    for (const [id, pending] of pendingRequests.entries()) {
+        pending.reject(err)
+        pendingRequests.delete(id)
+    }
+}
+
+// Deliberately stopping the sidecar strands whatever was already written to its stdin: no response
+// is ever coming, and waiting out the 15s timeout tells the user far too late.
+function stopSidecar() {
+    const old = goProcess
+    goProcess = undefined
+    if (old && !old.killed) old.kill()
+    failPendingRequests("Local backend restarted before this request finished")
+}
+
+function startBackendProcess({resetCursors = false} = {}) {
+    // Shared across generations: a half-line left by the previous sidecar would be glued to the
+    // first chunk of the next one and parsed as garbage.
+    responseBuffer = ""
+
+    const child = spawn(binaryPath("noteblock-server", "../noteblock-local-service/bin"), [], {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
             ...process.env,
             NOTE_DB_PATH: getDataPath(),
-            NOTEBLOCK_CLOUD_URL: cloudBaseUrl
+            NOTEBLOCK_CLOUD_URL: cloudBaseUrl,
+            // Read once at startup, before the sync engine exists.
+            ...(resetCursors ? {NOTEBLOCK_SYNC_RESET: "1"} : {})
         }
     })
+    goProcess = child
 
-    goProcess.on("error", (err) => {
+    child.on("error", (err) => {
         console.error("Failed to start Go backend:", err)
     })
 
-    goProcess.on("exit", (code, signal) => {
-        const err = new Error(`Local backend exited (code=${code}, signal=${signal})`)
-        for (const [id, pending] of pendingRequests.entries()) {
-            pending.reject(err)
-            pendingRequests.delete(id)
-        }
+    child.on("exit", (code, signal) => {
+        // Only the generation that died may fail requests: a replacement is already serving, and
+        // rejecting its in-flight work would drop edits the user has just made.
+        if (goProcess !== child) return
+
+        failPendingRequests(`Local backend exited (code=${code}, signal=${signal})`)
     })
 
-    if (goProcess.stderr) {
-        goProcess.stderr.setEncoding("utf8")
-        goProcess.stderr.on("data", (chunk) => {
+    if (child.stderr) {
+        child.stderr.setEncoding("utf8")
+        child.stderr.on("data", (chunk) => {
             console.error("[local-backend]", chunk.trim())
         })
     }
@@ -193,7 +261,64 @@ function registerLocalImageProtocol() {
     })
 }
 
+// Spawning is not connecting: the child exits when the database refuses it, so success is only
+// reported once /health answers. Otherwise a typo shows as "Connected" and sync is silently dead.
+async function cloudIsReachable() {
+    for (let attempt = 0; attempt < 20; attempt++) {
+        try {
+            const res = await net.fetch(`${cloudBaseUrl}/health`)
+            if (res.ok) return true
+        } catch {
+            // not listening yet
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+    return false
+}
+
+// The renderer decides when to ask, never what the answer is: a script that reached this channel
+// could otherwise point the whole library at a database of its choosing, and the cursor reset that
+// follows is what makes the next push send every note there.
+async function confirmDestination(event, message, detail) {
+    const {response} = await dialog.showMessageBox(BrowserWindow.fromWebContents(event.sender), {
+        type: "warning",
+        buttons: ["Cancel", "Continue"],
+        defaultId: 0,
+        cancelId: 0,
+        message,
+        detail,
+    })
+    return response === 1
+}
+
+const cloudSetup = createCloudSetup({
+    store: cloudConfig,
+    confirm: confirmDestination,
+    stopSidecar: async () => stopSidecar(),
+    startSidecar: async (options) => startBackendProcess(options),
+    restartCloud,
+    isReachable: cloudIsReachable,
+})
+
+let setupChain = Promise.resolve()
+
+// Serialised: two overlapping runs each kill what the other is about to replace, and the losers
+// are left unreferenced - still running, still holding the same database, no longer killed on quit.
+function serialiseSetup(run) {
+    const done = setupChain.then(run)
+    // The caller still sees the failure, but a rejected chain would skip every later run.
+    setupChain = done.catch(() => {})
+    return done
+}
+
 function registerRendererHandlers() {
+    // The password crosses this boundary once, inbound. There is deliberately no read path back.
+    ipcMain.handle("cloud:configure", (event, config) => serialiseSetup(() => cloudSetup.configure(config, event)))
+
+    ipcMain.handle("cloud:status", () => cloudSetup.status())
+
+    ipcMain.handle("cloud:clear", (event) => serialiseSetup(() => cloudSetup.clear(event)))
+
     ipcMain.handle("local:call", async (_event, payload) => {
         if (!payload || typeof payload.method !== "string") {
             throw new Error("Invalid local IPC payload")

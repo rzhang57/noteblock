@@ -178,7 +178,9 @@ function seed() {
     seedNote("Scratch", null, [textBlock(0, "Anything that does not have a home yet.")]);
 }
 
-seed();
+// ?empty=1 leaves the library unseeded: the first-run sidebar is a different render branch, and the
+// only one where the cloud setup entry point actually has to be found.
+if (!new URLSearchParams(window.location.search).has("empty")) seed();
 
 const delay = <T, >(value: T): Promise<T> =>
     new Promise(resolve => setTimeout(() => resolve(value), LATENCY_MS));
@@ -235,6 +237,17 @@ function normalizeContent(type: BlockType, content: unknown): Block["content"] {
         return content as Block["content"];
     }
     return type === "canvas" ? {data: {}} : {text: ""};
+}
+
+let cloudHost: string | null = null;
+
+// Must stay identical to maskedHost in electron/cloudConfig.js: the project ref is the label worth
+// hiding, and a mock that hides a different one verifies a fiction.
+function maskHost(host: string): string {
+    const labels = host.split(".");
+    if (labels.length < 2) return `${labels[0].slice(0, 2)}***`;
+    if (labels.length === 2) return host;
+    return ["***", ...labels.slice(-2)].join(".");
 }
 
 export function installMockBridge() {
@@ -340,6 +353,22 @@ export function installMockBridge() {
             asset: {
                 uploadImage: (payload: { filename: string; data_base64: string }) =>
                     delay({url: `data:image/png;base64,${payload.data_base64}`, filename: payload.filename}),
+            },
+        },
+        // Mirrors main's contract rather than storing anything: the password goes in and never
+        // comes back, so the dev harness cannot accidentally prove a leak impossible.
+        cloud: {
+            configure: (config: { host: string }) => {
+                if (!config || !config.host) fail("Missing host");
+                cloudHost = config.host;
+                return delay({configured: true, host: maskHost(cloudHost)});
+            },
+            status: () => delay(cloudHost
+                ? {configured: true, host: maskHost(cloudHost)}
+                : {configured: false, host: null}),
+            clear: () => {
+                cloudHost = null;
+                return delay({configured: false, host: null});
             },
         },
     };

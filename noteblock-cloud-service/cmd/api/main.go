@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/joho/godotenv"
 
 	"noteblock-cloud-service/internal/server"
 )
@@ -37,7 +40,16 @@ func gracefulShutdown(apiServer *http.Server, done chan bool) {
 	done <- true
 }
 
+// Loaded here rather than by an autoload import in the packages: the file is read from the
+// working directory, so only the entrypoint should decide whether that happens at all.
+func loadDotEnv() {
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		log.Printf("no .env loaded: %v", err)
+	}
+}
+
 func main() {
+	loadDotEnv()
 
 	server := server.NewServer()
 
