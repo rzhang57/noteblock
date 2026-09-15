@@ -482,7 +482,7 @@ export const Sidebar: React.FC = () => {
                 <div className="h-4 w-4 rounded-full border-2 border-rule border-t-ink-muted animate-spin"
                      aria-label="Loading"></div>
                 <span className="sr-only">Loading</span>
-        </aside>
+            </aside>
         );
     }
 
@@ -518,13 +518,22 @@ export const Sidebar: React.FC = () => {
                  style={{width: sidebarWidth}}>
                 <div className="px-3 py-2.5 flex items-center justify-between">
                     <SidebarBrand/>
-                    <button
-                        onClick={() => handleCollapse(true)}
-                        className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer shrink-0"
-                        aria-label="Collapse sidebar"
-                    >
-                        <ChevronLeft className="w-4 h-4"/>
-                    </button>
+                    <div className="flex items-center gap-0.5">
+                        <button
+                            onClick={() => setShowCloudSettings(true)}
+                            className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer"
+                            aria-label="Sync database settings"
+                        >
+                            <Database className="w-3.5 h-3.5"/>
+                        </button>
+                        <button
+                            onClick={() => handleCollapse(true)}
+                            className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer shrink-0"
+                            aria-label="Collapse sidebar"
+                        >
+                            <ChevronLeft className="w-4 h-4"/>
+                        </button>
+                    </div>
                 </div>
                 <SidebarEmptyState createTemporaryNote={createTemporaryNote}
                                    createTemporaryFolder={createTemporaryFolder}/>
@@ -532,6 +541,7 @@ export const Sidebar: React.FC = () => {
                     className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-ink/10 transition-colors duration-150 z-20"
                     onMouseDown={handleDragStart}
                 />
+                {showCloudSettings && <CloudDatabaseSettings onClose={() => setShowCloudSettings(false)}/>}
             </div>
         );
     }

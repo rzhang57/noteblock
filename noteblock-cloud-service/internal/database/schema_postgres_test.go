@@ -12,12 +12,9 @@ import (
 
 func openAgainstContainer(t *testing.T) *gorm.DB {
 	t.Helper()
+	requirePostgres(t)
 
-	t.Setenv("BLUEPRINT_DB_DATABASE", database)
-	t.Setenv("BLUEPRINT_DB_PASSWORD", password)
-	t.Setenv("BLUEPRINT_DB_USERNAME", username)
-	t.Setenv("BLUEPRINT_DB_HOST", host)
-	t.Setenv("BLUEPRINT_DB_PORT", port)
+	// TestMain put the container's details in the environment already; only the schema differs.
 	t.Setenv("BLUEPRINT_DB_SCHEMA", "public")
 	os.Unsetenv("BLUEPRINT_DB_SQLITE_PATH")
 

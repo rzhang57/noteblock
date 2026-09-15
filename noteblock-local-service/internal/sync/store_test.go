@@ -216,3 +216,83 @@ func rawMessage(b []byte) *json.RawMessage {
 	raw := json.RawMessage(b)
 	return &raw
 }
+
+// The reset is the whole point of switching databases: without it the push cursor still says
+// "already sent everything" and the pre-existing library is never uploaded to the new one.
+func TestResetCursorsMakesTheDeviceRePushEverything(t *testing.T) {
+	f := newFixture(t)
+
+	note, err := f.notes.NewNote("Written before the switch", nil)
+	if err != nil {
+		t.Fatalf("create note: %v", err)
+	}
+
+	ahead := time.Now().UTC().Add(time.Hour)
+	if err := SaveCursors(f.conn, Cursors{LastPushedLocal: &ahead, LastPulledServer: "srv-token-old"}); err != nil {
+		t.Fatalf("save cursors: %v", err)
+	}
+
+	before, err := f.store.ChangedSince(&ahead)
+	if err != nil {
+		t.Fatalf("changed since: %v", err)
+	}
+	if len(before.Notes) != 0 {
+		t.Fatalf("with the old cursor the note is already considered sent, got %d notes", len(before.Notes))
+	}
+
+	if err := ResetCursors(f.conn); err != nil {
+		t.Fatalf("reset cursors: %v", err)
+	}
+
+	got, err := f.store.Cursors()
+	if err != nil {
+		t.Fatalf("read cursors: %v", err)
+	}
+	if got.LastPushedLocal != nil {
+		t.Errorf("LastPushedLocal = %v, want nil", got.LastPushedLocal)
+	}
+	if got.LastPulledServer != "" {
+		t.Errorf("LastPulledServer = %q, want empty", got.LastPulledServer)
+	}
+
+	after, err := f.store.ChangedSince(got.LastPushedLocal)
+	if err != nil {
+		t.Fatalf("changed since: %v", err)
+	}
+	if len(after.Notes) != 1 || after.Notes[0].ID != note.ID {
+		t.Fatalf("after the reset the note must be pushed again, got %d notes", len(after.Notes))
+	}
+}
+
+func TestResetCursorsIfRequestedOnlyFiresWhenAsked(t *testing.T) {
+	f := newFixture(t)
+
+	pushed := time.Now().UTC().Truncate(time.Millisecond)
+	if err := SaveCursors(f.conn, Cursors{LastPushedLocal: &pushed, LastPulledServer: "srv-token-1"}); err != nil {
+		t.Fatalf("save cursors: %v", err)
+	}
+
+	if err := ResetCursorsIfRequested(f.conn, ""); err != nil {
+		t.Fatalf("unrequested reset: %v", err)
+	}
+
+	got, err := f.store.Cursors()
+	if err != nil {
+		t.Fatalf("read cursors: %v", err)
+	}
+	if got.LastPushedLocal == nil || got.LastPulledServer != "srv-token-1" {
+		t.Fatalf("cursors were cleared without being asked: %+v", got)
+	}
+
+	if err := ResetCursorsIfRequested(f.conn, "1"); err != nil {
+		t.Fatalf("requested reset: %v", err)
+	}
+
+	got, err = f.store.Cursors()
+	if err != nil {
+		t.Fatalf("read cursors: %v", err)
+	}
+	if got.LastPushedLocal != nil || got.LastPulledServer != "" {
+		t.Fatalf("requested reset did not clear the cursors: %+v", got)
+	}
+}

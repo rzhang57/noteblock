@@ -27,22 +27,16 @@ type service struct {
 	db *sql.DB
 }
 
-var (
-	database   = os.Getenv("BLUEPRINT_DB_DATABASE")
-	password   = os.Getenv("BLUEPRINT_DB_PASSWORD")
-	username   = os.Getenv("BLUEPRINT_DB_USERNAME")
-	port       = os.Getenv("BLUEPRINT_DB_PORT")
-	host       = os.Getenv("BLUEPRINT_DB_HOST")
-	schema     = os.Getenv("BLUEPRINT_DB_SCHEMA")
-	dbInstance *service
-)
+// Resolved when New runs, not at package init: a .env is loaded by main, which happens after
+// every imported package has already initialised.
+var dbInstance *service
 
 func New() Service {
 	// Reuse Connection
 	if dbInstance != nil {
 		return dbInstance
 	}
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable&search_path=%s", username, password, host, port, database, schema)
+	connStr := ConnString()
 	db, err := sql.Open("pgx", connStr)
 	if err != nil {
 		log.Fatal(err)
@@ -111,6 +105,6 @@ func (s *service) Health() map[string]string {
 // If the connection is successfully closed, it returns nil.
 // If an error occurs while closing the connection, it returns the error.
 func (s *service) Close() error {
-	log.Printf("Disconnected from database: %s", database)
+	log.Printf("Disconnected from database: %s", os.Getenv("BLUEPRINT_DB_DATABASE"))
 	return s.db.Close()
 }

@@ -178,7 +178,9 @@ function seed() {
     seedNote("Scratch", null, [textBlock(0, "Anything that does not have a home yet.")]);
 }
 
-seed();
+// ?empty=1 leaves the library unseeded: the first-run sidebar is a different render branch, and the
+// only one where the cloud setup entry point actually has to be found.
+if (!new URLSearchParams(window.location.search).has("empty")) seed();
 
 const delay = <T, >(value: T): Promise<T> =>
     new Promise(resolve => setTimeout(() => resolve(value), LATENCY_MS));
@@ -239,9 +241,13 @@ function normalizeContent(type: BlockType, content: unknown): Block["content"] {
 
 let cloudHost: string | null = null;
 
+// Must stay identical to maskedHost in electron/cloudConfig.js: the project ref is the label worth
+// hiding, and a mock that hides a different one verifies a fiction.
 function maskHost(host: string): string {
-    const [first, ...rest] = host.split(".");
-    return rest.length ? `${first.slice(0, 3)}***.${rest.join(".")}` : `${first.slice(0, 3)}***`;
+    const labels = host.split(".");
+    if (labels.length < 2) return `${labels[0].slice(0, 2)}***`;
+    if (labels.length === 2) return host;
+    return ["***", ...labels.slice(-2)].join(".");
 }
 
 export function installMockBridge() {

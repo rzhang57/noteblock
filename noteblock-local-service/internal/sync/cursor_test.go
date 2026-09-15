@@ -182,7 +182,6 @@ func TestSaveCursorsLeavesTheOtherCursorAlone(t *testing.T) {
 	}
 }
 
-
 // The cursor is inclusive by design: re-sending a record is safe, dropping one is not.
 func TestChangedSinceIncludesARecordWrittenAtTheCursor(t *testing.T) {
 	f := newFixture(t)

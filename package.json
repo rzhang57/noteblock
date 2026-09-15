@@ -24,6 +24,7 @@
     "productName": "Noteblock",
     "files": [
       "electron/**/*",
+      "!electron/**/*.test.ts",
       "client/dist/**/*"
     ],
     "win": {

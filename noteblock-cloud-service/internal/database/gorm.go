@@ -2,6 +2,8 @@ package database
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 
 	"gorm.io/driver/postgres"
@@ -11,21 +13,31 @@ import (
 	"noteblock-cloud-service/internal/model"
 )
 
+// Built through url.URL rather than by concatenation: pgx reads query parameters after the
+// authority and lets them override it, so an "&host=" inside any single value would silently
+// redirect the whole connection. Resolved at call time so a .env loaded in main is still seen.
+func ConnString() string {
+	query := url.Values{}
+	query.Set("sslmode", sslMode())
+	query.Set("search_path", os.Getenv("BLUEPRINT_DB_SCHEMA"))
+
+	dsn := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(os.Getenv("BLUEPRINT_DB_USERNAME"), os.Getenv("BLUEPRINT_DB_PASSWORD")),
+		Host:     net.JoinHostPort(os.Getenv("BLUEPRINT_DB_HOST"), os.Getenv("BLUEPRINT_DB_PORT")),
+		Path:     "/" + os.Getenv("BLUEPRINT_DB_DATABASE"),
+		RawQuery: query.Encode(),
+	}
+
+	return dsn.String()
+}
+
 func OpenGorm() (*gorm.DB, error) {
 	if path := os.Getenv("BLUEPRINT_DB_SQLITE_PATH"); path != "" {
 		return openSqlite(path)
 	}
 
-	connStr := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s&search_path=%s",
-		os.Getenv("BLUEPRINT_DB_USERNAME"),
-		os.Getenv("BLUEPRINT_DB_PASSWORD"),
-		os.Getenv("BLUEPRINT_DB_HOST"),
-		os.Getenv("BLUEPRINT_DB_PORT"),
-		os.Getenv("BLUEPRINT_DB_DATABASE"),
-		sslMode(),
-		os.Getenv("BLUEPRINT_DB_SCHEMA"),
-	)
+	connStr := ConnString()
 
 	db, err := gorm.Open(postgres.Open(connStr), &gorm.Config{})
 	if err != nil {
@@ -68,5 +80,5 @@ func sslMode() string {
 		return mode
 	}
 
-	return "disable"
+	return "require"
 }

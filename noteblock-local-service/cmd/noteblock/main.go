@@ -25,6 +25,12 @@ func main() {
 
 	server := ipc.NewServer(nSvc, fSvc, bSvc)
 
+	// Before the engine exists: a cursor reset delivered to a running engine is silently undone
+	// by whichever pass was already in flight.
+	if err := sync.ResetCursorsIfRequested(dbConn, os.Getenv(sync.ResetEnv)); err != nil {
+		log.Fatalf("could not reset sync cursors: %v", err)
+	}
+
 	if engine := newSyncEngine(dbConn); engine != nil {
 		ctx, stop := context.WithCancel(context.Background())
 		defer stop()
