@@ -66,7 +66,7 @@ describe("electron preload bridge", () => {
             port: "5432",
             database: "postgres",
             user: "noteblock_sync",
-            password: "hunter2",
+            password: "placeholder-not-a-real-password",
             schema: "public",
         }
 
