@@ -3,10 +3,7 @@ import {X, Undo2, Pen, Maximize2} from "lucide-react";
 import type {Stroke} from "@/types/Note.ts";
 import {loadPen, PEN_COLORS, PEN_WIDTHS, savePen, type PenSettings} from "./penSettings.ts";
 import {anchoredScroll, fitZoom, stepZoom, wheelZoom} from "./zoom.ts";
-
-function strokePath(stroke: Stroke, w: number, h: number): string {
-    return stroke.points.map(([x, y]) => `${(x * w).toFixed(2)},${(y * h).toFixed(2)}`).join(" ");
-}
+import {commitAction, keyAction, strokePath} from "./strokeGeometry.ts";
 
 interface ImageAnnotatorProps {
     url: string;
@@ -102,32 +99,36 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
         return () => viewport.removeEventListener("wheel", onWheel);
     }, []);
 
+    const commitRef = useRef(() => {});
+    useEffect(() => {
+        commitRef.current = () => {
+            const action = commitAction(draft, active, strokes);
+            if ("save" in action) onSave(action.save);
+            else onClose();
+        };
+    });
+
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
-            if (e.key === "Escape") onClose();
+            const action = keyAction(e);
+            if (!action) return;
 
-            const chord = e.ctrlKey || e.metaKey;
-            if (chord && e.key.toLowerCase() === "z") {
-                e.preventDefault();
-                setDraft(prev => prev.slice(0, -1));
-            }
-            // Claimed only while the overlay is mounted, so page zoom is untouched elsewhere.
-            if (chord && (e.key === "=" || e.key === "+")) {
-                e.preventDefault();
-                setZoom(current => stepZoom(current, 1));
-            }
-            if (chord && e.key === "-") {
-                e.preventDefault();
-                setZoom(current => stepZoom(current, -1));
-            }
-            if (chord && e.key === "0") {
-                e.preventDefault();
-                setZoom(1);
-            }
+            // Every control in here is a button, so Enter would otherwise activate whichever one
+            // has focus - Undo, deleting another stroke - instead of committing. Zoom chords are
+            // claimed only while the overlay is mounted, so page zoom is untouched elsewhere.
+            e.preventDefault();
+
+            // Losing strokes costs redrawing them; saving strokes you did not want costs an undo,
+            // so the reflexive keys are the ones that keep the work. The X discards.
+            if (action === "commit") commitRef.current();
+            if (action === "undo") setDraft(prev => (prev.length === 0 ? prev : prev.slice(0, -1)));
+            if (action === "zoom-in") setZoom(current => stepZoom(current, 1));
+            if (action === "zoom-out") setZoom(current => stepZoom(current, -1));
+            if (action === "zoom-reset") setZoom(1);
         };
         document.addEventListener("keydown", onKey);
         return () => document.removeEventListener("keydown", onKey);
-    }, [onClose]);
+    }, []);
 
     const pointAt = useCallback((e: React.PointerEvent): [number, number] => {
         const rect = surfaceRef.current!.getBoundingClientRect();
@@ -206,7 +207,7 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                         Undo
                     </button>
                     <button
-                        onClick={() => onSave(draft)}
+                        onClick={() => commitRef.current()}
                         className="rounded-md bg-paper px-3 py-1.5 text-[12px] font-medium text-ink transition-opacity duration-150 hover:opacity-90"
                     >
                         Done
@@ -214,7 +215,7 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                     <button
                         onClick={onClose}
                         className="rounded-md p-1.5 text-paper/80 transition-colors duration-150 hover:bg-paper/15"
-                        aria-label="Close without saving"
+                        aria-label="Discard annotations"
                     >
                         <X size={16}/>
                     </button>
