@@ -10,6 +10,11 @@ on:
       - '**/*.md'
       - '.gitignore'
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Rebuild this existing version instead of minting a new one, e.g. 0.1.4"
+        required: false
+        type: string
 
 # One release at a time: two runs racing would both compute the same version and the loser's upload
 # would fail against a tag that already exists.
@@ -35,11 +40,20 @@ jobs:
 
       - name: Plan the release
         id: plan
+        env:
+          REQUESTED: ${{ inputs.version }}
         run: |
           # major.minor is owned by package.json and moved by hand; patch is the run number, which
           # only ever increases, so versions stay ordered without anyone maintaining a counter.
-          base=$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')")
-          version="${base}.${GITHUB_RUN_NUMBER}"
+          # A version passed by hand rebuilds that release instead - adding a platform to an
+          # existing build is not a new version of the app.
+          if [ -n "$REQUESTED" ]; then
+            version="$REQUESTED"
+            echo "rebuilding ${version}"
+          else
+            base=$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')")
+            version="${base}.${GITHUB_RUN_NUMBER}"
+          fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "tag=v${version}" >> "$GITHUB_OUTPUT"
 
@@ -64,9 +78,31 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build the Windows installer
+    name: Build ${{ matrix.label }}
     needs: version
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One platform failing should not withhold the other's artifact from the release.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: the Windows installer
+            artifact: noteblock-windows
+            # Only the target platform, so a runner never tries to cross-build the other's binaries.
+            args: --win
+            files: |
+              dist/Noteblock Setup *.exe
+              dist/*.blockmap
+          - os: macos-latest
+            label: the macOS disk image
+            artifact: noteblock-macos
+            # arm64 alone: a universal build carries two copies of a 70MB Go binary for a machine
+            # that can only run one of them.
+            args: --mac --arm64
+            files: |
+              dist/*.dmg
+              dist/*.blockmap
     steps:
       - uses: actions/checkout@v4
 
@@ -91,14 +127,12 @@ jobs:
 
       # electron-builder publishes on its own once it sees CI and a GitHub remote, which would race
       # the release job and write notes of its own. The release below is the only publisher.
-      - run: npm run build -- --publish never
+      - run: npm run build -- ${{ matrix.args }} --publish never
 
       - uses: actions/upload-artifact@v4
         with:
-          name: noteblock-windows
-          path: |
-            dist/Noteblock Setup *.exe
-            dist/*.blockmap
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.files }}
           if-no-files-found: error
 
   release:
@@ -110,8 +144,8 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: noteblock-windows
           path: artifacts
+          merge-multiple: true
 
       # Through the environment, never interpolated into the script: a commit subject is attacker-
       # controlled text and expressions are substituted before the shell ever sees them.
@@ -122,9 +156,18 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
           NOTES: ${{ needs.version.outputs.notes }}
         run: |
-          printf '%s\n' "$NOTES" > notes.md
-          gh release create "$TAG" \
-            --title "Noteblock $VERSION" \
-            --notes-file notes.md \
-            --target "$GITHUB_SHA" \
-            artifacts/*
+          ls -la artifacts
+
+          # A rebuild adds artifacts to the release that already exists; regenerating its notes
+          # would rewrite history that was accurate when it was published.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG exists, uploading artifacts into it"
+            gh release upload "$TAG" artifacts/* --clobber
+          else
+            printf '%s\n' "$NOTES" > notes.md
+            gh release create "$TAG" \
+              --title "Noteblock $VERSION" \
+              --notes-file notes.md \
+              --target "$GITHUB_SHA" \
+              artifacts/*
+          fi
