@@ -1,0 +1,130 @@
+name: Release
+
+# Every merge to main ships a build. Changes that cannot affect what the app does are excluded, so
+# a skill edit or a README tweak does not mint a version nobody can tell apart from the last one.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.claude/**'
+      - '**/*.md'
+      - '.gitignore'
+  workflow_dispatch:
+
+# One release at a time: two runs racing would both compute the same version and the loser's upload
+# would fail against a tag that already exists.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Work out the version and what changed
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      notes: ${{ steps.plan.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Plan the release
+        id: plan
+        run: |
+          # major.minor is owned by package.json and moved by hand; patch is the run number, which
+          # only ever increases, so versions stay ordered without anyone maintaining a counter.
+          base=$(node -p "require('./package.json').version.split('.').slice(0, 2).join('.')")
+          version="${base}.${GITHUB_RUN_NUMBER}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+
+          previous=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          if [ -z "$previous" ]; then
+            range="HEAD"
+            echo "no previous tag; describing the whole history"
+          else
+            range="${previous}..HEAD"
+            echo "changes since ${previous}"
+          fi
+
+          # Subjects only. The full reasoning is in the commit bodies, which is where someone
+          # reading git log wants it.
+          notes=$(git log --no-merges --format='- %s' "$range")
+          [ -z "$notes" ] && notes="- No code changes since the last release."
+
+          {
+            echo 'notes<<RELEASE_NOTES_EOF'
+            echo "$notes"
+            echo 'RELEASE_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build the Windows installer
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: |
+            noteblock-local-service/go.sum
+            noteblock-cloud-service/go.sum
+
+      - run: npm ci
+      - run: npm --prefix client ci
+
+      # electron-builder names the artifact from package.json, so the file, the tag and the release
+      # all have to agree before it runs.
+      - name: Stamp the version
+        run: npm version ${{ needs.version.outputs.version }} --no-git-tag-version --allow-same-version
+
+      # electron-builder publishes on its own once it sees CI and a GitHub remote, which would race
+      # the release job and write notes of its own. The release below is the only publisher.
+      - run: npm run build -- --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noteblock-windows
+          path: |
+            dist/Noteblock Setup *.exe
+            dist/*.blockmap
+          if-no-files-found: error
+
+  release:
+    name: Publish the release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: noteblock-windows
+          path: artifacts
+
+      # Through the environment, never interpolated into the script: a commit subject is attacker-
+      # controlled text and expressions are substituted before the shell ever sees them.
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+          NOTES: ${{ needs.version.outputs.notes }}
+        run: |
+          printf '%s\n' "$NOTES" > notes.md
+          gh release create "$TAG" \
+            --title "Noteblock $VERSION" \
+            --notes-file notes.md \
+            --target "$GITHUB_SHA" \
+            artifacts/*

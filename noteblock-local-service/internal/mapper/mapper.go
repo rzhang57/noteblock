@@ -23,6 +23,24 @@ func ToBlockModel(blockDTO dto.BlockDTO, noteID string) (*model.Block, error) {
 	}, nil
 }
 
+// Every block that crosses the IPC boundary goes through here, so a caller cannot be handed one
+// without its content - the renderer types the response as a whole Block and renders it directly.
+func ToBlockDTO(b model.Block) (dto.BlockDTO, error) {
+	var raw json.RawMessage
+	if err := json.Unmarshal([]byte(b.Content), &raw); err != nil {
+		return dto.BlockDTO{}, err
+	}
+
+	return dto.BlockDTO{
+		ID:        b.ID,
+		Type:      b.Type,
+		Index:     b.Index,
+		Content:   raw,
+		CreatedAt: b.CreatedAt,
+		UpdatedAt: b.UpdatedAt,
+	}, nil
+}
+
 func ToNoteDTO(note *model.Note) (*dto.NoteDTO, error) {
 	var blocks []dto.BlockDTO
 
@@ -30,19 +48,12 @@ func ToNoteDTO(note *model.Note) (*dto.NoteDTO, error) {
 		blocks = []dto.BlockDTO{}
 	} else {
 		for _, b := range note.Blocks {
-			var raw json.RawMessage
-			if err := json.Unmarshal([]byte(b.Content), &raw); err != nil {
+			blockDTO, err := ToBlockDTO(b)
+			if err != nil {
 				return nil, err
 			}
 
-			blocks = append(blocks, dto.BlockDTO{
-				ID:        b.ID,
-				Type:      b.Type,
-				Index:     b.Index,
-				Content:   raw,
-				CreatedAt: b.CreatedAt,
-				UpdatedAt: b.UpdatedAt,
-			})
+			blocks = append(blocks, blockDTO)
 		}
 	}
 

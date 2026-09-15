@@ -92,7 +92,7 @@ func TestIPCServer_SmokeCRUDFlow(t *testing.T) {
 	if createBlockRes.Error != nil {
 		t.Fatalf("block.create failed: %+v", createBlockRes.Error)
 	}
-	blockID := createBlockRes.Result.(map[string]any)["id"].(string)
+	blockID := createBlockRes.Result.(dto.BlockDTO).ID
 
 	getNoteRes := srv.handle(Request{
 		ID:     "4",
