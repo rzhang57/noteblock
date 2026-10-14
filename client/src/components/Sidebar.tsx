@@ -1,137 +1,17 @@
-import React, {useEffect, useRef, useState} from "react";
-import {AlertCircle, Database, FileText, FolderPlus, Plus, X, ChevronLeft, ChevronRight} from "lucide-react";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {createPortal} from "react-dom";
+import {FilePlus, FolderPlus} from "lucide-react";
 import {FolderTreeItem} from "./FolderTreeItem";
 import {FolderService} from "@/services/FolderService";
 import type {Folder} from "@/services/FolderService";
 import {NoteService} from "@/services/NoteService.ts";
 import type {Note} from "@/types/Note.ts";
 import {useNoteContext} from "@/context/NoteContext.tsx";
-import {Alert, AlertDescription} from "@/components/ui/alert.tsx";
-import SidebarEmptyState from "@/components/SidebarEmptyState.tsx";
-import {SidebarBrand} from "@/components/SidebarBrand.tsx";
 import {CloudDatabaseSettings} from "@/components/CloudDatabaseSettings.tsx";
+import {Menu} from "@/components/menu/Menu.tsx";
+import {onNewItemRequest} from "@/components/window/createItem.ts";
 
-const SidebarContextMenu: React.FC<{
-    x: number;
-    y: number;
-    onClose: () => void;
-    onNewNote: () => void;
-    onNewFolder: () => void;
-}> = ({x, y, onClose, onNewNote, onNewFolder}) => {
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClick = () => onClose();
-        const handleContextMenu = () => onClose();
-        document.addEventListener('mousedown', handleClick);
-        document.addEventListener('contextmenu', handleContextMenu);
-        return () => {
-            document.removeEventListener('mousedown', handleClick);
-            document.removeEventListener('contextmenu', handleContextMenu);
-        };
-    }, [onClose]);
-
-    const handle = (action: () => void) => {
-        action();
-        onClose();
-    };
-
-    return (
-        <div
-            ref={menuRef}
-            className="surface-pop fixed rounded-lg p-1 z-50 min-w-[170px]"
-            style={{top: y, left: x}}
-            onMouseDown={(e) => e.stopPropagation()}
-            onContextMenu={(e) => e.preventDefault()}
-        >
-            <button
-                onClick={() => handle(onNewNote)}
-                className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[13px] text-ink transition-colors duration-150 hover:bg-accent"
-            >
-                <FileText className="w-4 h-4"/>
-                New Note
-            </button>
-            <button
-                onClick={() => handle(onNewFolder)}
-                className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[13px] text-ink transition-colors duration-150 hover:bg-accent"
-            >
-                <FolderPlus className="w-4 h-4"/>
-                New Folder
-            </button>
-        </div>
-    );
-};
-
-const AddMenu: React.FC<{
-    open: boolean;
-    onClose: () => void;
-    onNewFolder: () => void;
-    onNewNote: () => void;
-    buttonRef: React.RefObject<HTMLButtonElement | null> | null;
-}> = ({open, onClose, onNewFolder, onNewNote, buttonRef}) => {
-    const menuRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (
-                menuRef.current &&
-                !menuRef.current.contains(event.target as Node) &&
-                buttonRef?.current &&
-                !buttonRef.current.contains(event.target as Node)
-            ) {
-                onClose();
-            }
-        };
-
-        if (open) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [open, onClose, buttonRef]);
-
-    if (!open) return null;
-
-    const handleAction = (action: () => void) => {
-        action();
-        onClose();
-    };
-
-    return (
-        <div
-            ref={menuRef}
-            className="surface-pop absolute right-0 top-full mt-1.5 rounded-lg p-1 z-50 min-w-[170px]"
-            onClick={(e) => e.stopPropagation()}
-        >
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    handleAction(onNewNote);
-                }}
-                className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[13px] text-ink transition-colors duration-150 hover:bg-accent"
-            >
-                <FileText className="w-4 h-4"/>
-                New Note
-            </button>
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    handleAction(onNewFolder);
-                }}
-                className="flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[13px] text-ink transition-colors duration-150 hover:bg-accent"
-            >
-                <FolderPlus className="w-4 h-4"/>
-                New Folder
-            </button>
-        </div>
-    );
-};
-
-const MIN_WIDTH = 150;
-const DEFAULT_WIDTH = 208;
-const MAX_WIDTH = 600;
-const COLLAPSE_THRESHOLD = 150;
-
-export const Sidebar: React.FC = () => {
+export function Sidebar() {
     const [root, setRoot] = useState<Folder | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(() => {
         const storedExpanded = localStorage.getItem('sidebarExpanded');
@@ -147,22 +27,9 @@ export const Sidebar: React.FC = () => {
         }
         return new Set();
     });
-    const [showAddMenu, setShowAddMenu] = useState(false);
     const [showCloudSettings, setShowCloudSettings] = useState(false);
     const [contextMenu, setContextMenu] = useState<{x: number; y: number} | null>(null);
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
-        const stored = localStorage.getItem('sidebarWidth');
-        if (stored) {
-            const parsed = parseInt(stored);
-            if (!isNaN(parsed)) return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, parsed));
-        }
-        return DEFAULT_WIDTH;
-    });
-    const sidebarWidthRef = useRef(sidebarWidth);
-    const lastExpandedWidthRef = useRef(sidebarWidth);
     const {selectedNoteId, setSelectedNoteId, setNoteTitle, noteTitle} = useNoteContext();
-    const buttonRef = useRef<HTMLButtonElement | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
     const isInitialMount = useRef(true);
 
@@ -391,280 +258,99 @@ export const Sidebar: React.FC = () => {
         }
     };
 
-    const handleCollapse = (collapsed: boolean) => {
-        if (collapsed) {
-            lastExpandedWidthRef.current = sidebarWidthRef.current;
-        } else {
-            const restoreWidth = lastExpandedWidthRef.current;
-            sidebarWidthRef.current = restoreWidth;
-            setSidebarWidth(restoreWidth);
-        }
-        setIsCollapsed(collapsed);
-        setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('sidebarToggle'));
-        }, 0);
-    };
+    useEffect(() => onNewItemRequest(kind => {
+        if (kind === "note") createTemporaryNote(null);
+        else createTemporaryFolder(null);
+    }));
 
-    const handleDragStart = (e: React.MouseEvent) => {
-        e.preventDefault();
-        const startX = e.clientX;
-        const startWidth = sidebarWidthRef.current;
-
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
-
-        const onMouseMove = (e: MouseEvent) => {
-            const newWidth = Math.max(100, Math.min(MAX_WIDTH, startWidth + (e.clientX - startX)));
-            sidebarWidthRef.current = newWidth;
-            setSidebarWidth(newWidth);
-        };
-
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-            if (sidebarWidthRef.current < COLLAPSE_THRESHOLD) {
-                handleCollapse(true);
-            } else {
-                localStorage.setItem('sidebarWidth', String(sidebarWidthRef.current));
-            }
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    };
-
-    const handleCollapsedDragStart = (e: React.MouseEvent) => {
-        e.preventDefault();
-        const startX = e.clientX;
-        const collapsedWidth = 40;
-
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
-
-        const onMouseMove = (e: MouseEvent) => {
-            const newWidth = Math.max(collapsedWidth, Math.min(MAX_WIDTH, collapsedWidth + (e.clientX - startX)));
-            sidebarWidthRef.current = newWidth;
-            setSidebarWidth(newWidth);
-            if (newWidth >= COLLAPSE_THRESHOLD) {
-                setIsCollapsed(false);
-            }
-        };
-
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-            if (sidebarWidthRef.current < COLLAPSE_THRESHOLD) {
-                setIsCollapsed(true);
-                sidebarWidthRef.current = lastExpandedWidthRef.current;
-                setSidebarWidth(lastExpandedWidthRef.current);
-            } else {
-                lastExpandedWidthRef.current = sidebarWidthRef.current;
-                localStorage.setItem('sidebarWidth', String(sidebarWidthRef.current));
-                setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('sidebarToggle'));
-                }, 0);
-            }
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    };
+    const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
     if (!root) {
         return (
-            <aside
-                className="flex items-center justify-center h-full bg-sidebar"
-                style={{width: isCollapsed ? 40 : sidebarWidth}}>
-                <div className="h-4 w-4 rounded-full border-2 border-rule border-t-ink-muted animate-spin"
-                     aria-label="Loading"></div>
-                <span className="sr-only">Loading</span>
-            </aside>
-        );
-    }
-
-    if (isCollapsed) {
-        return (
-            <aside className="h-full w-10 bg-sidebar flex flex-col items-center py-3 relative shrink-0">
-                <button
-                    onClick={() => handleCollapse(false)}
-                    className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors duration-150 group relative cursor-pointer"
-                    aria-label="Expand sidebar"
-                >
-                    <img src="./noteblock.png" alt="" className="h-5 w-5 group-hover:opacity-0"/>
-                    <ChevronRight
-                        className="absolute inset-0 m-auto h-4 w-4 text-ink-muted opacity-0 group-hover:opacity-100"
-                        aria-hidden
-                    />
-                    <span
-                        className="absolute left-full ml-2 px-2 py-1 bg-ink text-primary-foreground text-xs rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none z-50">
-                        Expand sidebar
-                    </span>
-                </button>
-                <div
-                    className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-ink/10 transition-colors duration-150 z-20"
-                    onMouseDown={handleCollapsedDragStart}
-                />
-            </aside>
-        );
-    }
-
-    if (root.children.length === 0 && root.notes.length === 0) {
-        return (
-            <div className="h-full bg-sidebar flex flex-col relative shrink-0"
-                 style={{width: sidebarWidth}}>
-                <div className="px-3 py-2.5 flex items-center justify-between">
-                    <SidebarBrand/>
-                    <div className="flex items-center gap-0.5">
-                        <button
-                            onClick={() => setShowCloudSettings(true)}
-                            className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer"
-                            aria-label="Sync database settings"
-                        >
-                            <Database className="w-3.5 h-3.5"/>
-                        </button>
-                        <button
-                            onClick={() => handleCollapse(true)}
-                            className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer shrink-0"
-                            aria-label="Collapse sidebar"
-                        >
-                            <ChevronLeft className="w-4 h-4"/>
-                        </button>
-                    </div>
-                </div>
-                <SidebarEmptyState createTemporaryNote={createTemporaryNote}
-                                   createTemporaryFolder={createTemporaryFolder}/>
-                <div
-                    className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-ink/10 transition-colors duration-150 z-20"
-                    onMouseDown={handleDragStart}
-                />
-                {showCloudSettings && <CloudDatabaseSettings onClose={() => setShowCloudSettings(false)}/>}
+            <div className="sidebar-loading">
+                <div className="spinner" aria-label="Loading"/>
             </div>
         );
     }
+
+    const treeItemProps = {
+        depth: 0,
+        expanded,
+        onToggle: toggleFolder,
+        onCreateNote: createTemporaryNote,
+        onCreateFolder: createTemporaryFolder,
+        onDeleteItem: handleDeleteItem,
+        onRenameFolder: handleRenameFolder,
+        onRenameNote: handleRenameNote,
+        onMoveItem: handleMoveItem,
+        setSidebarError: setMoveError,
+        refreshRoot,
+    };
+    const isEmpty = root.children.length === 0 && root.notes.length === 0;
 
     return (
-        <aside className="h-full bg-sidebar flex flex-col relative shrink-0"
-               style={{width: sidebarWidth}}>
-            <div className="px-3 py-2.5 flex items-center justify-between">
-                <SidebarBrand/>
-                <div className="flex items-center gap-0.5">
-                    <button
-                        onClick={() => setShowCloudSettings(true)}
-                        className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer"
-                        aria-label="Sync database settings"
-                    >
-                        <Database className="w-3.5 h-3.5"/>
-                    </button>
-                    <div className="relative">
-                        <button
-                            ref={buttonRef}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setShowAddMenu(v => !v);
-                            }}
-                            className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer"
-                            aria-label="New note or folder"
-                        >
-                            <Plus className="w-3.5 h-3.5"/>
-                        </button>
-                        <AddMenu
-                            open={showAddMenu}
-                            onClose={() => setShowAddMenu(false)}
-                            onNewFolder={() => createTemporaryFolder(null)}
-                            onNewNote={() => createTemporaryNote(null)}
-                            buttonRef={buttonRef}
-                        />
-                    </div>
-                    <button
-                        onClick={() => handleCollapse(true)}
-                        className="p-1 rounded-md text-ink-faint hover:bg-sidebar-accent hover:text-ink-muted transition-colors duration-150 cursor-pointer"
-                        aria-label="Collapse sidebar"
-                    >
-                        <ChevronLeft className="w-4 h-4"/>
-                    </button>
-                </div>
-            </div>
-
-            {moveError && (
-                <div className="px-2 pb-1">
-                    <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4"/>
-                        <AlertDescription className="flex items-center justify-between">
-                            <span>{moveError}</span>
-                            <button
-                                onClick={() => setMoveError(null)}
-                                className="ml-2 hover:bg-destructive/20 rounded p-1"
-                            >
-                                <X className="h-3 w-3"/>
-                            </button>
-                        </AlertDescription>
-                    </Alert>
-                </div>
-            )}
-
-            {contextMenu && (
-                <SidebarContextMenu
-                    x={contextMenu.x}
-                    y={contextMenu.y}
-                    onClose={() => setContextMenu(null)}
-                    onNewNote={() => createTemporaryNote(null)}
-                    onNewFolder={() => createTemporaryFolder(null)}
-                />
-            )}
-
+        <nav className="sidebar" aria-label="Notes">
             <div
-                className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 pt-0.5"
+                className="sidebar-scroll"
                 onContextMenu={(e) => {
                     e.preventDefault();
                     setContextMenu({x: e.clientX, y: e.clientY});
                 }}
             >
-                {root.children?.map(child => (
-                    <FolderTreeItem
-                        key={child.id}
-                        item={child}
-                        depth={0}
-                        expanded={expanded}
-                        onToggle={toggleFolder}
-                        onCreateNote={createTemporaryNote}
-                        onCreateFolder={createTemporaryFolder}
-                        onDeleteItem={handleDeleteItem}
-                        onRenameFolder={handleRenameFolder}
-                        onRenameNote={handleRenameNote}
-                        onMoveItem={handleMoveItem}
-                        isTemporary={child.id.includes('temp-folder-')}
-                        setSidebarError={setMoveError}
-                        refreshRoot={refreshRoot}
-                    />
-                ))}
-                {root.notes?.map(note => (
-                    <FolderTreeItem
-                        key={note.id}
-                        item={note}
-                        depth={0}
-                        expanded={expanded}
-                        onToggle={toggleFolder}
-                        onCreateNote={createTemporaryNote}
-                        onCreateFolder={createTemporaryFolder}
-                        onDeleteItem={handleDeleteItem}
-                        onRenameFolder={handleRenameFolder}
-                        onRenameNote={handleRenameNote}
-                        onMoveItem={handleMoveItem}
-                        isTemporary={note.id.includes('temp-note-')}
-                        setSidebarError={setMoveError}
-                        refreshRoot={refreshRoot}
-                    />
-                ))}
+                <h2 className="sidebar-heading">Notes</h2>
+                {moveError && (
+                    <p className="sidebar-error" role="alert">
+                        <span>{moveError}</span>
+                        <button type="button" className="link-button" onClick={() => setMoveError(null)}>
+                            Dismiss
+                        </button>
+                    </p>
+                )}
+                {isEmpty ? (
+                    <p className="sidebar-empty">
+                        Notes and folders you create are kept here.{" "}
+                        <button type="button" className="link-button" onClick={() => createTemporaryNote(null)}>
+                            New Note
+                        </button>
+                    </p>
+                ) : (
+                    <>
+                        {root.children.map(child => (
+                            <FolderTreeItem
+                                key={child.id}
+                                item={child}
+                                isTemporary={child.id.includes('temp-folder-')}
+                                {...treeItemProps}
+                            />
+                        ))}
+                        {root.notes.map(note => (
+                            <FolderTreeItem
+                                key={note.id}
+                                item={note}
+                                isTemporary={note.id.includes('temp-note-')}
+                                {...treeItemProps}
+                            />
+                        ))}
+                    </>
+                )}
             </div>
-            <div
-                className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-ink/10 transition-colors duration-150 z-20"
-                onMouseDown={handleDragStart}
-            />
+            <div className="sidebar-footer">
+                <button type="button" className="sidebar-row" onClick={() => setShowCloudSettings(true)}>
+                    <span className="sidebar-row-label">Sync Database…</span>
+                </button>
+            </div>
+            {contextMenu && createPortal(
+                <Menu
+                    style={{position: "fixed", top: contextMenu.y, left: contextMenu.x, zIndex: 50}}
+                    onClose={closeContextMenu}
+                    entries={[
+                        {label: "New Note", icon: <FilePlus/>, onSelect: () => createTemporaryNote(null)},
+                        {label: "New Folder", icon: <FolderPlus/>, onSelect: () => createTemporaryFolder(null)},
+                    ]}
+                />,
+                document.body
+            )}
             {showCloudSettings && <CloudDatabaseSettings onClose={() => setShowCloudSettings(false)}/>}
-        </aside>
+        </nav>
     );
-};
+}

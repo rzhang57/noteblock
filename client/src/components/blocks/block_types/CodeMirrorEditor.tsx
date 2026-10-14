@@ -2,7 +2,8 @@ import {useRef, useEffect, useRef as useDomRef} from "react";
 import {EditorState, Compartment} from "@codemirror/state";
 import {EditorView, keymap, drawSelection, highlightActiveLine} from "@codemirror/view";
 import {defaultKeymap, history, historyKeymap, indentWithTab} from "@codemirror/commands";
-import {indentOnInput, bracketMatching, syntaxHighlighting, defaultHighlightStyle} from "@codemirror/language";
+import {indentOnInput, bracketMatching, syntaxHighlighting, HighlightStyle} from "@codemirror/language";
+import {tags} from "@lezer/highlight";
 import {closeBrackets, closeBracketsKeymap} from "@codemirror/autocomplete";
 import {langExtensionFor} from "./codeLanguages";
 
@@ -19,15 +20,8 @@ export function LanguagePicker({
         <select
             value={value ?? "text"}
             onChange={(e) => onChange(e.target.value)}
-            style={{
-                background: "transparent",
-                color: "var(--ink-muted)",
-                border: "none",
-                borderRadius: 4,
-                padding: "2px 4px",
-                fontSize: 11,
-                cursor: "pointer"
-            }}
+            className="code-panel-language"
+            aria-label="Language"
         >
             {Object.entries(options).map(([k, label]) => (
                 <option key={k} value={k}>
@@ -37,6 +31,17 @@ export function LanguagePicker({
         </select>
     );
 }
+
+const pageHighlightStyle = HighlightStyle.define([
+    {tag: [tags.keyword, tags.controlKeyword, tags.operatorKeyword, tags.modifier], color: "var(--token-keyword)"},
+    {tag: [tags.string, tags.special(tags.string), tags.regexp], color: "var(--token-string)"},
+    {tag: [tags.comment, tags.lineComment, tags.blockComment], color: "var(--token-comment)", fontStyle: "italic"},
+    {tag: [tags.function(tags.variableName), tags.function(tags.propertyName), tags.className, tags.typeName], color: "var(--token-function)"},
+    {tag: [tags.number, tags.bool, tags.null, tags.atom, tags.constant(tags.variableName)], color: "var(--token-constant)"},
+    {tag: [tags.punctuation, tags.bracket, tags.operator], color: "var(--token-punctuation)"},
+    {tag: [tags.tagName, tags.attributeName], color: "var(--token-function)"},
+    {tag: tags.link, color: "var(--accent)", textDecoration: "underline"},
+]);
 
 export type BareEditorProps = {
     code: string;
@@ -65,7 +70,7 @@ export function BareCodeMirror({code, language, onChange, onExitUp, autoFocus = 
                 indentOnInput(),
                 bracketMatching(),
                 closeBrackets(),
-                syntaxHighlighting(defaultHighlightStyle),
+                syntaxHighlighting(pageHighlightStyle),
                 keymap.of([
                     {
                         key: "Backspace",
@@ -83,15 +88,17 @@ export function BareCodeMirror({code, language, onChange, onExitUp, autoFocus = 
                         "&": {
                             backgroundColor: "transparent",
                             color: "var(--ink)",
-                            fontFamily:
-                                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-                            fontSize: "13.5px"
+                            fontFamily: "var(--font-code)",
+                            fontSize: "13px",
+                            lineHeight: "1.6"
                         },
+                        ".cm-scroller": {fontFamily: "var(--font-code)", lineHeight: "1.6"},
+                        ".cm-activeLine": {backgroundColor: "transparent"},
                         ".cm-gutters": {display: "none !important"},
                         ".cm-content": {caretColor: "var(--ink)", padding: "0"},
                         ".cm-cursor": {borderLeftColor: "var(--ink)"},
                         ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-                            backgroundColor: "color-mix(in srgb, var(--ink-faint) 35%, transparent)"
+                            backgroundColor: "var(--selection) !important"
                         }
                     },
                     {dark: false}

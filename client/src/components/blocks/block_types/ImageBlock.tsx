@@ -82,7 +82,7 @@ export function ImageBlock({block}: { block: Block }) {
     const drawn = overlay(strokes, natural);
 
     if (!content?.url) {
-        return <div className="py-2 text-[13px] text-ink-faint">Image is missing its source.</div>;
+        return <p className="image-missing">Image is missing its source.</p>;
     }
 
     return (

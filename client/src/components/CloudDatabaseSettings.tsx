@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {CloudService} from "@/services/CloudService";
 import type {CloudDatabaseConfig, CloudStatus} from "@/types/electron-api";
 
@@ -25,6 +25,13 @@ export function CloudDatabaseSettings({onClose}: {onClose: () => void}) {
     const [config, setConfig] = useState<CloudDatabaseConfig>(EMPTY);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const dialogRef = useRef<HTMLDialogElement>(null);
+
+    useEffect(() => {
+        const dialog = dialogRef.current;
+        dialog?.showModal();
+        return () => dialog?.close();
+    }, []);
 
     useEffect(() => {
         CloudService.status().then(setStatus).catch((err) => setError(err.message));
@@ -53,60 +60,69 @@ export function CloudDatabaseSettings({onClose}: {onClose: () => void}) {
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-            <div className="w-full max-w-md rounded-lg bg-paper p-5 shadow-lg">
-                <h2 className="text-[15px] font-semibold text-ink">Sync database</h2>
-                <p className="mt-1 text-[12px] leading-snug text-ink/60">
+        <dialog
+            ref={dialogRef}
+            className="sheet"
+            aria-labelledby="cloud-settings-title"
+            onCancel={(e) => {
+                e.preventDefault();
+                onClose();
+            }}
+        >
+            <form
+                className="sheet-form"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!status?.configured) save();
+                }}
+            >
+                <h2 id="cloud-settings-title" className="sheet-title">Sync Database</h2>
+                <p className="sheet-intro">
                     Connects this machine to a Postgres database for sync. The password is stored in your
-                    operating system's keychain. This is a developer setting, not an account — anyone who can
+                    operating system's keychain. This is a developer setting, not an account: anyone who can
                     use this computer can read the database.
                 </p>
 
                 {status?.configured ? (
-                    <div className="mt-4 rounded border border-ink/10 p-3">
-                        <p className="text-[13px] text-ink">
-                            Connected to <span className="font-mono">{status.host}</span>
+                    <div className="sheet-field">
+                        <span className="sheet-label">Status</span>
+                        <p className="sheet-note">
+                            <span className="readiness-dot"/>
+                            Connected to <code>{status.host}</code>
                         </p>
-                        <button
-                            className="mt-2 text-[12px] text-ink/70 underline"
-                            onClick={disconnect}
-                        >
-                            Disconnect and use local storage
-                        </button>
                     </div>
                 ) : (
-                    <div className="mt-4 space-y-2">
-                        {FIELDS.map(({key, label, type}) => (
-                            <label key={key} className="block">
-                                <span className="text-[12px] text-ink/70">{label}</span>
-                                <input
-                                    type={type ?? "text"}
-                                    value={config[key]}
-                                    onChange={(e) => setConfig({...config, [key]: e.target.value})}
-                                    className="mt-0.5 w-full rounded border border-ink/15 bg-paper px-2 py-1 text-[13px] text-ink"
-                                />
-                            </label>
-                        ))}
-                    </div>
+                    FIELDS.map(({key, label, type}) => (
+                        <label key={key} className="sheet-field">
+                            <span className="sheet-label">{label}</span>
+                            <input
+                                type={type ?? "text"}
+                                className="text-field"
+                                value={config[key]}
+                                onChange={(e) => setConfig({...config, [key]: e.target.value})}
+                            />
+                        </label>
+                    ))
                 )}
 
-                {error && <p className="mt-3 text-[12px] text-red-600">{error}</p>}
+                {error && <p className="sheet-note" data-tone="failed">{error}</p>}
 
-                <div className="mt-5 flex justify-end gap-2">
-                    <button className="px-3 py-1 text-[13px] text-ink/70" onClick={onClose}>
-                        Close
+                <div className="sheet-buttons">
+                    {status?.configured && (
+                        <button type="button" className="link-button" onClick={disconnect}>
+                            Disconnect and use local storage
+                        </button>
+                    )}
+                    <button type="button" className="push-button" onClick={onClose}>
+                        {status?.configured ? "Done" : "Cancel"}
                     </button>
                     {!status?.configured && (
-                        <button
-                            className="rounded bg-ink px-3 py-1 text-[13px] text-paper disabled:opacity-50"
-                            disabled={saving}
-                            onClick={save}
-                        >
+                        <button type="submit" className="push-button" data-default disabled={saving}>
                             {saving ? "Connecting…" : "Connect"}
                         </button>
                     )}
                 </div>
-            </div>
-        </div>
+            </form>
+        </dialog>
     );
 }
