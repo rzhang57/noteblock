@@ -1,8 +1,10 @@
 package server
 
 import (
+	"bufio"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"path/filepath"
 
@@ -12,6 +14,26 @@ import (
 )
 
 const maxImageBytes = 25 << 20
+
+// What http.DetectContentType reads; more is wasted and less weakens the sniff.
+const sniffLen = 512
+
+// The sidecar announces every upload as application/octet-stream, and a storage bucket that
+// restricts its allowed types rejects that outright - Supabase Storage does. The bytes are a better
+// witness than the header anyway, so a declared type is only trusted when it says something.
+func imageContentType(declared, key string, head []byte) string {
+	if declared != "" && declared != "application/octet-stream" {
+		return declared
+	}
+
+	if len(head) > 0 {
+		if sniffed := http.DetectContentType(head); sniffed != "application/octet-stream" {
+			return sniffed
+		}
+	}
+
+	return mime.TypeByExtension(filepath.Ext(key))
+}
 
 // Keys are filenames the sidecar generated; anything carrying a path is a client bug or worse.
 func imageKey(c *gin.Context) (string, bool) {
@@ -41,8 +63,11 @@ func (s *Server) imagePut(c *gin.Context) {
 		return
 	}
 
-	body := http.MaxBytesReader(c.Writer, c.Request.Body, maxImageBytes)
-	if err := s.blobs.Put(c.Request.Context(), key, body, c.ContentType()); err != nil {
+	// Peeked rather than read: bufio keeps the bytes for Put, so sniffing costs nothing.
+	body := bufio.NewReader(http.MaxBytesReader(c.Writer, c.Request.Body, maxImageBytes))
+	head, _ := body.Peek(sniffLen)
+
+	if err := s.blobs.Put(c.Request.Context(), key, body, imageContentType(c.ContentType(), key, head)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store image"})
 		return
 	}
