@@ -5,6 +5,14 @@
     <link rel="icon" type="image/png" href="/noteblock.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Noteblock</title>
+    <script>
+      // Before the stylesheet paints: the module that owns the theme loads deferred, a frame too late.
+      try {
+        var stored = localStorage.getItem("noteblock.theme");
+        var dark = stored === "dark" || (stored !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+      } catch (e) {}
+    </script>
   </head>
   <body class="paper">
     <div id="root"></div>

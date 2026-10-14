@@ -1,17 +1,17 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 import {createPortal} from "react-dom";
-import {FilePlus, FolderPlus} from "lucide-react";
+import {FilePlus, FolderPlus, Settings} from "lucide-react";
 import {FolderTreeItem} from "./FolderTreeItem";
 import {FolderService} from "@/services/FolderService";
 import type {Folder} from "@/services/FolderService";
 import {NoteService} from "@/services/NoteService.ts";
 import type {Note} from "@/types/Note.ts";
 import {useNoteContext} from "@/context/NoteContext.tsx";
-import {CloudDatabaseSettings} from "@/components/CloudDatabaseSettings.tsx";
 import {Menu} from "@/components/menu/Menu.tsx";
 import {onNewItemRequest} from "@/components/window/createItem.ts";
 
-export function Sidebar() {
+
+export function Sidebar({onOpenSettings}: {onOpenSettings: () => void}) {
     const [root, setRoot] = useState<Folder | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(() => {
         const storedExpanded = localStorage.getItem('sidebarExpanded');
@@ -27,7 +27,6 @@ export function Sidebar() {
         }
         return new Set();
     });
-    const [showCloudSettings, setShowCloudSettings] = useState(false);
     const [contextMenu, setContextMenu] = useState<{x: number; y: number} | null>(null);
     const {selectedNoteId, setSelectedNoteId, setNoteTitle, noteTitle} = useNoteContext();
     const [moveError, setMoveError] = useState<string | null>(null);
@@ -55,6 +54,12 @@ export function Sidebar() {
         }
         refreshRoot();
     }, [noteTitle]);
+
+    useEffect(() => {
+        const onNoteRenamed = () => refreshRoot();
+        window.addEventListener("noteRenamed", onNoteRenamed);
+        return () => window.removeEventListener("noteRenamed", onNoteRenamed);
+    }, []);
 
     useEffect(() => {
         if (expanded.size > 0) {
@@ -265,6 +270,7 @@ export function Sidebar() {
 
     const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
+
     if (!root) {
         return (
             <div className="sidebar-loading">
@@ -335,8 +341,9 @@ export function Sidebar() {
                 )}
             </div>
             <div className="sidebar-footer">
-                <button type="button" className="sidebar-row" onClick={() => setShowCloudSettings(true)}>
-                    <span className="sidebar-row-label">Sync Database…</span>
+                <button type="button" className="sidebar-row" onClick={onOpenSettings} title="Settings (⌘,)">
+                    <Settings className="sidebar-row-icon" strokeWidth={1.6} aria-hidden/>
+                    <span className="sidebar-row-label">Settings</span>
                 </button>
             </div>
             {contextMenu && createPortal(
@@ -350,7 +357,6 @@ export function Sidebar() {
                 />,
                 document.body
             )}
-            {showCloudSettings && <CloudDatabaseSettings onClose={() => setShowCloudSettings(false)}/>}
         </nav>
     );
 }

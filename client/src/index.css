@@ -65,7 +65,7 @@
 }
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --radius: 0.4375rem;
   --font-chrome: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
   --font-page: "Source Serif 4 Variable", "New York", "Iowan Old Style", Georgia, serif;
@@ -107,43 +107,42 @@
   --token-punctuation: #6b665e;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #1c1b19;
-    --paper-deep: #171614;
-    --ink: #e9e5dd;
-    --ink-soft: #c4bfb5;
-    --ink-muted: #8b867d;
-    --rule: rgb(233 229 221 / 0.1);
-    --accent: #8db3dd;
-    --accent-soft: rgb(141 179 221 / 0.35);
-    --tint: rgb(233 229 221 / 0.05);
-    --selection: rgb(141 179 221 / 0.16);
-    --scrollbar-thumb: rgb(233 229 221 / 0.24);
-    --scrollbar-thumb-active: rgb(233 229 221 / 0.42);
-    --paper-grain-blend: soft-light;
-    --paper-grain-opacity: 0.5;
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #1c1b19;
+  --paper-deep: #171614;
+  --ink: #e9e5dd;
+  --ink-soft: #c4bfb5;
+  --ink-muted: #8b867d;
+  --rule: rgb(233 229 221 / 0.1);
+  --accent: #8db3dd;
+  --accent-soft: rgb(141 179 221 / 0.35);
+  --tint: rgb(233 229 221 / 0.05);
+  --selection: rgb(141 179 221 / 0.16);
+  --scrollbar-thumb: rgb(233 229 221 / 0.24);
+  --scrollbar-thumb-active: rgb(233 229 221 / 0.42);
+  --paper-grain-blend: soft-light;
+  --paper-grain-opacity: 0.5;
 
-    --code-paper: #21201e;
-    --removed-label: #d49a83;
-    --removed-tint: rgb(212 154 131 / 0.12);
+  --code-paper: #21201e;
+  --removed-label: #d49a83;
+  --removed-tint: rgb(212 154 131 / 0.12);
 
-    --control: #2a2926;
-    --control-border: rgb(233 229 221 / 0.13);
-    --control-selected: #3a3935;
-    --default-button: #3e6d9e;
-    --ready: #8dc47a;
-    --backdrop: rgb(0 0 0 / 0.32);
-    --sheet-shadow: 0 22px 60px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(233 229 221 / 0.06);
-    --menu-shadow: 0 10px 30px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(233 229 221 / 0.06);
+  --control: #2a2926;
+  --control-border: rgb(233 229 221 / 0.13);
+  --control-selected: #3a3935;
+  --default-button: #3e6d9e;
+  --ready: #8dc47a;
+  --backdrop: rgb(0 0 0 / 0.32);
+  --sheet-shadow: 0 22px 60px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(233 229 221 / 0.06);
+  --menu-shadow: 0 10px 30px rgb(0 0 0 / 0.45), 0 0 0 1px rgb(233 229 221 / 0.06);
 
-    --token-keyword: #d19ac4;
-    --token-string: #b5c98a;
-    --token-comment: #8b867d;
-    --token-function: #8cc0d8;
-    --token-constant: #e0ad74;
-    --token-punctuation: #a39d92;
-  }
+  --token-keyword: #d19ac4;
+  --token-string: #b5c98a;
+  --token-comment: #8b867d;
+  --token-function: #8cc0d8;
+  --token-constant: #e0ad74;
+  --token-punctuation: #a39d92;
 }
 
 @layer base {

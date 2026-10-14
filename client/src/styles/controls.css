@@ -76,7 +76,8 @@
   cursor: default;
 }
 
-.segmented button[aria-selected='true'] {
+.segmented button[aria-selected='true'],
+.segmented button[aria-checked='true'] {
   background: var(--control-selected);
   box-shadow:
     0 0.5px 2px rgb(0 0 0 / 0.14),

@@ -52,6 +52,10 @@
   align-items: center;
 }
 
+.sheet-field > .segmented {
+  justify-self: start;
+}
+
 .sheet-label {
   text-align: right;
   color: var(--ink-soft);
@@ -117,4 +121,11 @@
   from {
     opacity: 0;
   }
+}
+
+.sheet-control {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  min-width: 0;
 }

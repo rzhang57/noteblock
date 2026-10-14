@@ -3,7 +3,6 @@ import {useCallback, useEffect, useRef, useState, type MouseEvent} from "react";
 const MIN_WIDTH = 180;
 const DEFAULT_WIDTH = 252;
 const MAX_WIDTH = 600;
-const COLLAPSE_THRESHOLD = 140;
 const WIDTH_KEY = "sidebarWidth";
 
 function storedWidth(): number {
@@ -22,7 +21,6 @@ export function useSidebarLayout() {
     const [width, setWidth] = useState(storedWidth);
     const [resizing, setResizing] = useState(false);
     const widthRef = useRef(width);
-
     const openRef = useRef(open);
 
     useEffect(() => {
@@ -44,18 +42,13 @@ export function useSidebarLayout() {
     const startResize = useCallback((e: MouseEvent) => {
         e.preventDefault();
         const startX = e.clientX;
-        const restoreWidth = widthRef.current;
-        const startWidth = openRef.current ? restoreWidth : 0;
-        const draggedWidth = (x: number) => startWidth + x - startX;
+        const startWidth = widthRef.current;
         setResizing(true);
         document.body.style.cursor = "col-resize";
         document.body.style.userSelect = "none";
 
         const onMouseMove = (move: globalThis.MouseEvent) => {
-            const dragged = draggedWidth(move.clientX);
-            openRef.current = dragged >= COLLAPSE_THRESHOLD;
-            widthRef.current = openRef.current ? Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, dragged)) : restoreWidth;
-            setOpen(openRef.current);
+            widthRef.current = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, startWidth + move.clientX - startX));
             setWidth(widthRef.current);
         };
 
@@ -65,7 +58,7 @@ export function useSidebarLayout() {
             document.body.style.cursor = "";
             document.body.style.userSelect = "";
             setResizing(false);
-            if (openRef.current) localStorage.setItem(WIDTH_KEY, String(widthRef.current));
+            localStorage.setItem(WIDTH_KEY, String(widthRef.current));
             announceLayoutChange();
         };
 

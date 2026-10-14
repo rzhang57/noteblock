@@ -4,7 +4,7 @@
 }
 
 .note-header {
-  margin-bottom: 2.4rem;
+  margin-bottom: 2rem;
 }
 
 .note-title {
@@ -25,15 +25,6 @@
   color: var(--ink);
   cursor: text;
   outline: none;
-}
-
-.note-meta {
-  margin: 16px 0 0;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--rule);
-  font-size: 13px;
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
 }
 
 .note-hint {
@@ -59,9 +50,15 @@
 }
 
 .mdxeditor.mdxeditor [contenteditable] {
-  padding: 4px 0;
+  padding: 0;
   color: var(--ink);
   outline: none;
+}
+
+/* Spacing lives below each element, so the block's last one must not carry it past the outline. */
+.mdxeditor.mdxeditor [contenteditable] > :last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .mdxeditor.mdxeditor code span {
@@ -276,6 +273,22 @@
   position: relative;
 }
 
+/* Drawn outside the block's box, so the outline never shifts the text it frames. */
+.block::before {
+  content: "";
+  position: absolute;
+  inset: -10px -16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  pointer-events: none;
+  transition: border-color 0.15s ease;
+}
+
+.block:hover::before,
+.block:focus-within::before {
+  border-color: var(--rule);
+}
+
 .block-gutter {
   position: absolute;
   top: 4px;
@@ -285,7 +298,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  transform: translateX(-36px);
+  transform: translateX(-50px);
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -359,7 +372,7 @@
 .insertion-point {
   position: relative;
   height: 0;
-  margin: 0.55rem 0;
+  margin: 1.3rem 0;
 }
 
 .insertion-point-hit {
@@ -385,6 +398,7 @@
   z-index: 10;
   transform: translate(-50%, -50%);
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.15s ease;
 }
 
@@ -397,6 +411,7 @@
 .insertion-point:focus-within .insertion-point-choices,
 .insertion-point[data-persistent] .insertion-point-choices {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .insertion-point .segmented {

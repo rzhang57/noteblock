@@ -1,5 +1,6 @@
-import {useCallback, type CSSProperties} from "react";
+import {useCallback, useState, type CSSProperties} from "react";
 import {Sidebar} from "./components/Sidebar";
+import {SettingsSheet} from "@/components/settings/SettingsSheet.tsx";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {MainContentPanel} from "@/components/ContentPanel.tsx";
 import {NoteEmptyState} from "@/components/NoteEmptyState.tsx";
@@ -20,6 +21,9 @@ export default function App() {
     }, [reveal]);
     const newNote = useCallback(() => createItem("note"), [createItem]);
     useCommandKey("n", newNote);
+    const [showSettings, setShowSettings] = useState(false);
+    const openSettings = useCallback(() => setShowSettings(true), []);
+    useCommandKey(",", openSettings);
 
     return (
         <div
@@ -29,7 +33,7 @@ export default function App() {
             style={{"--sidebar-width": `${sidebar.width}px`} as CSSProperties}
         >
             <aside className="sidebar-pane" inert={!sidebar.open}>
-                <Sidebar/>
+                <Sidebar onOpenSettings={openSettings}/>
             </aside>
             <main className="reader">
                 <DragRegion/>
@@ -37,10 +41,12 @@ export default function App() {
                     {selectedNoteId ? <MainContentPanel/> : <NoteEmptyState onNewNote={newNote}/>}
                 </div>
             </main>
-            <div className="sidebar-resize-handle" style={{left: sidebar.open ? sidebar.width - 3 : 0}}
-                 onMouseDown={sidebar.startResize}/>
+            {sidebar.open && (
+                <div className="sidebar-resize-handle" style={{left: sidebar.width - 3}} onMouseDown={sidebar.startResize}/>
+            )}
             <SidebarToggle open={sidebar.open} onToggle={sidebar.toggle}/>
             <NewItemButton onCreate={createItem}/>
+            {showSettings && <SettingsSheet onClose={() => setShowSettings(false)}/>}
         </div>
     );
 }

@@ -4,7 +4,7 @@ import "@excalidraw/excalidraw/index.css";
 import type {Block} from "@/types/Note";
 import {NoteService} from "@/services/NoteService";
 import {useNoteContext} from "@/context/NoteContext";
-import {useColorScheme} from "@/hooks/useColorScheme.ts";
+import {useResolvedTheme} from "@/theme/useTheme.ts";
 import type {AppState, BinaryFiles} from "@excalidraw/excalidraw/types";
 import type {OrderedExcalidrawElement} from "@excalidraw/excalidraw/element/types";
 
@@ -25,7 +25,7 @@ export const ExcalidrawBlock: React.FC<ExcalidrawBlockProps> = ({block}) => {
     const [layoutKey, setLayoutKey] = useState(0);
     const hasUnsavedChanges = useRef(false);
     const latestContentRef = useRef<ExcalidrawContent | null>(null);
-    const colorScheme = useColorScheme();
+    const colorScheme = useResolvedTheme();
 
     const saveContent = useCallback(async (content: ExcalidrawContent | null) => {
         if (!selectedNoteId || !content || !hasUnsavedChanges.current) return;

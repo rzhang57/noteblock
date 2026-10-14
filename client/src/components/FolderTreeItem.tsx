@@ -1,4 +1,4 @@
-import {Folder as FolderIcon, ChevronRight} from "lucide-react";
+import {Folder as FolderIcon, ChevronRight, FileText} from "lucide-react";
 import {type Folder, FolderService} from "@/services/FolderService";
 import type {Note} from "@/types/Note";
 import {useNoteContext} from "@/context/NoteContext.tsx";
@@ -292,8 +292,9 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
             }}
             className="sidebar-row"
             aria-current={active}
-            style={{paddingLeft: indent + 43}}
+            style={{paddingLeft: indent + 22}}
         >
+            <FileText className="sidebar-row-icon" strokeWidth={1.6} aria-hidden/>
             {isRenaming ? (
                 <InlineRename
                     initialValue={item.title}

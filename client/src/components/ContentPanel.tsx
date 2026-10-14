@@ -1,4 +1,4 @@
-import {useEffect, useState, Fragment, type ReactNode} from "react";
+import {useEffect, useRef, useState, Fragment, type ReactNode} from "react";
 import {useNoteContext} from "@/context/NoteContext";
 import {NoteService} from "@/services/NoteService";
 import type {Block, Note} from "@/types/Note.ts";
@@ -18,6 +18,7 @@ import {
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import {NoteTitle} from "@/components/NoteTitle.tsx";
 import {SortableBlock} from "@/components/blocks/SortableBlock.tsx";
 import {InsertionPoint, type InsertKind} from "@/components/blocks/InsertionPoint.tsx";
 import {Code2, Image as ImageIcon, PenTool, Type} from "lucide-react";
@@ -41,9 +42,12 @@ export function MainContentPanel() {
     const [note, setNote] = useState<Note | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeBlock, setActiveBlock] = useState<Block | null>(null);
-    const [editingTitle, setEditingTitle] = useState(false);
-    const [localNoteTitle, setLocalNoteTitle] = useState(noteTitle);
     const [spawnedBlockId, setSpawnedBlockId] = useState<string | null>(null);
+
+    const selectedNoteRef = useRef(selectedNoteId);
+    useEffect(() => {
+        selectedNoteRef.current = selectedNoteId;
+    }, [selectedNoteId]);
 
     const sensors = useSensors(
         // the drag handle is also the actions menu trigger, so a press that never moves must stay a click
@@ -81,12 +85,7 @@ export function MainContentPanel() {
             }
         };
 
-        fetchNote().then(
-            () => {
-                setLoading(false)
-                setLocalNoteTitle(noteTitle);
-            }
-        );
+        fetchNote();
     }, [selectedNoteId]);
 
     const handleAddBlockAt = async (kind: InsertKind, index: number) => {
@@ -258,54 +257,29 @@ export function MainContentPanel() {
 
     const sortedBlocks = note?.blocks ? [...note.blocks].sort((a, b) => a.index - b.index) : [];
 
-    const tryUpdateTitle = async (newTitle: string) => {
+    const renameNote = async (title: string) => {
         if (!selectedNoteId) return;
+        const renamedId = selectedNoteId;
         try {
-            const trimmed = newTitle.trim();
-            if (trimmed && trimmed !== noteTitle) {
-                await NoteService.updateNote({
-                    id: selectedNoteId,
-                    title: trimmed,
-                    folder_id: note?.folder_id,
-                    blocks: note?.blocks
-                });
-                setEditingTitle(false);
-                setNoteTitle(trimmed);
-                setLocalNoteTitle(trimmed);
-            }
+            await NoteService.updateNote({
+                id: renamedId,
+                title,
+                folder_id: note?.folder_id,
+                blocks: note?.blocks
+            });
+            if (selectedNoteRef.current === renamedId) setNoteTitle(title);
+            else window.dispatchEvent(new CustomEvent("noteRenamed"));
         } catch (err) {
             console.error("Failed to update note title:", err);
-            setLocalNoteTitle(noteTitle);
         }
-    }
-
-    const blockCount = `${sortedBlocks.length} ${sortedBlocks.length === 1 ? "block" : "blocks"}`;
+    };
 
     return (
         note && noteTitle && (
             <div className="reader-content">
                 <article className="note-page page-column">
-                    <header className="note-header" onClick={() => !editingTitle && setEditingTitle(true)}>
-                        {editingTitle ? (
-                            <input
-                                className="note-title"
-                                aria-label="Note title"
-                                value={localNoteTitle !== null ? localNoteTitle : noteTitle}
-                                onChange={e => setLocalNoteTitle(e.target.value)}
-                                onKeyDown={e => {
-                                    if (e.key === "Enter") {
-                                        tryUpdateTitle(localNoteTitle ? localNoteTitle : "");
-                                    }
-                                }}
-                                onBlur={() => {
-                                    setEditingTitle(false)
-                                }}
-                                autoFocus
-                            />
-                        ) : (
-                            <h1 className="note-title">{noteTitle}</h1>
-                        )}
-                        <p className="note-meta">{blockCount}</p>
+                    <header className="note-header">
+                        <NoteTitle key={selectedNoteId} title={noteTitle} onRename={renameNote}/>
                     </header>
 
                     <DndContext
