@@ -1,12 +1,6 @@
-import {
-    Folder as FolderIcon,
-    FolderOpen,
-    FileText,
-    ChevronRight,
-} from "lucide-react";
+import {Folder as FolderIcon, ChevronRight, FileText} from "lucide-react";
 import {type Folder, FolderService} from "@/services/FolderService";
 import type {Note} from "@/types/Note";
-import {cn} from "@/lib/utils";
 import {useNoteContext} from "@/context/NoteContext.tsx";
 import {ContextMenu} from "./file_system/ContextMenu";
 import {InlineRename} from "./file_system/InlineRename";
@@ -68,7 +62,7 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
     const isFolder = (item: Folder | Note): item is Folder =>
         Array.isArray((item as Folder).children);
 
-    const baseIndent = depth * 16;
+    const indent = depth * 14;
 
     const handleRename = () => {
         setIsRenaming(true);
@@ -191,44 +185,29 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                         setContextMenuAt({x: e.clientX, y: e.clientY});
                     }}
                     onClick={() => !isRenaming && onToggle(item.id)}
-                    className={cn(
-                        "group flex items-center justify-between gap-1 rounded-md py-[5px] px-2 cursor-pointer select-none overflow-hidden transition-colors duration-150 hover:bg-sidebar-accent",
-                        isDragOver && "bg-selected ring-1 ring-inset ring-ink-faint/40"
-                    )}
-                    style={{paddingLeft: baseIndent + 8}}
+                    className="sidebar-row"
+                    data-drop-target={isDragOver || undefined}
+                    aria-expanded={open}
+                    style={{paddingLeft: indent + 6}}
                 >
-                    <div className="flex items-center flex-1 min-w-0">
-                        <div className="w-4 shrink-0 flex items-center justify-center">
-                            {hasChildren ? (
-                                <ChevronRight
-                                    className={cn(
-                                        "w-3 h-3 text-ink-faint transition-transform duration-150",
-                                        open && "rotate-90"
-                                    )}
-                                />
-                            ) : (
-                                <span className="w-3"/>
-                            )}
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                            {open ? (
-                                <FolderOpen className="w-4 h-4 shrink-0 text-ink-muted"/>
-                            ) : (
-                                <FolderIcon className="w-4 h-4 shrink-0 text-ink-muted"/>
-                            )}
-                            {isRenaming ? (
-                                <InlineRename
-                                    initialValue={item.name}
-                                    onSave={handleRenameSave}
-                                    onCancel={handleRenameCancel}
-                                    isTemporary={isTemporary}
-                                />
-                            ) : (
-                                <span className="truncate text-sm">{item.name}</span>
-                            )}
-                        </div>
-                    </div>
+                    <ChevronRight
+                        className="sidebar-disclosure"
+                        data-open={open || undefined}
+                        style={{visibility: hasChildren ? "visible" : "hidden"}}
+                        strokeWidth={2.4}
+                        aria-hidden
+                    />
+                    <FolderIcon className="sidebar-row-icon" strokeWidth={1.6} aria-hidden/>
+                    {isRenaming ? (
+                        <InlineRename
+                            initialValue={item.name}
+                            onSave={handleRenameSave}
+                            onCancel={handleRenameCancel}
+                            isTemporary={isTemporary}
+                        />
+                    ) : (
+                        <span className="sidebar-row-label">{item.name}</span>
+                    )}
 
                     {!isRenaming && (
                         <ContextMenu
@@ -311,25 +290,21 @@ export const FolderTreeItem: React.FC<TreeProps> = ({
                     setNoteTitle(item.title)
                 }
             }}
-            className={cn(
-                "group flex items-center justify-between rounded-md py-[5px] px-2 gap-1 cursor-pointer select-none overflow-hidden transition-colors duration-150 hover:bg-sidebar-accent",
-                active && "bg-selected font-medium hover:bg-selected",
-            )}
-            style={{paddingLeft: baseIndent + 24}}
+            className="sidebar-row"
+            aria-current={active}
+            style={{paddingLeft: indent + 22}}
         >
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-                <FileText className={cn("w-4 h-4 shrink-0", active ? "text-ink-muted" : "text-ink-faint")}/>
-                {isRenaming ? (
-                    <InlineRename
-                        initialValue={item.title}
-                        onSave={handleRenameSave}
-                        onCancel={handleRenameCancel}
-                        isTemporary={isTemporary}
-                    />
-                ) : (
-                    <span className="truncate text-sm">{item.title}</span>
-                )}
-            </div>
+            <FileText className="sidebar-row-icon" strokeWidth={1.6} aria-hidden/>
+            {isRenaming ? (
+                <InlineRename
+                    initialValue={item.title}
+                    onSave={handleRenameSave}
+                    onCancel={handleRenameCancel}
+                    isTemporary={isTemporary}
+                />
+            ) : (
+                <span className="sidebar-row-label">{item.title}</span>
+            )}
 
             {!isRenaming && (
                 <ContextMenu

@@ -42,22 +42,23 @@ export function CodeBlock({block, autoFocus}: { block: Block; autoFocus?: boolea
     };
 
     return (
-        <div className="group/code my-1 overflow-hidden rounded-lg bg-secondary">
-            <div className="flex items-center justify-between gap-2 px-2.5 pt-1.5 pb-0.5 opacity-0 transition-opacity duration-150 group-hover/code:opacity-100 focus-within:opacity-100">
+        <div className="code-panel">
+            <div className="code-panel-header">
                 <LanguagePicker value={language} options={LANGUAGE_MAP} onChange={onLanguageChange}/>
                 <button
+                    type="button"
                     onClick={async () => {
                         await navigator.clipboard.writeText(code);
                         setCopied(true);
                         setTimeout(() => setCopied(false), 2000);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[11px] text-ink-muted transition-colors duration-150 hover:bg-accent"
+                    className="code-panel-button"
                 >
                     {copied ? <TbCopyCheckFilled/> : <TbCopy/>}
                     {copied ? "Copied" : "Copy"}
                 </button>
             </div>
-            <div className="px-3 pb-2.5">
+            <div className="code-panel-body">
                 <BareCodeMirror
                     code={code}
                     language={language}

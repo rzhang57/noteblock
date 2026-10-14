@@ -132,82 +132,35 @@ function HeaderedBareEditor({
     }, [parentEditor, lexicalNode]);
 
     return (
-        <div
-            data-nb-codeblock
-            style={{
-                overflow: "hidden",
-                borderRadius: 8,
-                background: "var(--secondary)",
-                margin: "1rem 0",
-                boxShadow: isSelected ? "0 0 0 2px var(--ink)" : "none",
-                transition: "box-shadow 0.12s ease"
-            }}
-        >
-            <div
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    padding: "6px 8px 2px 10px",
-                    background: "transparent",
-                    transition: "opacity 0.12s ease"
-                }}
-            >
-                <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                    <span style={{fontSize: 11, color: "var(--ink-faint)"}}>Language</span>
-                    <LanguagePicker value={language} options={languageMap} onChange={(v) => setLanguage(v)}/>
-                </div>
-                <div style={{display: "flex", alignItems: "center", gap: 8}}>
+        <div data-nb-codeblock className="code-panel" data-selected={isSelected || undefined}>
+            <div className="code-panel-header">
+                <LanguagePicker value={language} options={languageMap} onChange={(v) => setLanguage(v)}/>
+                <div className="code-panel-actions">
                     <button
+                        type="button"
+                        className="code-panel-button"
                         onClick={async () => {
                             await navigator.clipboard.writeText(code);
                             setCopied(true);
                             setTimeout(() => setCopied(false), 3000);
                         }}
-                        style={{
-                            fontSize: 11,
-                            color: "var(--ink-muted)",
-                            background: "transparent",
-                            border: "none",
-                            borderRadius: 4,
-                            padding: "3px 6px",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6
-                        }}
                     >
-                        {copied ? <TbCopyCheckFilled style={{marginRight: 4}}/> : <TbCopy style={{marginRight: 4}}/>}
+                        {copied ? <TbCopyCheckFilled/> : <TbCopy/>}
                         {copied ? "Copied" : "Copy"}
                     </button>
                     <button
+                        type="button"
+                        className="code-panel-button"
+                        data-tone="destructive"
+                        aria-label="Delete code block"
                         onClick={deleteCodeBlock}
-                        style={{
-                            fontSize: 14,
-                            color: "var(--ink-faint)",
-                            background: "transparent",
-                            border: "none",
-                            borderRadius: 4,
-                            padding: "3px",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            transition: "color 0.2s"
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.color = "var(--destructive)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.color = "var(--ink-faint)";
-                        }}
                     >
                         <TbTrash/>
                     </button>
                 </div>
             </div>
 
-            <div style={{padding: "2px 10px 10px"}}>
+            <div className="code-panel-body">
                 <BareCodeMirror
                     code={code}
                     language={language}

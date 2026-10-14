@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from "react";
+import {createPortal} from "react-dom";
 import {X, Undo2, Pen, Maximize2} from "lucide-react";
 import type {Stroke} from "@/types/Note.ts";
 import {loadPen, PEN_COLORS, PEN_WIDTHS, savePen, type PenSettings} from "./penSettings.ts";
@@ -169,8 +170,8 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
     // width before React re-renders keeps both.
     const choosePen = (next: Partial<PenSettings>) => setPen(prev => ({...prev, ...next}));
 
-    return (
-        <div className="fixed inset-0 z-50 flex flex-col bg-ink/80 backdrop-blur-sm">
+    return createPortal(
+        <div className="annotator fixed inset-0 z-50 flex flex-col bg-ink/80 backdrop-blur-sm">
             <div className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-2 text-[13px] font-medium text-paper">
                     <Pen size={15}/>
@@ -254,7 +255,7 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
             </div>
 
             <div className="flex items-center justify-center gap-4 pb-6">
-                <div className="surface-pop flex items-center gap-1.5 rounded-full px-2.5 py-2">
+                <div className="annotator-tray flex items-center gap-1.5 rounded-full px-2.5 py-2">
                     {PEN_COLORS.map(c => (
                         <button
                             key={c}
@@ -267,7 +268,7 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                         />
                     ))}
                 </div>
-                <div className="surface-pop flex items-center gap-1 rounded-full px-2.5 py-2">
+                <div className="annotator-tray flex items-center gap-1 rounded-full px-2.5 py-2">
                     {PEN_WIDTHS.map(w => (
                         <button
                             key={w}
@@ -282,6 +283,7 @@ export function ImageAnnotator({url, strokes, onSave, onClose}: ImageAnnotatorPr
                     ))}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

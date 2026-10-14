@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, protocol, net, safeStorage } = require("electron")
+const { app, BrowserWindow, dialog, ipcMain, protocol, net, safeStorage, nativeTheme } = require("electron")
 const { spawn } = require("child_process")
 const nodeNet = require("net")
 const { randomUUID } = require("crypto")
@@ -346,6 +346,11 @@ function createWindow() {
         },
         title: "Noteblock",
         icon: path.join(__dirname, "../assets/icons/noteblock.png"),
+        backgroundColor: nativeTheme.shouldUseDarkColors ? "#1c1b19" : "#fbfaf6",
+        ...(process.platform === "darwin" && {
+            titleBarStyle: "hiddenInset",
+            trafficLightPosition: {x: 16, y: 16},
+        }),
     })
 
     if (app.isPackaged) {

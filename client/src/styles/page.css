@@ -1,0 +1,473 @@
+.note-page {
+  position: relative;
+  animation: page-in 0.4s ease both;
+}
+
+.note-header {
+  margin-bottom: 2rem;
+}
+
+.note-title {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-page);
+  font-size: 42px;
+  line-height: 1.12;
+  font-weight: 620;
+  font-optical-sizing: auto;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+  color: var(--ink);
+  cursor: text;
+  outline: none;
+}
+
+.note-hint {
+  margin: 0 0 2.5rem;
+  font-family: var(--font-page);
+  font-size: 19px;
+  font-style: italic;
+  color: var(--ink-muted);
+}
+
+.note-tail {
+  height: 32vh;
+  cursor: text;
+}
+
+/* MDXEditor injects its stylesheet after ours, so these rules double the class to win on specificity. */
+.mdxeditor.mdxeditor {
+  font-family: var(--font-page);
+  font-size: 19px;
+  line-height: 1.62;
+  font-optical-sizing: auto;
+  color: var(--ink);
+}
+
+.mdxeditor.mdxeditor [contenteditable] {
+  padding: 0;
+  color: var(--ink);
+  outline: none;
+}
+
+/* Spacing lives below each element, so the block's last one must not carry it past the outline. */
+.mdxeditor.mdxeditor [contenteditable] > :last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.mdxeditor.mdxeditor code span {
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.mdxeditor.mdxeditor p {
+  margin: 0;
+  padding: 0 0 0.55em;
+  min-height: 1.62em;
+  text-wrap: pretty;
+  hyphens: auto;
+}
+
+.mdxeditor.mdxeditor h1,
+.mdxeditor.mdxeditor h2,
+.mdxeditor.mdxeditor h3 {
+  margin: 1.4em 0 0.45em;
+  font-family: var(--font-page);
+  font-weight: 600;
+  line-height: 1.22;
+  letter-spacing: -0.006em;
+  text-wrap: balance;
+  color: var(--ink);
+}
+
+.mdxeditor.mdxeditor h1:first-child,
+.mdxeditor.mdxeditor h2:first-child,
+.mdxeditor.mdxeditor h3:first-child {
+  margin-top: 0;
+}
+
+.mdxeditor.mdxeditor h1 {
+  font-size: 27px;
+}
+
+.mdxeditor.mdxeditor h2 {
+  font-size: 22px;
+}
+
+.mdxeditor.mdxeditor h3 {
+  font-size: 19px;
+}
+
+.mdxeditor.mdxeditor strong {
+  font-weight: 640;
+}
+
+.mdxeditor.mdxeditor ul,
+.mdxeditor.mdxeditor ol {
+  margin: 0 0 0.55em;
+  padding-left: 1.3em;
+}
+
+.mdxeditor.mdxeditor li {
+  margin: 0 !important;
+  padding: 0.1em 0;
+}
+
+/* Lexical nests a list as <li><ul>…</ul></li>; that wrapper li must not add a marker or a line. */
+.mdxeditor.mdxeditor li:has(> ul),
+.mdxeditor.mdxeditor li:has(> ol) {
+  display: block;
+  padding: 0;
+  list-style: none;
+}
+
+.mdxeditor.mdxeditor li > ul,
+.mdxeditor.mdxeditor li > ol {
+  margin: 0 !important;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.mdxeditor.mdxeditor li > p {
+  margin: 0;
+  padding: 0;
+}
+
+.mdxeditor.mdxeditor input[type="checkbox"] {
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  accent-color: var(--accent);
+}
+
+.mdxeditor.mdxeditor blockquote {
+  margin: 0.9em 0;
+  padding: 2px 0 2px 20px;
+  border-left: 2px solid var(--accent-soft);
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  font-style: normal;
+}
+
+.mdxeditor.mdxeditor hr {
+  margin: 1.6em 0;
+  border: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.mdxeditor.mdxeditor a {
+  color: var(--accent);
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--accent-soft);
+  text-underline-offset: 0.18em;
+}
+
+.mdxeditor.mdxeditor code {
+  padding: 0.08em 0.32em;
+  border-radius: 4px;
+  background: var(--tint);
+  font-family: var(--font-code);
+  font-size: 0.8em;
+  color: var(--ink);
+}
+
+.mdxeditor.mdxeditor img {
+  margin: 0.4em 0;
+  border-radius: 8px;
+}
+
+.mdxeditor-codeblock-toolbar,
+[data-mde-codeblock-toolbar],
+[data-testid="codeblock-toolbar"] {
+  display: none !important;
+}
+
+.code-panel {
+  margin: 0.4rem 0;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--code-paper);
+  transition: box-shadow 0.12s ease;
+}
+
+.code-panel[data-selected] {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.code-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-chrome);
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+.code-panel-language {
+  height: 22px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  appearance: none;
+  cursor: default;
+}
+
+.code-panel-language:hover {
+  background: var(--tint);
+  color: var(--ink-soft);
+}
+
+.code-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.code-panel-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  cursor: default;
+}
+
+.code-panel-button:hover {
+  background: var(--tint);
+  color: var(--ink-soft);
+}
+
+.code-panel-button[data-tone="destructive"]:hover {
+  background: var(--removed-tint);
+  color: var(--removed-label);
+}
+
+.code-panel-body {
+  padding: 12px 16px 14px;
+}
+
+.block {
+  position: relative;
+}
+
+/* Drawn outside the block's box, so the outline never shifts the text it frames. */
+.block::before {
+  content: "";
+  position: absolute;
+  inset: -10px -16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  pointer-events: none;
+  transition: border-color 0.15s ease;
+}
+
+.block:hover::before,
+.block:focus-within::before {
+  border-color: var(--rule);
+}
+
+.block-gutter {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translateX(-50px);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.block:hover .block-gutter,
+.block-gutter:focus-within {
+  opacity: 1;
+}
+
+.block-gutter-button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-muted);
+  cursor: default;
+}
+
+.block-gutter-button:hover {
+  background: var(--tint);
+  color: var(--ink-soft);
+}
+
+.block-gutter-button[data-handle] {
+  cursor: grab;
+}
+
+.block-gutter-button[data-handle]:active {
+  cursor: grabbing;
+}
+
+.block-gutter .menu {
+  position: absolute;
+  top: 56px;
+  left: 0;
+  min-width: 160px;
+}
+
+.block-drop-line {
+  position: absolute;
+  inset-inline: 0;
+  z-index: 10;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.block-drag-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  background: var(--paper);
+  box-shadow: var(--menu-shadow);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.block-drag-preview svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-muted);
+}
+
+.insertion-point {
+  position: relative;
+  height: 0;
+  margin: 1.3rem 0;
+}
+
+.insertion-point-hit {
+  position: absolute;
+  inset-inline: 0;
+  top: -14px;
+  height: 28px;
+}
+
+.insertion-point-rule {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  border-top: 1px solid transparent;
+  pointer-events: none;
+  transition: border-color 0.15s ease;
+}
+
+.insertion-point-choices {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 10;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.insertion-point:hover .insertion-point-rule,
+.insertion-point[data-persistent] .insertion-point-rule {
+  border-top-color: var(--rule);
+}
+
+.insertion-point:hover .insertion-point-choices,
+.insertion-point:focus-within .insertion-point-choices,
+.insertion-point[data-persistent] .insertion-point-choices {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.insertion-point .segmented {
+  background: var(--paper);
+  box-shadow:
+    inset 0 0 0 1px var(--rule),
+    0 1px 3px rgb(0 0 0 / 0.05);
+}
+
+.insertion-point .segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.insertion-point .segmented button:hover {
+  background: var(--control-selected);
+  color: var(--ink);
+}
+
+.insertion-point .segmented svg {
+  width: 13px;
+  height: 13px;
+  color: var(--ink-muted);
+}
+
+.canvas-frame {
+  height: 800px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.image-missing {
+  margin: 0;
+  font-family: var(--font-page);
+  font-style: italic;
+  color: var(--ink-muted);
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.annotator-tray {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  box-shadow: var(--menu-shadow);
+}
+
+.annotator {
+  -webkit-app-region: no-drag;
+}
+
+:root[data-platform="mac"] .annotator {
+  padding-top: 24px;
+}

@@ -1,4 +1,4 @@
-import {useEffect, useState, Fragment} from "react";
+import {useEffect, useRef, useState, Fragment, type ReactNode} from "react";
 import {useNoteContext} from "@/context/NoteContext";
 import {NoteService} from "@/services/NoteService";
 import type {Block, Note} from "@/types/Note.ts";
@@ -18,12 +18,20 @@ import {
     sortableKeyboardCoordinates,
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import {NoteTitle} from "@/components/NoteTitle.tsx";
 import {SortableBlock} from "@/components/blocks/SortableBlock.tsx";
 import {InsertionPoint, type InsertKind} from "@/components/blocks/InsertionPoint.tsx";
-import {DocumentTextIcon, RectangleGroupIcon} from '@heroicons/react/24/outline';
+import {Code2, Image as ImageIcon, PenTool, Type} from "lucide-react";
 import {ExcalidrawBlock} from "@/components/blocks/block_types/ExcalidrawBlock.tsx";
 import {CodeBlock} from "@/components/blocks/block_types/CodeBlock.tsx";
 import {ImageBlock} from "@/components/blocks/block_types/ImageBlock.tsx";
+
+const BLOCK_PREVIEW: Record<string, {label: string; icon: ReactNode}> = {
+    text: {label: "Text", icon: <Type/>},
+    canvas: {label: "Canvas", icon: <PenTool/>},
+    code: {label: "Code", icon: <Code2/>},
+    image: {label: "Image", icon: <ImageIcon/>},
+};
 
 async function createBlock(kind: InsertKind, noteId: string, index: number): Promise<Block> {
     return await NoteService.createBlock(noteId, {type: kind, index, content: ""});
@@ -34,9 +42,12 @@ export function MainContentPanel() {
     const [note, setNote] = useState<Note | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeBlock, setActiveBlock] = useState<Block | null>(null);
-    const [editingTitle, setEditingTitle] = useState(false);
-    const [localNoteTitle, setLocalNoteTitle] = useState(noteTitle);
     const [spawnedBlockId, setSpawnedBlockId] = useState<string | null>(null);
+
+    const selectedNoteRef = useRef(selectedNoteId);
+    useEffect(() => {
+        selectedNoteRef.current = selectedNoteId;
+    }, [selectedNoteId]);
 
     const sensors = useSensors(
         // the drag handle is also the actions menu trigger, so a press that never moves must stay a click
@@ -74,12 +85,7 @@ export function MainContentPanel() {
             }
         };
 
-        fetchNote().then(
-            () => {
-                setLoading(false)
-                setLocalNoteTitle(noteTitle);
-            }
-        );
+        fetchNote();
     }, [selectedNoteId]);
 
     const handleAddBlockAt = async (kind: InsertKind, index: number) => {
@@ -239,97 +245,67 @@ export function MainContentPanel() {
         }
     };
 
-    if (!selectedNoteId) {
-        return <div className="editor-col py-10 text-ink-muted">No note selected</div>;
-    }
+    if (!selectedNoteId) return null;
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center p-10">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-rule border-t-ink-muted"></div>
+            <div className="empty-reader">
+                <div className="spinner" aria-label="Loading"/>
             </div>
         );
     }
 
     const sortedBlocks = note?.blocks ? [...note.blocks].sort((a, b) => a.index - b.index) : [];
 
-    const tryUpdateTitle = async (newTitle: string) => {
+    const renameNote = async (title: string) => {
         if (!selectedNoteId) return;
+        const renamedId = selectedNoteId;
         try {
-            const trimmed = newTitle.trim();
-            if (trimmed && trimmed !== noteTitle) {
-                await NoteService.updateNote({
-                    id: selectedNoteId,
-                    title: trimmed,
-                    folder_id: note?.folder_id,
-                    blocks: note?.blocks
-                });
-                setEditingTitle(false);
-                setNoteTitle(trimmed);
-                setLocalNoteTitle(trimmed);
-            }
+            await NoteService.updateNote({
+                id: renamedId,
+                title,
+                folder_id: note?.folder_id,
+                blocks: note?.blocks
+            });
+            if (selectedNoteRef.current === renamedId) setNoteTitle(title);
+            else window.dispatchEvent(new CustomEvent("noteRenamed"));
         } catch (err) {
             console.error("Failed to update note title:", err);
-            setLocalNoteTitle(noteTitle);
         }
-    }
-
-    const titleClasses = "w-full bg-transparent text-[30px] font-semibold leading-tight tracking-[-0.022em] text-ink";
+    };
 
     return (
         note && noteTitle && (
-            <div className="pb-2 pt-10">
-                <div className="editor-col mb-3" onClick={() => !editingTitle && setEditingTitle(true)}>
-                    {editingTitle ? (
-                        <input
-                            className={`${titleClasses} border-0 p-0 focus:outline-none`}
-                            value={localNoteTitle !== null ? localNoteTitle : noteTitle}
-                            onChange={e => setLocalNoteTitle(e.target.value)}
-                            onKeyDown={e => {
-                                if (e.key === "Enter") {
-                                    tryUpdateTitle(localNoteTitle ? localNoteTitle : "");
-                                }
-                            }}
-                            onBlur={() => {
-                                setEditingTitle(false)
-                            }}
-                            autoFocus
-                        />
-                    ) : (
-                        <h1 className={`${titleClasses} cursor-text`}>{noteTitle}</h1>
-                    )}
-                </div>
+            <div className="reader-content">
+                <article className="note-page page-column">
+                    <header className="note-header">
+                        <NoteTitle key={selectedNoteId} title={noteTitle} onRename={renameNote}/>
+                    </header>
 
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                    onDragStart={handleDragStart}
-                >
-                    <SortableContext
-                        items={sortedBlocks.map(block => block.id)}
-                        strategy={verticalListSortingStrategy}
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                        onDragStart={handleDragStart}
                     >
-                        <div className="flex w-full flex-col">
+                        <SortableContext
+                            items={sortedBlocks.map(block => block.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
                             {sortedBlocks.length === 0 ? (
-                                <div className="editor-col pt-6 pb-10">
-                                    <p className="mb-10 text-[15px] text-ink-faint">
-                                        Start writing, or add a block below.
-                                    </p>
+                                <>
+                                    <p className="note-hint">Start writing, or add a block below.</p>
                                     <InsertionPoint onAdd={(kind) => handleAddBlockAt(kind, 0)} persistent/>
-                                </div>
+                                </>
                             ) : (
-                                <div className="editor-col py-1.5">
-                                    <InsertionPoint onAdd={(kind) => handleAddBlockAt(kind, 0)}/>
-                                </div>
+                                <InsertionPoint onAdd={(kind) => handleAddBlockAt(kind, 0)}/>
                             )}
 
                             {sortedBlocks.map((block: Block, i: number) => (
                                 <Fragment key={block.id}>
-                                    <div className="editor-col">
+                                    <div className={block.type === "canvas" ? "page-breakout" : undefined}>
                                         <SortableBlock blockId={block.id} onDelete={handleDeleteBlock}
-                                                       onDuplicate={handleDuplicateBlock}
-                                                       showBoundary={block.type === "text"}>
+                                                       onDuplicate={handleDuplicateBlock}>
                                             {block.type === "text" && (
                                                 <TextBlock
                                                     block={block}
@@ -341,44 +317,27 @@ export function MainContentPanel() {
                                             {block.type === "canvas" && <ExcalidrawBlock block={block}/>}
                                             {block.type === "image" && <ImageBlock block={block}/>}
                                             {!["text", "canvas", "image", "code"].includes(block.type) && (
-                                                <div className="text-destructive">
-                                                    Unknown block type: {block.type}
-                                                </div>
+                                                <p className="image-missing">Unknown block type: {block.type}</p>
                                             )}
                                         </SortableBlock>
                                     </div>
-                                    <div className="editor-col py-1.5">
-                                        <InsertionPoint onAdd={(kind) => handleAddBlockAt(kind, i + 1)}/>
-                                    </div>
+                                    <InsertionPoint onAdd={(kind) => handleAddBlockAt(kind, i + 1)}/>
                                 </Fragment>
                             ))}
 
-                            <div
-                                className="h-[35vh] cursor-text"
-                                onClick={() => handleAddBlockAt("text", sortedBlocks.length)}
-                            />
-                        </div>
-                    </SortableContext>
+                            <div className="note-tail" onClick={() => handleAddBlockAt("text", sortedBlocks.length)}/>
+                        </SortableContext>
 
-                    <DragOverlay>
-                        {activeBlock && (
-                            <div className="surface-pop flex items-center gap-3 rounded-lg px-4 py-3">
-                                {activeBlock.type === "text" && (
-                                    <>
-                                        <DocumentTextIcon className="h-5 w-5 flex-shrink-0 text-ink-muted"/>
-                                        <div className="text-[13px] font-medium text-ink">Text block</div>
-                                    </>
-                                )}
-                                {activeBlock.type === "canvas" && (
-                                    <>
-                                        <RectangleGroupIcon className="h-5 w-5 flex-shrink-0 text-ink-muted"/>
-                                        <div className="text-[13px] font-medium text-ink">Canvas block</div>
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </DragOverlay>
-                </DndContext>
+                        <DragOverlay>
+                            {activeBlock && (
+                                <div className="block-drag-preview">
+                                    {BLOCK_PREVIEW[activeBlock.type]?.icon}
+                                    {BLOCK_PREVIEW[activeBlock.type]?.label ?? "Block"}
+                                </div>
+                            )}
+                        </DragOverlay>
+                    </DndContext>
+                </article>
             </div>
         )
     );
